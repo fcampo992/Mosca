@@ -1,2 +1,12 @@
+[project]
+name = "kiro-archery"
+version = "1.0.0"
+description = "Archer tournament management app"
+requires-python = ">=3.12"
+dependencies = [
+    "flask==3.1.0",
+    "libsql-experimental==0.0.10",
+]
+
 [tool.vercel]
-entrypoint = "archer.app:create_app"
+entrypoint = "archer.app:app"

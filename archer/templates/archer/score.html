@@ -305,6 +305,11 @@
         }
         _pendingVal = null;
         _isLastArrow = false;
+        // Rehabilitar botones
+        document.querySelectorAll('.arrow-btn').forEach(function(b) {
+            b.disabled = false;
+            b.classList.remove('opacity-40', 'pointer-events-none');
+        });
         modal.classList.add('hidden');
     });
 
@@ -344,6 +349,9 @@
     // ── Arrow buttons ──
     document.querySelectorAll('.arrow-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
+            // Si el modal ya está abierto, ignorar clicks
+            if (!modal.classList.contains('hidden')) return;
+
             var val = btn.getAttribute('data-val');
             var pts = POINTS[val] || 0;
             var isLast = (arrowCount + 1 >= arrowsPerEnd);
@@ -357,9 +365,13 @@
             elArrows.appendChild(makeChip(val));
 
             if (isLast) {
-                // Mostrar modal de confirmación
+                // Mostrar modal de confirmación — deshabilitar botones
                 _pendingVal = val;
                 _isLastArrow = true;
+                document.querySelectorAll('.arrow-btn').forEach(function(b) {
+                    b.disabled = true;
+                    b.classList.add('opacity-40', 'pointer-events-none');
+                });
                 modalPrev.innerHTML = '';
                 sessionArrows.forEach(function(a) { modalPrev.appendChild(makeChip(a.val)); });
                 modalSub.textContent = subtotal;

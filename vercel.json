@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "archer/app.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "archer/app.py"
+    }
+  ],
+  "env": {
+    "SESSION_SECRET": "@session_secret"
+  }
+}

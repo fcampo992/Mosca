@@ -1,0 +1,2 @@
+[tool.vercel]
+entrypoint = "archer.app:create_app"

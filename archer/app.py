@@ -2,10 +2,7 @@
 archer/app.py
 
 Application factory.  Call create_app() to obtain a configured Flask instance.
-
-Blueprint registration is intentionally deferred: each blueprint module will be
-imported here once it exists (task 13.x).  Until then the try/except guards keep
-the factory functional so tests that only need the app shell can still run.
+Vercel uses the `app` variable at module level as the WSGI entrypoint.
 """
 
 from __future__ import annotations
@@ -20,31 +17,14 @@ logger = logging.getLogger(__name__)
 
 
 def create_app(config_object: object = Config) -> Flask:
-    """
-    Flask application factory.
-
-    Parameters
-    ----------
-    config_object:
-        Any object (or class) whose attributes are used as Flask config keys.
-        Defaults to :class:`archer.config.Config`.  Pass a custom config class
-        in tests to override settings (e.g. use an in-memory SQLite DB).
-
-    Returns
-    -------
-    Flask
-        A fully configured application instance ready to serve requests.
-    """
     app = Flask(
         __name__,
         template_folder="templates",
         static_folder="static",
     )
 
-    # ── Load configuration ────────────────────────────────────────────────────
     app.config.from_object(config_object)
 
-    # Abort early if SESSION_SECRET is not set in a non-testing environment
     if not app.config.get("SECRET_KEY") and not app.config.get("TESTING"):
         raise RuntimeError(
             "SESSION_SECRET environment variable is not set. "
@@ -84,33 +64,26 @@ def create_app(config_object: object = Config) -> Flask:
             return {"club_settings": _fallback}
 
     # ── Register blueprints ───────────────────────────────────────────────────
-    # Each import is wrapped in its own try/except so that a missing blueprint
-    # module during development does not prevent the rest from loading.
-
     try:
         from archer.routes.admin_routes import admin_bp  # noqa: PLC0415
-
         app.register_blueprint(admin_bp)
     except ImportError:
         logger.debug("admin_routes blueprint not available yet.")
 
     try:
         from archer.routes.archer_routes import archer_bp  # noqa: PLC0415
-
         app.register_blueprint(archer_bp)
     except ImportError:
         logger.debug("archer_routes blueprint not available yet.")
 
     try:
         from archer.routes.leaderboard_routes import leaderboard_bp  # noqa: PLC0415
-
         app.register_blueprint(leaderboard_bp)
     except ImportError:
         logger.debug("leaderboard_routes blueprint not available yet.")
 
     try:
         from archer.routes.stats_routes import stats_bp  # noqa: PLC0415
-
         app.register_blueprint(stats_bp)
     except ImportError:
         logger.debug("stats_routes blueprint not available yet.")
@@ -146,7 +119,6 @@ def create_app(config_object: object = Config) -> Flask:
             top_archers = []
         club = get_club_settings()
         active_news = get_active_news()
-        # Construir texto del ticker: noticias activas tienen prioridad, si no usar config del club
         if active_news:
             ticker = " · ".join(
                 f"📢 {n['title']}: {n['content']}" for n in active_news
@@ -160,8 +132,6 @@ def create_app(config_object: object = Config) -> Flask:
                                ticker=ticker)
 
     # ── Centralized error handlers ────────────────────────────────────────────
-    # Return JSON {"error": "..."} for common HTTP error codes (Req 10.5).
-
     from flask import jsonify  # noqa: PLC0415
 
     @app.errorhandler(404)
@@ -181,3 +151,8 @@ def create_app(config_object: object = Config) -> Flask:
         return jsonify({"error": "Servicio no disponible temporalmente."}), 503
 
     return app
+
+
+# ── Vercel WSGI entrypoint ────────────────────────────────────────────────────
+# Vercel looks for a module-level `app` variable.
+app = create_app()

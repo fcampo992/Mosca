@@ -336,11 +336,8 @@ def correct_arrow():
 @require_session
 def upload_photo():
     """
-    POST — Sube o reemplaza la foto de perfil del arquero autenticado.
-
-    Guarda el archivo en archer/static/photos/<archer_id>.<ext>
-    y actualiza la columna photo_url en la tabla archers.
-    Redirige a /archer/score con mensaje de éxito o error.
+    POST — Sube o reemplaza la foto de perfil del arquero.
+    Usa Cloudinary si CLOUDINARY_URL está configurada, sino guarda en disco.
     """
     archer_id = session["archer_id"]
 
@@ -355,24 +352,41 @@ def upload_photo():
     if not _allowed_photo(photo.filename):
         return _render_score(error="Formato no permitido. Usá JPG, PNG, WEBP o GIF."), 400
 
-    # Leer contenido y verificar tamaño
     data = photo.read()
     if len(data) > _MAX_PHOTO_BYTES:
         return _render_score(error="La imagen supera el límite de 5 MB."), 400
 
-    # Construir ruta de destino
-    ext = photo.filename.rsplit(".", 1)[1].lower()
-    filename = f"{archer_id}.{ext}"
-    photos_dir = os.path.join(current_app.root_path, "static", "photos")
-    os.makedirs(photos_dir, exist_ok=True)
-    filepath = os.path.join(photos_dir, filename)
+    photo_url = None
 
-    with open(filepath, "wb") as f:
-        f.write(data)
+    # ── Intentar Cloudinary primero ──
+    cloudinary_url = os.environ.get("CLOUDINARY_URL")
+    if cloudinary_url:
+        try:
+            import cloudinary                          # type: ignore
+            import cloudinary.uploader                 # type: ignore
+            import io
+            result = cloudinary.uploader.upload(
+                io.BytesIO(data),
+                public_id=f"archer_photos/{archer_id}",
+                overwrite=True,
+                resource_type="image",
+                transformation=[{"width": 400, "height": 400, "crop": "fill", "gravity": "face"}],
+            )
+            photo_url = result.get("secure_url")
+        except Exception as exc:
+            return _render_score(error=f"Error al subir a Cloudinary: {exc}"), 500
+    else:
+        # ── Fallback: disco local ──
+        ext = photo.filename.rsplit(".", 1)[1].lower()
+        filename = f"{archer_id}.{ext}"
+        photos_dir = os.path.join(current_app.root_path, "static", "photos")
+        os.makedirs(photos_dir, exist_ok=True)
+        filepath = os.path.join(photos_dir, filename)
+        with open(filepath, "wb") as f:
+            f.write(data)
+        photo_url = f"/static/photos/{filename}"
 
-    photo_url = f"/static/photos/{filename}"
-
-    # Persistir en DB
+    # ── Persistir URL en DB ──
     try:
         from archer.db import get_connection  # noqa: PLC0415
         conn = get_connection()

@@ -24,39 +24,29 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def _connect_turso(url: str, token: str):
-    """Intenta conectar a Turso. Soporta múltiples versiones del SDK."""
+    """Intenta conectar a Turso. Retorna la conexión o None si falla."""
     try:
         import libsql_experimental as libsql  # type: ignore
     except ImportError as exc:
         logger.error("libsql-experimental no está instalado: %s", exc)
-        sys.exit(1)
+        return None
 
     import platform
     import concurrent.futures
 
     def _do_connect():
-        # Probar diferentes firmas según la versión del SDK
-        errors = []
-        for kwargs in [
-            {"auth_token": token},
-            {"authToken": token},
-            {},  # sin token como último recurso
-        ]:
+        for kwargs in [{"auth_token": token}, {"authToken": token}]:
             try:
-                if kwargs:
-                    return libsql.connect(url, **kwargs)
-                else:
-                    return libsql.connect(url)
-            except TypeError as e:
-                errors.append(str(e))
+                return libsql.connect(url, **kwargs)
+            except TypeError:
                 continue
-        raise RuntimeError(f"No se pudo conectar a Turso. Errores: {errors}")
+        return libsql.connect(url)
 
     if platform.system() != "Windows":
         import signal
 
         def _timeout_handler(signum, frame):
-            raise TimeoutError("Turso connection timed out after 10 seconds")
+            raise TimeoutError("Turso connection timed out")
 
         signal.signal(signal.SIGALRM, _timeout_handler)
         signal.alarm(10)
@@ -64,25 +54,21 @@ def _connect_turso(url: str, token: str):
             conn = _do_connect()
             signal.alarm(0)
             return conn
-        except (TimeoutError, RuntimeError) as exc:
-            logger.error("Conexión a Turso falló: %s", exc)
-            sys.exit(1)
         except Exception as exc:
-            signal.alarm(0)
+            try:
+                signal.alarm(0)
+            except Exception:
+                pass
             logger.error("Error al conectar a Turso: %s", exc)
-            sys.exit(1)
+            return None
     else:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(_do_connect)
             try:
-                conn = future.result(timeout=10)
-                return conn
-            except concurrent.futures.TimeoutError:
-                logger.error("Conexión a Turso falló: timeout de 10 segundos superado")
-                sys.exit(1)
+                return future.result(timeout=10)
             except Exception as exc:
                 logger.error("Error al conectar a Turso: %s", exc)
-                sys.exit(1)
+                return None
 
 
 def _connect_sqlite() -> sqlite3.Connection:
@@ -97,13 +83,7 @@ def _connect_sqlite() -> sqlite3.Connection:
 # ---------------------------------------------------------------------------
 
 def get_connection():
-    """Retorna la conexión activa (Turso o SQLite). Patrón singleton.
-
-    La instancia se almacena en ``current_app.config['DB_CONN']`` para
-    que persista durante todo el ciclo de vida de la aplicación Flask.
-    Se crea una única vez; las llamadas subsiguientes retornan la misma
-    instancia (identidad de objeto).
-    """
+    """Retorna la conexión activa (Turso o SQLite). Patrón singleton."""
     conn = current_app.config.get("DB_CONN")
     if conn is not None:
         return conn
@@ -114,12 +94,13 @@ def get_connection():
     if turso_url and turso_token:
         logger.info("Conectando a Turso: %s", turso_url)
         conn = _connect_turso(turso_url, turso_token)
-        logger.info("Conexión a Turso establecida correctamente.")
+        if conn is None:
+            logger.warning("Turso falló — usando SQLite local como fallback.")
+            conn = _connect_sqlite()
+        else:
+            logger.info("Conexión a Turso establecida correctamente.")
     else:
-        logger.info(
-            "Variables de entorno Turso no definidas. "
-            "Usando SQLite local (db.sqlite3)."
-        )
+        logger.info("Variables de entorno Turso no definidas. Usando SQLite local.")
         conn = _connect_sqlite()
 
     current_app.config["DB_CONN"] = conn

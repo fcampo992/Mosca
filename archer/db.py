@@ -24,33 +24,47 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def _connect_turso(url: str, token: str):
-    """Intenta conectar a Turso con un timeout de 10 segundos.
-
-    Retorna la conexión si tiene éxito.
-    Registra el error y llama a sys.exit(1) si falla o supera el timeout.
-    """
-    import signal
-
-    def _timeout_handler(signum, frame):
-        raise TimeoutError("Turso connection timed out after 10 seconds")
-
+    """Intenta conectar a Turso. Soporta múltiples versiones del SDK."""
     try:
         import libsql_experimental as libsql  # type: ignore
     except ImportError as exc:
         logger.error("libsql-experimental no está instalado: %s", exc)
         sys.exit(1)
 
-    # signal.SIGALRM solo está disponible en Unix.  En Windows usamos un
-    # threading.Timer para simular el timeout.
     import platform
+    import concurrent.futures
+
+    def _do_connect():
+        # Probar diferentes firmas según la versión del SDK
+        errors = []
+        for kwargs in [
+            {"auth_token": token},
+            {"authToken": token},
+            {},  # sin token como último recurso
+        ]:
+            try:
+                if kwargs:
+                    return libsql.connect(url, **kwargs)
+                else:
+                    return libsql.connect(url)
+            except TypeError as e:
+                errors.append(str(e))
+                continue
+        raise RuntimeError(f"No se pudo conectar a Turso. Errores: {errors}")
+
     if platform.system() != "Windows":
+        import signal
+
+        def _timeout_handler(signum, frame):
+            raise TimeoutError("Turso connection timed out after 10 seconds")
+
         signal.signal(signal.SIGALRM, _timeout_handler)
         signal.alarm(10)
         try:
-            conn = libsql.connect(url, auth_token=token)
-            signal.alarm(0)  # cancelar alarma si conectó a tiempo
+            conn = _do_connect()
+            signal.alarm(0)
             return conn
-        except TimeoutError as exc:
+        except (TimeoutError, RuntimeError) as exc:
             logger.error("Conexión a Turso falló: %s", exc)
             sys.exit(1)
         except Exception as exc:
@@ -58,21 +72,13 @@ def _connect_turso(url: str, token: str):
             logger.error("Error al conectar a Turso: %s", exc)
             sys.exit(1)
     else:
-        # Windows: usamos threading para implementar el timeout
-        import concurrent.futures
-
-        def _do_connect():
-            return libsql.connect(url, auth_token=token)
-
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(_do_connect)
             try:
                 conn = future.result(timeout=10)
                 return conn
             except concurrent.futures.TimeoutError:
-                logger.error(
-                    "Conexión a Turso falló: timeout de 10 segundos superado"
-                )
+                logger.error("Conexión a Turso falló: timeout de 10 segundos superado")
                 sys.exit(1)
             except Exception as exc:
                 logger.error("Error al conectar a Turso: %s", exc)

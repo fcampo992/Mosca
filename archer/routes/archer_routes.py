@@ -105,12 +105,68 @@ def login():
     result = authenticate_pin(pin)
 
     if "error" not in result:
-        # Éxito — establecer sesión (Req 4.1)
-        session["archer_id"] = result["archer_id"]
-        session["archer_name"] = result["name"]
-        session["last_active"] = datetime.now().isoformat()
-        session["round_number"] = 1
-        session["end_number"] = 1
+        archer_id   = result["archer_id"]
+        archer_name = result["name"]
+
+        # Calcular el estado actual del arquero en el torneo activo
+        round_number = 1
+        end_number   = 1
+        tournament_done = False
+
+        try:
+            tournament = get_active_tournament(archer_id)
+            if tournament:
+                arrows_per_end = tournament.get("arrows_per_end", 6)
+                ends_per_round = tournament.get("rounds", 10)
+                rounds_count   = tournament.get("rounds_count", 1)
+
+                # Contar cuántas flechas tiene registradas
+                from archer.db import get_connection as _gc  # noqa: PLC0415
+                conn = _gc()
+
+                # Obtener la última flecha registrada para saber en qué ronda/tanda está
+                last_row = conn.execute(
+                    """SELECT round_number, end_number, COUNT(*) as cnt
+                       FROM scores
+                       WHERE archer_id = ? AND tournament_id = ?
+                       GROUP BY round_number, end_number
+                       ORDER BY round_number DESC, end_number DESC
+                       LIMIT 1""",
+                    (archer_id, tournament["id"]),
+                ).fetchone()
+
+                if last_row:
+                    last_round = last_row["round_number"]
+                    last_end   = last_row["end_number"]
+                    last_cnt   = last_row["cnt"]
+
+                    if last_cnt >= arrows_per_end:
+                        # La última tanda está completa — avanzar
+                        if last_end >= ends_per_round:
+                            if last_round >= rounds_count:
+                                tournament_done = True
+                                round_number = last_round
+                                end_number   = last_end
+                            else:
+                                round_number = last_round + 1
+                                end_number   = 1
+                        else:
+                            round_number = last_round
+                            end_number   = last_end + 1
+                    else:
+                        # La última tanda está incompleta — continuar ahí
+                        round_number = last_round
+                        end_number   = last_end
+        except Exception:
+            pass
+
+        session["archer_id"]       = archer_id
+        session["archer_name"]     = archer_name
+        session["last_active"]     = datetime.now().isoformat()
+        session["round_number"]    = round_number
+        session["end_number"]      = end_number
+        session["tournament_done"] = tournament_done
+        session.pop("photo_url", None)  # forzar recarga de foto
         return redirect(url_for("archer.score"))
 
     # Determinar código HTTP apropiado

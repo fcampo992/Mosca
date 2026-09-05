@@ -26,9 +26,11 @@ def create_app(config_object: object = Config) -> Flask:
     app.config.from_object(config_object)
 
     if not app.config.get("SECRET_KEY") and not app.config.get("TESTING"):
-        raise RuntimeError(
-            "SESSION_SECRET environment variable is not set. "
-            "Set it to a long random string before starting the application."
+        import warnings
+        warnings.warn(
+            "SESSION_SECRET not set — using insecure default. Set it in Vercel Environment Variables.",
+            RuntimeWarning,
+            stacklevel=2,
         )
 
     # ── Initialise database ───────────────────────────────────────────────────

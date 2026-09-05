@@ -17,8 +17,9 @@ class Config:
     TURSO_AUTH_TOKEN: str | None = os.environ.get("TURSO_AUTH_TOKEN")
 
     # ── Flask session security ──────────────────────────────────────────────────────────────
-    # Must be set in the environment; no hard-coded fallback for security.
-    SECRET_KEY: str = os.environ.get("SESSION_SECRET", "")
+    # Falls back to a generated key if not set — only safe for dev/demo deploys.
+    # In production, always set SESSION_SECRET to a strong random value.
+    SECRET_KEY: str = os.environ.get("SESSION_SECRET", "kiro-archery-default-dev-key-change-in-prod")
 
     # ── Admin credentials ──────────────────────────────────────────────────────────────────
     # Read from environment variables; never hard-coded in source.

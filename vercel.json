@@ -11,8 +11,5 @@
       "src": "/(.*)",
       "dest": "archer/app.py"
     }
-  ],
-  "env": {
-    "SESSION_SECRET": "@session_secret"
-  }
+  ]
 }

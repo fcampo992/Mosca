@@ -72,8 +72,15 @@ def _connect_turso(url: str, token: str):
 
 
 def _connect_sqlite() -> sqlite3.Connection:
-    """Crea y retorna una conexión SQLite local con db.sqlite3."""
-    conn = sqlite3.connect("db.sqlite3", check_same_thread=False)
+    """Crea y retorna una conexión SQLite. Usa /tmp en entornos read-only."""
+    import os
+    # En Vercel/Lambda el filesystem es read-only excepto /tmp
+    db_path = os.environ.get("SQLITE_PATH", "db.sqlite3")
+    # Si la ruta actual es read-only, usar /tmp
+    db_dir = os.path.dirname(os.path.abspath(db_path)) if os.path.dirname(db_path) else os.getcwd()
+    if not os.access(db_dir, os.W_OK):
+        db_path = "/tmp/db.sqlite3"
+    conn = sqlite3.connect(db_path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 

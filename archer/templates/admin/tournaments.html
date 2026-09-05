@@ -1,0 +1,238 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Torneos — KiroArchery{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Torneos</h1>
+
+<!-- Formulario: crear torneo (Req 2.1) -->
+<section class="bg-white rounded-xl shadow p-5 mb-8">
+    <h2 class="text-lg font-semibold mb-4">Nuevo torneo</h2>
+    <form method="POST" action="{{ url_for('admin.tournaments') }}" novalidate>
+        <div class="mb-4">
+            <label for="name" class="block text-sm font-medium mb-1">
+                Nombre <span class="text-red-500">*</span>
+            </label>
+            <input
+                id="name"
+                name="name"
+                type="text"
+                maxlength="150"
+                value="{{ form_data.get('name', '') }}"
+                class="w-full border rounded-lg px-3 py-2 text-sm
+                       {% if field == 'name' %}border-red-500{% else %}border-gray-300{% endif %}"
+                placeholder="Ej. Copa Primavera 2025"
+                required
+            />
+            {% if field == 'name' %}
+            <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+            {% endif %}
+        </div>
+
+        <div class="mb-4">
+            <label for="date" class="block text-sm font-medium mb-1">
+                Fecha <span class="text-red-500">*</span>
+            </label>
+            <input
+                id="date"
+                name="date"
+                type="date"
+                value="{{ form_data.get('date', '') }}"
+                class="w-full border rounded-lg px-3 py-2 text-sm
+                       {% if field == 'date' %}border-red-500{% else %}border-gray-300{% endif %}"
+                required
+            />
+            {% if field == 'date' %}
+            <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+            {% endif %}
+        </div>
+
+        <div class="mb-4">
+            <label for="rounds_count" class="block text-sm font-medium mb-1">
+                Cantidad de rondas <span class="text-red-500">*</span>
+            </label>
+            <input
+                id="rounds_count"
+                name="rounds_count"
+                type="number"
+                min="1"
+                max="20"
+                value="{{ form_data.get('rounds_count', '1') }}"
+                class="w-full border rounded-lg px-3 py-2 text-sm
+                       {% if field == 'rounds_count' %}border-red-500{% else %}border-gray-300{% endif %}"
+                required
+            />
+            <p class="text-xs text-gray-400 mt-1">Cuántas rondas tiene el torneo. Default: 1</p>
+            {% if field == 'rounds_count' %}
+            <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+            {% endif %}
+        </div>
+
+        <div class="mb-4">
+            <label for="rounds" class="block text-sm font-medium mb-1">
+                Tandas por ronda <span class="text-red-500">*</span>
+            </label>
+            <input
+                id="rounds"
+                name="rounds"
+                type="number"
+                min="1"
+                max="20"
+                value="{{ form_data.get('rounds', '10') }}"
+                class="w-full border rounded-lg px-3 py-2 text-sm
+                       {% if field == 'rounds' %}border-red-500{% else %}border-gray-300{% endif %}"
+                required
+            />
+            <p class="text-xs text-gray-400 mt-1">Cuántas tandas tiene cada ronda. Default: 10</p>
+            {% if field == 'rounds' %}
+            <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+            {% endif %}
+        </div>
+
+        <div class="mb-4">
+            <label for="arrows_per_end" class="block text-sm font-medium mb-1">
+                Flechas por tanda <span class="text-red-500">*</span>
+            </label>
+            <input
+                id="arrows_per_end"
+                name="arrows_per_end"
+                type="number"
+                min="1"
+                max="12"
+                value="{{ form_data.get('arrows_per_end', '5') }}"
+                class="w-full border rounded-lg px-3 py-2 text-sm
+                       {% if field == 'arrows_per_end' %}border-red-500{% else %}border-gray-300{% endif %}"
+                required
+            />
+            <p class="text-xs text-gray-400 mt-1">Cuántas flechas se tiran por tanda. Default: 5</p>
+            {% if field == 'arrows_per_end' %}
+            <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+            {% endif %}
+        </div>
+
+        {% if error and not field %}
+        <p class="text-red-600 text-sm mb-3">{{ error }}</p>
+        {% endif %}
+
+        <button type="submit"
+                class="bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-semibold
+                       hover:bg-green-800 active:bg-green-900">
+            Crear torneo
+        </button>
+    </form>
+</section>
+
+<!-- Listado de torneos (Req 2.9) -->
+<section>
+    <h2 class="text-lg font-semibold mb-3">Torneos existentes</h2>
+
+    {% if tournaments %}
+    <div class="space-y-4">
+        {% for t in tournaments %}
+        <div class="bg-white rounded-xl shadow p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+                <p class="font-semibold text-base">{{ t.name }}</p>
+                <p class="text-sm text-gray-500">{{ t.date }}</p>
+                <p class="text-xs text-gray-400 mt-1">{{ t.rounds_count if t.rounds_count is defined else 1 }} ronda{{ 's' if (t.rounds_count if t.rounds_count is defined else 1) != 1 else '' }} · {{ t.rounds if t.rounds is defined else 10 }} tandas/ronda · {{ t.arrows_per_end if t.arrows_per_end is defined else 5 }} flechas/tanda</p>
+                <span class="inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full
+                    {% if t.status == 'created' %}bg-yellow-100 text-yellow-700
+                    {% elif t.status == 'active' %}bg-green-100 text-green-700
+                    {% else %}bg-gray-200 text-gray-600{% endif %}">
+                    {{ t.status }}
+                </span>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+                <!-- Categorías del torneo -->
+                <a href="{{ url_for('admin.categories', tournament_id=t.id) }}"
+                   class="text-sm bg-blue-50 text-blue-700 border border-blue-200
+                          px-3 py-1.5 rounded-lg hover:bg-blue-100">
+                    Categorías
+                </a>
+
+                <!-- Cambiar estado (Req 2.6, 2.7, 2.8) -->
+                {% if t.status == 'created' %}
+                <form method="POST"
+                      action="{{ url_for('admin.tournament_status', tournament_id=t.id) }}">
+                    <input type="hidden" name="new_status" value="active" />
+                    <button type="submit"
+                            class="text-sm bg-green-50 text-green-700 border border-green-200
+                                   px-3 py-1.5 rounded-lg hover:bg-green-100">
+                        Activar
+                    </button>
+                </form>
+                {% elif t.status == 'active' %}
+                <form method="POST"
+                      action="{{ url_for('admin.tournament_status', tournament_id=t.id) }}">
+                    <input type="hidden" name="new_status" value="finished" />
+                    <button type="submit"
+                            class="text-sm bg-red-50 text-red-700 border border-red-200
+                                   px-3 py-1.5 rounded-lg hover:bg-red-100">
+                        Finalizar
+                    </button>
+                </form>
+                {% endif %}
+
+                <!-- Arqueros inscritos — siempre visible (Req 2.7) -->
+                <a href="{{ url_for('admin.enrolled_archers', tournament_id=t.id) }}"
+                   class="text-sm bg-purple-50 text-purple-700 border border-purple-200
+                          px-3 py-1.5 rounded-lg hover:bg-purple-100">
+                    Arqueros
+                </a>
+
+                <!-- Leaderboard en vivo — solo torneos activos (Req 2.6) -->
+                {% if t.status == 'active' %}
+                <a href="{{ url_for('leaderboard.live', tournament_id=t.id) }}"
+                   class="text-sm bg-green-50 text-green-700 border border-green-200
+                          px-3 py-1.5 rounded-lg hover:bg-green-100"
+                   target="_blank">
+                    Leaderboard
+                </a>
+                <a href="{{ url_for('leaderboard.podium', tournament_id=t.id) }}"
+                   class="text-sm bg-yellow-50 text-yellow-700 border border-yellow-200
+                          px-3 py-1.5 rounded-lg hover:bg-yellow-100"
+                   target="_blank">
+                    🏆 Podio
+                </a>
+                {% endif %}
+
+                <!-- Estadísticas y podio — torneos finalizados (Req 2.6) -->
+                {% if t.status == 'finished' %}
+                <a href="{{ url_for('stats.tournament_view', tournament_id=t.id) }}"
+                   class="text-sm bg-indigo-50 text-indigo-700 border border-indigo-200
+                          px-3 py-1.5 rounded-lg hover:bg-indigo-100">
+                    Estadísticas
+                </a>
+                <a href="{{ url_for('leaderboard.podium', tournament_id=t.id) }}"
+                   class="text-sm bg-yellow-50 text-yellow-700 border border-yellow-200
+                          px-3 py-1.5 rounded-lg hover:bg-yellow-100">
+                    🏆 Podio
+                </a>
+                {% endif %}
+
+                <!-- Eliminar torneo — solo torneos en estado created (Req 2.8) -->
+                {% if t.status == 'created' %}
+                <form method="POST"
+                      action="{{ url_for('admin.delete_tournament_route', tournament_id=t.id) }}"
+                      onsubmit="return confirm('¿Eliminar el torneo {{ t.name }}? Esta acción no se puede deshacer.')">
+                    <button type="submit"
+                            class="text-sm bg-red-50 text-red-700 border border-red-200
+                                   px-3 py-1.5 rounded-lg hover:bg-red-100">
+                        Eliminar
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-gray-500 text-sm">Todavía no hay torneos. ¡Crea el primero!</p>
+    {% endif %}
+</section>
+
+{% if error and not field %}
+<div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+    {{ error }}
+</div>
+{% endif %}
+{% endblock %}

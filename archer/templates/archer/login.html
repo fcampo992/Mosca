@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}Ingresar PIN — KiroArchery{% endblock %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center min-h-[70vh] px-2">
+
+    <div class="w-full max-w-sm bg-white rounded-2xl shadow-lg p-6">
+
+        <div class="flex flex-col items-center mb-6">
+            <span class="text-5xl mb-2">🏹</span>
+            <h1 class="text-2xl font-bold text-gray-800">KiroArchery</h1>
+            <p class="text-sm text-gray-500 mt-1">Ingresá tu PIN para continuar</p>
+        </div>
+
+        {# ── Mensaje de bloqueo (Req 4.7) ──────────────────────────────── #}
+        {% if locked %}
+        <div class="mb-4 p-3 bg-red-50 border border-red-300 rounded-xl text-red-700 text-sm text-center font-medium">
+            🔒 {{ error }}
+        </div>
+        {% endif %}
+
+        {# ── Error de autenticación (Req 4.2, 4.6) ────────────────────── #}
+        {% if error and not locked %}
+        <div class="mb-4 p-3 bg-yellow-50 border border-yellow-300 rounded-xl text-yellow-800 text-sm text-center">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form
+            method="POST"
+            action="{{ url_for('archer.login') }}"
+            novalidate
+            x-data="pinForm()"
+            @submit="validate"
+        >
+            <div class="mb-5">
+                <label for="pin" class="block text-sm font-semibold text-gray-700 mb-2 text-center">
+                    PIN (4 dígitos)
+                </label>
+
+                {# Input oculto que recibe el valor del teclado virtual #}
+                <input
+                    id="pin"
+                    name="pin"
+                    type="text"
+                    inputmode="numeric"
+                    pattern="\d{4}"
+                    maxlength="4"
+                    autocomplete="off"
+                    x-model="pin"
+                    class="w-full text-center text-3xl font-bold tracking-[0.5em] border-2 rounded-xl
+                           px-3 py-3 focus:outline-none focus:ring-2 focus:ring-green-500
+                           {% if field == 'pin' %}border-red-400 bg-red-50{% else %}border-gray-300{% endif %}"
+                    placeholder="••••"
+                    required
+                />
+
+                {# Error de formato de PIN #}
+                {% if field == 'pin' and error and not locked %}
+                <p class="text-red-600 text-xs mt-1 text-center">{{ error }}</p>
+                {% endif %}
+
+                {# Mensaje de error Alpine si el usuario intenta enviar con formato incorrecto #}
+                <p
+                    class="text-red-600 text-xs mt-1 text-center"
+                    x-show="formError"
+                    x-text="formError"
+                    x-cloak
+                ></p>
+            </div>
+
+            {# ── Teclado numérico táctil para ingreso de PIN ─────────────── #}
+            <div class="grid grid-cols-3 gap-2 mb-5" role="group" aria-label="Teclado numérico">
+                {% for digit in ['1','2','3','4','5','6','7','8','9'] %}
+                <button
+                    type="button"
+                    @click="addDigit('{{ digit }}')"
+                    class="flex items-center justify-center rounded-xl bg-gray-100
+                           text-2xl font-bold text-gray-800 h-16
+                           hover:bg-gray-200 active:bg-gray-300 select-none"
+                    aria-label="{{ digit }}"
+                >
+                    {{ digit }}
+                </button>
+                {% endfor %}
+                {# Fila inferior: borrar — 0 — aceptar #}
+                <button
+                    type="button"
+                    @click="deleteDigit()"
+                    class="flex items-center justify-center rounded-xl bg-red-50
+                           text-xl font-bold text-red-600 h-16
+                           hover:bg-red-100 active:bg-red-200 select-none"
+                    aria-label="Borrar"
+                >
+                    ⌫
+                </button>
+                <button
+                    type="button"
+                    @click="addDigit('0')"
+                    class="flex items-center justify-center rounded-xl bg-gray-100
+                           text-2xl font-bold text-gray-800 h-16
+                           hover:bg-gray-200 active:bg-gray-300 select-none"
+                    aria-label="0"
+                >
+                    0
+                </button>
+                <button
+                    type="submit"
+                    class="flex items-center justify-center rounded-xl bg-green-600
+                           text-white text-xl font-bold h-16
+                           hover:bg-green-700 active:bg-green-800 select-none"
+                    aria-label="Ingresar"
+                >
+                    ✓
+                </button>
+            </div>
+
+            {# Botón de submit estático como fallback sin Alpine.js (Req 10.5) #}
+            <noscript>
+                <button
+                    type="submit"
+                    class="w-full bg-green-600 text-white font-bold py-3 rounded-xl
+                           hover:bg-green-700 active:bg-green-800"
+                >
+                    Ingresar
+                </button>
+            </noscript>
+
+        </form>
+    </div>
+</div>
+
+<script>
+/**
+ * Alpine.js component for the PIN login form.
+ * Handles virtual keypad interaction and client-side format validation
+ * before the form is submitted (Req 4.6).
+ */
+function pinForm() {
+    return {
+        pin: '',
+        formError: '',
+
+        addDigit(digit) {
+            if (this.pin.length < 4) {
+                this.pin += digit;
+                this.formError = '';
+            }
+        },
+
+        deleteDigit() {
+            this.pin = this.pin.slice(0, -1);
+            this.formError = '';
+        },
+
+        validate(event) {
+            if (!/^\d{4}$/.test(this.pin)) {
+                event.preventDefault();
+                this.formError = 'El PIN debe tener exactamente 4 dígitos numéricos.';
+            }
+        },
+    };
+}
+</script>
+{% endblock %}

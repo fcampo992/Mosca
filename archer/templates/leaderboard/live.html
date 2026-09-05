@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clasificación en Vivo — {{ tournament_name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .arrow-chip {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 2rem; height: 2rem; border-radius: 0.5rem;
+            font-weight: 800; font-size: 0.85rem;
+        }
+        .sheet-enter  { transform: translateY(100%); }
+        .sheet-open   { transform: translateY(0); transition: transform 0.3s cubic-bezier(.4,0,.2,1); }
+        .sheet-close  { transform: translateY(100%); transition: transform 0.3s cubic-bezier(.4,0,.2,1); }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50 text-gray-900" style="min-width:360px"
+      x-data="leaderboardApp('{{ tournament_id }}')"
+      x-init="connect()">
+
+<!-- ── Banner del club (branding dinámico) ── -->
+<header class="text-white px-4 py-3 flex items-center justify-between shadow-md"
+        style="background: linear-gradient(to right, {{ club.color_from }}, {{ club.color_to }})">
+    <div class="flex items-center gap-2">
+        <a href="/" class="flex items-center gap-2 font-bold text-lg tracking-tight">
+            <span>🏹</span>
+            <span>{{ club.club_name }}</span>
+        </a>
+    </div>
+    <div class="flex items-center gap-3">
+        <a href="/leaderboard/{{ tournament_id }}/podium"
+           class="text-xs bg-white/20 hover:bg-white/30 border border-white/30
+                  px-3 py-1.5 rounded-lg font-semibold transition-colors">
+            🏆 Podio
+        </a>
+        <div class="flex items-center gap-1.5 text-xs">
+            <span class="w-2 h-2 rounded-full"
+                  :class="connected ? 'bg-green-300 animate-pulse' : 'bg-yellow-300 animate-bounce'"></span>
+            <span x-text="connected ? 'En vivo' : 'Reconectando...'">En vivo</span>
+        </div>
+    </div>
+</header>
+
+<!-- ── Título del torneo ── -->
+<div class="px-4 pt-4 pb-2 max-w-3xl mx-auto">
+    <h1 class="text-xl font-extrabold text-gray-800">{{ tournament_name }}</h1>
+    <p class="text-xs text-gray-400 mt-0.5">Clasificación en tiempo real · Tocá un arquero para ver su scorecard</p>
+</div>
+
+<!-- ── Categorías ── -->
+<main class="px-4 pb-32 max-w-3xl mx-auto">
+
+    <div x-show="categories.length === 0" class="text-center text-gray-400 py-16">
+        <p class="text-4xl mb-3">🏹</p>
+        <p>Esperando datos del torneo...</p>
+    </div>
+
+    <template x-for="cat in categories" :key="cat.category_id">
+        <section class="mb-8">
+            <h2 class="text-sm font-bold uppercase tracking-widest pb-2 mb-3 border-b"
+                style="color: {{ club.color_from }}; border-color: {{ club.color_from }}22"
+                x-text="cat.bow_type + ' · ' + cat.distance + ' · ' + cat.gender"></h2>
+
+            <!-- Podio top 3 -->
+            <template x-if="cat.entries.length >= 2">
+                <div class="flex items-end justify-center gap-2 mb-4 px-2">
+                    <!-- 2do -->
+                    <div class="flex-1 flex flex-col items-center cursor-pointer"
+                         @click="openScorecard(cat.entries[1].archer_id, cat.entries[1].name)">
+                        <div class="relative mb-1">
+                            <template x-if="cat.entries[1].photo_url">
+                                <img :src="cat.entries[1].photo_url" class="w-12 h-12 rounded-full object-cover border-2 border-gray-300" />
+                            </template>
+                            <template x-if="!cat.entries[1].photo_url">
+                                <div class="w-12 h-12 rounded-full bg-gray-200 border-2 border-gray-300 flex items-center justify-center text-gray-500 font-bold text-sm"
+                                     x-text="cat.entries[1].name.charAt(0).toUpperCase()"></div>
+                            </template>
+                            <span class="absolute -bottom-1 -right-1 text-base">🥈</span>
+                        </div>
+                        <p class="text-[11px] font-semibold text-gray-700 text-center truncate w-full px-1" x-text="cat.entries[1].name"></p>
+                        <p class="text-sm font-bold text-gray-800" x-text="cat.entries[1].total_points"></p>
+                        <div class="w-full bg-gray-200 rounded-t-lg mt-1" style="height:40px"></div>
+                    </div>
+                    <!-- 1ro -->
+                    <div class="flex-1 flex flex-col items-center cursor-pointer"
+                         @click="openScorecard(cat.entries[0].archer_id, cat.entries[0].name)">
+                        <div class="relative mb-1">
+                            <template x-if="cat.entries[0].photo_url">
+                                <img :src="cat.entries[0].photo_url" class="w-16 h-16 rounded-full object-cover border-2 border-yellow-400 shadow" />
+                            </template>
+                            <template x-if="!cat.entries[0].photo_url">
+                                <div class="w-16 h-16 rounded-full bg-yellow-100 border-2 border-yellow-400 shadow flex items-center justify-center text-yellow-700 font-bold text-xl"
+                                     x-text="cat.entries[0].name.charAt(0).toUpperCase()"></div>
+                            </template>
+                            <span class="absolute -bottom-1 -right-1 text-xl">🥇</span>
+                        </div>
+                        <p class="text-xs font-bold text-gray-800 text-center truncate w-full px-1" x-text="cat.entries[0].name"></p>
+                        <p class="text-base font-extrabold text-green-700" x-text="cat.entries[0].total_points"></p>
+                        <div class="w-full bg-yellow-300 rounded-t-lg mt-1" style="height:64px"></div>
+                    </div>
+                    <!-- 3ro -->
+                    <template x-if="cat.entries.length >= 3">
+                        <div class="flex-1 flex flex-col items-center cursor-pointer"
+                             @click="openScorecard(cat.entries[2].archer_id, cat.entries[2].name)">
+                            <div class="relative mb-1">
+                                <template x-if="cat.entries[2].photo_url">
+                                    <img :src="cat.entries[2].photo_url" class="w-10 h-10 rounded-full object-cover border-2 border-amber-400" />
+                                </template>
+                                <template x-if="!cat.entries[2].photo_url">
+                                    <div class="w-10 h-10 rounded-full bg-amber-100 border-2 border-amber-400 flex items-center justify-center text-amber-700 font-bold text-sm"
+                                         x-text="cat.entries[2].name.charAt(0).toUpperCase()"></div>
+                                </template>
+                                <span class="absolute -bottom-1 -right-1 text-sm">🥉</span>
+                            </div>
+                            <p class="text-[11px] font-semibold text-gray-700 text-center truncate w-full px-1" x-text="cat.entries[2].name"></p>
+                            <p class="text-sm font-bold text-gray-800" x-text="cat.entries[2].total_points"></p>
+                            <div class="w-full bg-amber-300 rounded-t-lg mt-1" style="height:28px"></div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            <!-- Tabla -->
+            <div class="overflow-x-auto rounded-xl shadow-sm border border-gray-100">
+                <table class="w-full text-sm bg-white">
+                    <thead class="bg-gray-50 text-gray-500 text-xs uppercase border-b border-gray-100">
+                        <tr>
+                            <th class="px-3 py-2 text-left w-8">#</th>
+                            <th class="px-3 py-2 text-left">Arquero</th>
+                            <th class="px-3 py-2 text-right">Pts</th>
+                            <th class="px-3 py-2 text-right">X</th>
+                            <th class="px-3 py-2 text-right">10</th>
+                            <th class="px-3 py-2 text-right w-8"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="entry in cat.entries" :key="entry.archer_id">
+                            <tr class="border-t border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors active:bg-gray-100"
+                                @click="openScorecard(entry.archer_id, entry.name)">
+                                <td class="px-3 py-3 font-bold text-gray-400 text-xs" x-text="entry.position"></td>
+                                <td class="px-3 py-3 font-semibold">
+                                    <div class="flex items-center gap-2">
+                                        <template x-if="entry.photo_url">
+                                            <img :src="entry.photo_url" class="w-7 h-7 rounded-full object-cover border border-gray-200 shrink-0" />
+                                        </template>
+                                        <template x-if="!entry.photo_url">
+                                            <div class="w-7 h-7 rounded-full bg-green-100 text-green-700 flex items-center justify-center text-xs font-bold shrink-0"
+                                                 x-text="entry.name.charAt(0).toUpperCase()"></div>
+                                        </template>
+                                        <span x-text="entry.name"></span>
+                                    </div>
+                                </td>
+                                <td class="px-3 py-3 text-right font-bold text-green-700" x-text="entry.total_points"></td>
+                                <td class="px-3 py-3 text-right text-yellow-600 font-medium text-xs" x-text="entry.x_count"></td>
+                                <td class="px-3 py-3 text-right text-yellow-500 font-medium text-xs" x-text="entry.ten_count"></td>
+                                <td class="px-3 py-3 text-right text-gray-300">›</td>
+                            </tr>
+                        </template>
+                        <tr x-show="cat.entries.length === 0">
+                            <td colspan="6" class="px-3 py-6 text-center text-gray-400 text-sm">
+                                Sin puntuaciones registradas
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </template>
+
+</main>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SCORECARD SHEET — slide-up drawer con detalle de flechas
+     ══════════════════════════════════════════════════════════════ -->
+
+<!-- Overlay -->
+<div x-show="sheetOpen" x-cloak
+     x-transition:enter="transition-opacity duration-200"
+     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+     x-transition:leave="transition-opacity duration-200"
+     x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+     @click="closeSheet()"
+     class="fixed inset-0 bg-black/50 z-40"></div>
+
+<!-- Sheet -->
+<div x-show="sheetOpen" x-cloak
+     x-transition:enter="transition transform duration-300 ease-out"
+     x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+     x-transition:leave="transition transform duration-250 ease-in"
+     x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+     class="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl
+            max-h-[85vh] flex flex-col">
+
+    <!-- Handle + header -->
+    <div class="flex-none px-4 pt-3 pb-2">
+        <div class="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-3"></div>
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="font-extrabold text-gray-900 text-lg" x-text="sheetName"></h3>
+                <p class="text-xs text-gray-400">Scorecard completo</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="text-right">
+                    <p class="text-2xl font-black text-green-700" x-text="sheetTotal"></p>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wide">Total</p>
+                </div>
+                <button @click="closeSheet()"
+                        class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200
+                               flex items-center justify-center text-gray-500 text-lg">
+                    ×
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div x-show="sheetLoading" class="flex-1 flex items-center justify-center py-12">
+        <div class="text-gray-400 text-sm">Cargando scorecard...</div>
+    </div>
+
+    <!-- Contenido del scorecard -->
+    <div x-show="!sheetLoading && sheetRounds.length > 0"
+         class="flex-1 overflow-y-auto px-4 pb-6">
+
+        <template x-for="round in sheetRounds" :key="round.round_number">
+            <div class="mb-5">
+                <!-- Encabezado de ronda -->
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest"
+                        x-text="'Ronda ' + round.round_number"></h4>
+                    <span class="text-xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full"
+                          x-text="round.round_total + ' pts'"></span>
+                </div>
+
+                <!-- Tandas de la ronda -->
+                <template x-for="end in round.ends" :key="end.end_number">
+                    <div class="bg-gray-50 rounded-xl px-3 py-2.5 mb-2">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[11px] text-gray-400 font-semibold"
+                                  x-text="'Tanda ' + end.end_number"></span>
+                            <span class="text-xs font-bold text-gray-700"
+                                  x-text="end.end_total + ' pts'"></span>
+                        </div>
+                        <!-- Flechas en chips de color -->
+                        <div class="flex flex-wrap gap-1.5">
+                            <template x-for="(arrow, idx) in end.arrows" :key="idx">
+                                <div class="arrow-chip"
+                                     :class="{
+                                         'bg-yellow-400 text-white':   arrow.arrow_val === 'X',
+                                         'bg-yellow-300 text-gray-900':arrow.arrow_val === '10',
+                                         'bg-red-500 text-white':      ['9','8','7'].includes(arrow.arrow_val),
+                                         'bg-blue-500 text-white':     ['6','5'].includes(arrow.arrow_val),
+                                         'bg-gray-700 text-white':     ['4','3'].includes(arrow.arrow_val),
+                                         'bg-gray-200 text-gray-700':  ['2','1'].includes(arrow.arrow_val),
+                                         'bg-white border border-gray-300 text-gray-400': arrow.arrow_val === 'M',
+                                     }"
+                                     x-text="arrow.arrow_val"></div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </template>
+
+        <div x-show="sheetRounds.length === 0 && !sheetLoading"
+             class="text-center py-8 text-gray-400 text-sm">
+            Sin flechas registradas todavía.
+        </div>
+    </div>
+
+</div>
+
+<script>
+function leaderboardApp(tournamentId) {
+    return {
+        categories: [],
+        connected: false,
+        _es: null,
+
+        // Scorecard sheet
+        sheetOpen: false,
+        sheetLoading: false,
+        sheetName: '',
+        sheetTotal: 0,
+        sheetRounds: [],
+        _currentArcherId: null,
+
+        connect() {
+            if (this._es) this._es.close();
+            const url = `/leaderboard/${tournamentId}/stream`;
+            this._es = new EventSource(url);
+            this._es.addEventListener('leaderboard', (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    this.categories = data.categories || [];
+                    this.connected = true;
+                    // Si hay un scorecard abierto, refrescarlo
+                    if (this.sheetOpen && this._currentArcherId) {
+                        this._loadScorecard(this._currentArcherId);
+                    }
+                } catch(err) {}
+            });
+            this._es.addEventListener('heartbeat', () => {});
+            this._es.onopen  = () => { this.connected = true; };
+            this._es.onerror = () => { this.connected = false; };
+        },
+
+        openScorecard(archerId, name) {
+            this.sheetOpen    = true;
+            this.sheetName    = name;
+            this.sheetTotal   = 0;
+            this.sheetRounds  = [];
+            this._currentArcherId = archerId;
+            this._loadScorecard(archerId);
+        },
+
+        async _loadScorecard(archerId) {
+            this.sheetLoading = true;
+            try {
+                const r = await fetch(`/leaderboard/${tournamentId}/archer/${archerId}/scorecard`);
+                const d = await r.json();
+                this.sheetTotal  = d.total_points || 0;
+                this.sheetRounds = d.rounds || [];
+            } catch(e) {
+                this.sheetRounds = [];
+            } finally {
+                this.sheetLoading = false;
+            }
+        },
+
+        closeSheet() {
+            this.sheetOpen = false;
+            this._currentArcherId = null;
+        },
+    };
+}
+</script>
+
+</body>
+</html>

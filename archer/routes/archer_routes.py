@@ -1,0 +1,391 @@
+"""
+archer/routes/archer_routes.py
+
+Blueprint /archer — Autenticación PIN y carga de puntuaciones del arquero.
+
+Rutas:
+    GET  /archer/login    — formulario de PIN
+    POST /archer/login    — autenticar PIN
+    POST /archer/logout   — cerrar sesión
+    GET  /archer/score    — vista del teclado táctil (requiere sesión activa)
+    POST /archer/score    — guardar flecha (requiere sesión activa)
+
+Requerimientos: 4.1–4.7, 5.1–5.7
+"""
+
+from __future__ import annotations
+
+import functools
+import os
+import uuid as _uuid
+from datetime import datetime
+
+from flask import (
+    Blueprint,
+    current_app,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
+
+from archer.modules.archer import (
+    ARROWS_PER_END,
+    ENDS_PER_ROUND,
+    authenticate_pin,
+    correct_arrow_archer,
+    get_accumulated_points,
+    get_active_tournament,
+    get_end_arrow_count,
+    get_end_summary,
+    is_session_valid,
+    save_arrow,
+)
+
+archer_bp = Blueprint("archer", __name__, url_prefix="/archer")
+
+# Extensiones permitidas para fotos de perfil
+_ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif"}
+_MAX_PHOTO_BYTES = 5 * 1024 * 1024  # 5 MB
+
+
+def _allowed_photo(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in _ALLOWED_EXTENSIONS
+
+
+# ---------------------------------------------------------------------------
+# Session decorator (Req 4.4)
+# ---------------------------------------------------------------------------
+
+def require_session(view):
+    """Decorador que verifica que existe una sesión activa válida (≤ 30 min).
+
+    Si la sesión no existe o expiró, limpia la sesión y redirige a /archer/login.
+    Si es válida, actualiza last_active antes de continuar.
+    """
+    @functools.wraps(view)
+    def wrapped(*args, **kwargs):
+        archer_id = session.get("archer_id")
+        last_active = session.get("last_active", "")
+
+        if not archer_id or not is_session_valid(last_active):
+            session.clear()
+            return redirect(url_for("archer.login"))
+
+        # Actualizar last_active en cada request autenticado (Req 4.4)
+        session["last_active"] = datetime.now().isoformat()
+        return view(*args, **kwargs)
+
+    return wrapped
+
+
+# ---------------------------------------------------------------------------
+# Login / Logout (Req 4.1, 4.2, 4.5, 4.6, 4.7)
+# ---------------------------------------------------------------------------
+
+@archer_bp.route("/login", methods=["GET", "POST"])
+def login():
+    """
+    GET  — Renderiza el formulario de ingreso de PIN.
+    POST — Autentica el PIN. Redirige a /archer/score si exitoso,
+           re-renderiza con error si falla.
+
+    Requerimientos: 4.1, 4.2, 4.6, 4.7
+    """
+    # Si ya tiene sesión válida, redirigir directamente
+    if session.get("archer_id") and is_session_valid(session.get("last_active", "")):
+        return redirect(url_for("archer.score"))
+
+    if request.method == "GET":
+        return render_template("archer/login.html", error=None, field=None, locked=False)
+
+    # POST — intentar autenticación
+    pin = request.form.get("pin", "").strip()
+    result = authenticate_pin(pin)
+
+    if "error" not in result:
+        # Éxito — establecer sesión (Req 4.1)
+        session["archer_id"] = result["archer_id"]
+        session["archer_name"] = result["name"]
+        session["last_active"] = datetime.now().isoformat()
+        session["round_number"] = 1
+        session["end_number"] = 1
+        return redirect(url_for("archer.score"))
+
+    # Determinar código HTTP apropiado
+    locked = result.get("blocked", False)
+    if locked:
+        status_code = 429
+    elif result.get("field") == "pin":
+        status_code = 400
+    else:
+        status_code = 401
+
+    return render_template(
+        "archer/login.html",
+        error=result["error"],
+        field=result.get("field"),
+        locked=locked,
+    ), status_code
+
+
+@archer_bp.route("/logout", methods=["POST"])
+def logout():
+    """
+    POST — Invalida la sesión activa y redirige al login.
+
+    Requerimientos: 4.5
+    """
+    session.clear()
+    return redirect(url_for("archer.login"))
+
+
+# ---------------------------------------------------------------------------
+# Score entry (Req 5.1–5.7)
+# ---------------------------------------------------------------------------
+
+def _render_score(error=None):
+    """Helper interno: construye los datos necesarios para renderizar score.html."""
+    archer_id    = session["archer_id"]
+    round_number = session.get("round_number", 1)
+    end_number   = session.get("end_number", 1)
+    archer_name  = session.get("archer_name", "")
+    photo_url    = session.get("photo_url")
+    tournament_done = session.get("tournament_done", False)
+
+    if not photo_url:
+        try:
+            from archer.db import get_connection  # noqa: PLC0415
+            conn = get_connection()
+            row = conn.execute(
+                "SELECT photo_url FROM archers WHERE id = ?", (archer_id,)
+            ).fetchone()
+            if row and row["photo_url"]:
+                photo_url = row["photo_url"]
+                session["photo_url"] = photo_url
+        except Exception:
+            pass
+
+    tournament = get_active_tournament(archer_id)
+
+    if tournament is None:
+        return render_template(
+            "archer/score.html",
+            tournament=None,
+            no_tournament=True,
+            tournament_done=False,
+            accumulated=0,
+            end_summary={"arrows": [], "subtotal": 0},
+            round_number=round_number,
+            end_number=end_number,
+            archer_name=archer_name,
+            photo_url=photo_url,
+            arrows_per_end=ARROWS_PER_END,
+            ends_per_round=ENDS_PER_ROUND,
+            error=error,
+        )
+
+    accumulated    = get_accumulated_points(archer_id, tournament["id"])
+    end_summary    = get_end_summary(archer_id, tournament["id"], round_number, end_number)
+    arrows_per_end = tournament.get("arrows_per_end", ARROWS_PER_END)
+    ends_per_round = tournament.get("rounds", ENDS_PER_ROUND)
+    rounds_count   = tournament.get("rounds_count", 1)
+
+    # Verificar si el torneo está completado (sin depender solo de la sesión)
+    if not tournament_done:
+        tournament_done = (
+            round_number > rounds_count or
+            (round_number == rounds_count and
+             end_number > ends_per_round)
+        )
+
+    return render_template(
+        "archer/score.html",
+        tournament=tournament,
+        no_tournament=False,
+        tournament_done=tournament_done,
+        accumulated=accumulated,
+        end_summary=end_summary,
+        round_number=round_number,
+        end_number=end_number,
+        archer_name=archer_name,
+        photo_url=photo_url,
+        arrows_per_end=arrows_per_end,
+        ends_per_round=ends_per_round,
+        rounds_count=rounds_count,
+        error=error,
+    )
+
+
+@archer_bp.route("/score", methods=["GET"])
+@require_session
+def score():
+    """
+    GET — Vista del teclado táctil de carga de flechas.
+
+    Requerimientos: 5.1, 5.6, 5.7
+    """
+    return _render_score()
+
+
+@archer_bp.route("/score", methods=["POST"])
+@require_session
+def score_post():
+    """
+    POST — Guarda una flecha. Si hay error re-renderiza sin avanzar el estado.
+    Si tiene éxito redirige (PRG) al GET de /archer/score.
+
+    Requerimientos: 5.2, 5.3, 5.4, 5.5
+    """
+    archer_id = session["archer_id"]
+    round_number = session.get("round_number", 1)
+    end_number = session.get("end_number", 1)
+
+    # Obtener torneo activo
+    tournament = get_active_tournament(archer_id)
+    if tournament is None:
+        return _render_score(error="No hay torneos activos asignados."), 403
+
+    arrow_val = request.form.get("arrow_val", "").strip()
+
+    result = save_arrow(
+        archer_id=archer_id,
+        tournament_id=tournament["id"],
+        round_number=round_number,
+        end_number=end_number,
+        arrow_val=arrow_val,
+    )
+
+    if "error" in result:
+        # Req 5.3 — fallo en persistencia: no avanzar, mostrar error
+        return _render_score(error=result["error"]), 500
+
+    # Éxito — comprobar si se completó la tanda y avanzar sesión (Req 2.1, 2.2)
+    # Leer configuración del torneo en lugar de usar constantes globales (Req 2.4)
+    arrows_per_end = tournament.get("arrows_per_end", ARROWS_PER_END)
+    ends_per_round = tournament.get("rounds", ENDS_PER_ROUND)
+    rounds_count   = tournament.get("rounds_count", 1)
+
+    arrow_count = get_end_arrow_count(
+        archer_id, tournament["id"], round_number, end_number
+    )
+    if arrow_count >= arrows_per_end:
+        is_last_end   = (end_number >= ends_per_round)
+        is_last_round = (round_number >= rounds_count)
+
+        if is_last_end and is_last_round:
+            # Torneo completo — marcar en sesión, no avanzar más
+            session["tournament_done"] = True
+        elif is_last_end:
+            # Avanzar a la siguiente ronda
+            session["end_number"]   = 1
+            session["round_number"] = round_number + 1
+        else:
+            session["end_number"] = end_number + 1
+
+    session["last_active"] = datetime.now().isoformat()
+    return redirect(url_for("archer.score"))
+
+
+@archer_bp.route("/score/correct", methods=["POST"])
+@require_session
+def correct_arrow():
+    """
+    POST — Corrige el valor de una flecha en la tanda activa del arquero.
+
+    Requerimientos: 3.1, 3.2, 3.3, 3.4
+    """
+    archer_id = session["archer_id"]
+    round_number = session.get("round_number", 1)
+    end_number = session.get("end_number", 1)
+
+    score_id = request.form.get("score_id", "").strip()
+    arrow_val = request.form.get("arrow_val", "").strip()
+
+    # Obtener torneo activo (Req 3.4)
+    tournament = get_active_tournament(archer_id)
+    if tournament is None:
+        return _render_score(error="No hay torneos activos asignados."), 403
+
+    tournament_id = tournament["id"]
+
+    result = correct_arrow_archer(
+        score_id=score_id,
+        arrow_val=arrow_val,
+        archer_id=archer_id,
+        tournament_id=tournament_id,
+        current_round=round_number,
+        current_end=end_number,
+    )
+
+    if "error" in result:
+        status_code = result.get("status_code", 400)
+        return _render_score(error=result["error"]), status_code
+
+    # Éxito — actualizar last_active y redirigir (PRG)
+    session["last_active"] = datetime.now().isoformat()
+    return redirect(url_for("archer.score"))
+
+
+# ---------------------------------------------------------------------------
+# Foto de perfil del arquero
+# ---------------------------------------------------------------------------
+
+@archer_bp.route("/profile/photo", methods=["POST"])
+@require_session
+def upload_photo():
+    """
+    POST — Sube o reemplaza la foto de perfil del arquero autenticado.
+
+    Guarda el archivo en archer/static/photos/<archer_id>.<ext>
+    y actualiza la columna photo_url en la tabla archers.
+    Redirige a /archer/score con mensaje de éxito o error.
+    """
+    archer_id = session["archer_id"]
+
+    if "photo" not in request.files:
+        return _render_score(error="No se recibió ningún archivo."), 400
+
+    photo = request.files["photo"]
+
+    if photo.filename == "":
+        return _render_score(error="Seleccioná una imagen antes de subir."), 400
+
+    if not _allowed_photo(photo.filename):
+        return _render_score(error="Formato no permitido. Usá JPG, PNG, WEBP o GIF."), 400
+
+    # Leer contenido y verificar tamaño
+    data = photo.read()
+    if len(data) > _MAX_PHOTO_BYTES:
+        return _render_score(error="La imagen supera el límite de 5 MB."), 400
+
+    # Construir ruta de destino
+    ext = photo.filename.rsplit(".", 1)[1].lower()
+    filename = f"{archer_id}.{ext}"
+    photos_dir = os.path.join(current_app.root_path, "static", "photos")
+    os.makedirs(photos_dir, exist_ok=True)
+    filepath = os.path.join(photos_dir, filename)
+
+    with open(filepath, "wb") as f:
+        f.write(data)
+
+    photo_url = f"/static/photos/{filename}"
+
+    # Persistir en DB
+    try:
+        from archer.db import get_connection  # noqa: PLC0415
+        conn = get_connection()
+        conn.execute(
+            "UPDATE archers SET photo_url = ? WHERE id = ?",
+            (photo_url, archer_id),
+        )
+        try:
+            conn.commit()
+        except Exception:
+            pass
+        session["photo_url"] = photo_url
+    except Exception as exc:
+        return _render_score(error=f"Error al guardar la foto: {exc}"), 500
+
+    return redirect(url_for("archer.score"))

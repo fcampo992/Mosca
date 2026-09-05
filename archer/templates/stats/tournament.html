@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Estadisticas del Torneo — KiroArchery{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('admin.tournaments') }}"
+       class="text-sm text-green-700 hover:underline">&larr; Torneos</a>
+</div>
+
+<h1 class="text-2xl font-bold mb-6">Estadisticas del Torneo</h1>
+
+{% if data and data.archers %}
+
+{# ── Grafico de barras — evolucion por ronda (Req 10.4) ─────────────── #}
+<section class="bg-white rounded-2xl shadow p-5 mb-8">
+    <h2 class="text-base font-semibold mb-4">Evolucion por ronda</h2>
+    <canvas id="roundChart" aria-label="Grafico de evolucion por ronda"></canvas>
+</section>
+
+{# ── Tabla de metricas por arquero (Req 7.1, 7.2) ─────────────────────── #}
+<section class="mb-8">
+    <h2 class="text-base font-semibold mb-3">Metricas por arquero</h2>
+    <div class="overflow-x-auto rounded-xl shadow">
+        <table class="w-full text-sm bg-white">
+            <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                <tr>
+                    <th class="px-3 py-2 text-left">Arquero</th>
+                    <th class="px-3 py-2 text-right">Promedio / flecha</th>
+                    <th class="px-3 py-2 text-right">% Zona alta</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for archer in data.archers %}
+                <tr class="border-t border-gray-100">
+                    <td class="px-3 py-2.5 font-semibold">{{ archer.name }}</td>
+                    <td class="px-3 py-2.5 text-right">{{ archer.avg_points_per_arrow }}</td>
+                    <td class="px-3 py-2.5 text-right">{{ archer.top_zone_percentage }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<script>
+(function () {
+    const archers = {{ data.archers | tojson }};
+
+    // Build datasets: one dataset per archer, x-axis = round_number
+    const allRounds = [...new Set(
+        archers.flatMap(a => a.rounds.map(r => r.round_number))
+    )].sort((a, b) => a - b);
+
+    const colors = [
+        '#16a34a', '#2563eb', '#dc2626', '#d97706', '#7c3aed',
+        '#0891b2', '#be185d', '#65a30d', '#ea580c', '#6b7280',
+    ];
+
+    const datasets = archers.map((archer, idx) => {
+        const pointsMap = Object.fromEntries(
+            archer.rounds.map(r => [r.round_number, r.total_points])
+        );
+        return {
+            label: archer.name,
+            data: allRounds.map(r => pointsMap[r] ?? 0),
+            backgroundColor: colors[idx % colors.length] + '99',
+            borderColor: colors[idx % colors.length],
+            borderWidth: 2,
+        };
+    });
+
+    const ctx = document.getElementById('roundChart');
+    if (ctx && datasets.length > 0) {
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: allRounds.map(r => 'Ronda ' + r),
+                datasets: datasets,
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' },
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Puntos' },
+                    },
+                },
+            },
+        });
+    }
+})();
+</script>
+
+{% else %}
+<p class="text-gray-500 text-sm">No hay datos disponibles para este torneo.</p>
+{% endif %}
+{% endblock %}

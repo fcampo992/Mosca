@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Ranking Global — KiroArchery{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold">🌍 Ranking Global</h1>
+    <a href="/" class="text-sm text-gray-500 hover:underline">← Inicio</a>
+</div>
+
+{% if ranking and ranking | length > 0 %}
+
+{# ── Podio top 3 ── #}
+{% set top3 = ranking[:3] %}
+<section class="mb-8">
+    <div class="flex items-end justify-center gap-3 px-2">
+
+        {# 2do lugar — izquierda #}
+        {% if top3 | length >= 2 %}
+        <div class="flex-1 flex flex-col items-center">
+            <div class="relative mb-2">
+                {% if top3[1].photo_url %}
+                <img src="{{ top3[1].photo_url }}" alt="{{ top3[1].name }}"
+                     class="w-16 h-16 rounded-full object-cover border-4 border-gray-300 shadow" />
+                {% else %}
+                <div class="w-16 h-16 rounded-full bg-gray-200 border-4 border-gray-300 shadow
+                            flex items-center justify-center text-gray-500 font-bold text-xl">
+                    {{ top3[1].name[0] | upper }}
+                </div>
+                {% endif %}
+                <span class="absolute -bottom-1 -right-1 text-xl">🥈</span>
+            </div>
+            <p class="text-xs font-bold text-gray-700 text-center truncate w-full px-1">{{ top3[1].name }}</p>
+            <p class="text-sm font-extrabold text-gray-800">{{ top3[1].total_points }}</p>
+            <div class="w-full bg-gray-200 rounded-t-xl mt-2" style="height:60px"></div>
+        </div>
+        {% endif %}
+
+        {# 1er lugar — centro (más alto) #}
+        <div class="flex-1 flex flex-col items-center">
+            <div class="relative mb-2">
+                {% if top3[0].photo_url %}
+                <img src="{{ top3[0].photo_url }}" alt="{{ top3[0].name }}"
+                     class="w-20 h-20 rounded-full object-cover border-4 border-yellow-400 shadow-lg" />
+                {% else %}
+                <div class="w-20 h-20 rounded-full bg-yellow-100 border-4 border-yellow-400 shadow-lg
+                            flex items-center justify-center text-yellow-700 font-bold text-2xl">
+                    {{ top3[0].name[0] | upper }}
+                </div>
+                {% endif %}
+                <span class="absolute -bottom-1 -right-1 text-2xl">🥇</span>
+            </div>
+            <p class="text-sm font-bold text-gray-800 text-center truncate w-full px-1">{{ top3[0].name }}</p>
+            <p class="text-base font-extrabold text-green-700">{{ top3[0].total_points }}</p>
+            <div class="w-full bg-yellow-300 rounded-t-xl mt-2" style="height:90px"></div>
+        </div>
+
+        {# 3er lugar — derecha #}
+        {% if top3 | length >= 3 %}
+        <div class="flex-1 flex flex-col items-center">
+            <div class="relative mb-2">
+                {% if top3[2].photo_url %}
+                <img src="{{ top3[2].photo_url }}" alt="{{ top3[2].name }}"
+                     class="w-14 h-14 rounded-full object-cover border-4 border-amber-400 shadow" />
+                {% else %}
+                <div class="w-14 h-14 rounded-full bg-amber-100 border-4 border-amber-400 shadow
+                            flex items-center justify-center text-amber-700 font-bold text-lg">
+                    {{ top3[2].name[0] | upper }}
+                </div>
+                {% endif %}
+                <span class="absolute -bottom-1 -right-1 text-lg">🥉</span>
+            </div>
+            <p class="text-xs font-bold text-gray-700 text-center truncate w-full px-1">{{ top3[2].name }}</p>
+            <p class="text-sm font-extrabold text-gray-800">{{ top3[2].total_points }}</p>
+            <div class="w-full bg-amber-300 rounded-t-xl mt-2" style="height:45px"></div>
+        </div>
+        {% endif %}
+
+    </div>
+</section>
+
+{# ── Tabla completa ── #}
+<section>
+    <div class="overflow-x-auto rounded-2xl shadow-sm border border-gray-100">
+        <table class="w-full text-sm bg-white">
+            <thead class="bg-gray-50 text-gray-500 text-xs uppercase border-b border-gray-100">
+                <tr>
+                    <th class="px-3 py-3 text-left w-10">#</th>
+                    <th class="px-3 py-3 text-left">Arquero</th>
+                    <th class="px-3 py-3 text-right">Puntos</th>
+                    <th class="px-3 py-3 text-right hidden sm:table-cell">Prom.</th>
+                    <th class="px-3 py-3 text-right hidden sm:table-cell">Torneos</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+                {% for entry in ranking %}
+                <tr class="hover:bg-gray-50 transition-colors
+                           {% if entry.position <= 3 %}font-semibold{% endif %}">
+                    <td class="px-3 py-3 font-bold
+                        {% if entry.position == 1 %}text-yellow-500
+                        {% elif entry.position == 2 %}text-gray-400
+                        {% elif entry.position == 3 %}text-amber-600
+                        {% else %}text-gray-400 text-xs{% endif %}">
+                        {{ entry.position }}
+                    </td>
+                    <td class="px-3 py-3">
+                        <div class="flex items-center gap-2">
+                            {% if entry.photo_url %}
+                            <img src="{{ entry.photo_url }}" alt=""
+                                 class="w-8 h-8 rounded-full object-cover border border-gray-200 shrink-0" />
+                            {% else %}
+                            <div class="w-8 h-8 rounded-full bg-green-100 text-green-700
+                                        flex items-center justify-center text-xs font-bold shrink-0">
+                                {{ entry.name[0] | upper }}
+                            </div>
+                            {% endif %}
+                            <span class="truncate">{{ entry.name }}</span>
+                        </div>
+                    </td>
+                    <td class="px-3 py-3 text-right font-bold text-green-700">{{ entry.total_points }}</td>
+                    <td class="px-3 py-3 text-right text-gray-500 hidden sm:table-cell">{{ entry.avg_points_per_arrow }}</td>
+                    <td class="px-3 py-3 text-right text-gray-400 hidden sm:table-cell">{{ entry.tournaments_played }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+{% else %}
+<div class="text-center py-16 text-gray-400">
+    <p class="text-5xl mb-4">🏆</p>
+    <p class="text-base font-medium">Todavía no hay arqueros en el ranking.</p>
+    <p class="text-sm mt-1">Los puntos se acumulan al finalizar torneos.</p>
+</div>
+{% endif %}
+{% endblock %}

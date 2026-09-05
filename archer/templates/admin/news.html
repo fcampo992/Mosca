@@ -1,0 +1,110 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Noticias y Alertas — KiroArchery{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold">Gestor de Noticias</h1>
+    <p class="text-sm text-gray-500 mt-1">Las noticias activas se muestran en la marquesina de la Home.</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- Formulario nueva noticia -->
+    <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h2 class="text-base font-semibold mb-4">Nueva noticia / alerta</h2>
+        <form method="POST" action="{{ url_for('admin.news') }}" novalidate>
+
+            <div class="mb-4">
+                <label for="title" class="block text-sm font-medium mb-1">
+                    Título <span class="text-red-500">*</span>
+                </label>
+                <input id="title" name="title" type="text" maxlength="200"
+                       value="{{ form_data.get('title', '') }}"
+                       class="w-full border rounded-lg px-3 py-2 text-sm
+                              {% if field == 'title' %}border-red-500{% else %}border-gray-300{% endif %}
+                              focus:outline-none focus:ring-2 focus:ring-green-600"
+                       placeholder="Ej. ¡Torneo de verano inscripciones abiertas!" required />
+                {% if field == 'title' %}
+                <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+                {% endif %}
+            </div>
+
+            <div class="mb-5">
+                <label for="content" class="block text-sm font-medium mb-1">
+                    Contenido <span class="text-red-500">*</span>
+                </label>
+                <textarea id="content" name="content" rows="3" maxlength="1000"
+                          class="w-full border rounded-lg px-3 py-2 text-sm resize-none
+                                 {% if field == 'content' %}border-red-500{% else %}border-gray-300{% endif %}
+                                 focus:outline-none focus:ring-2 focus:ring-green-600"
+                          placeholder="Texto que aparecerá en la marquesina...">{{ form_data.get('content', '') }}</textarea>
+                {% if field == 'content' %}
+                <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+                {% endif %}
+            </div>
+
+            {% if error and not field %}
+            <p class="text-red-600 text-sm mb-4">{{ error }}</p>
+            {% endif %}
+
+            <button type="submit"
+                    class="w-full bg-green-700 text-white py-2.5 rounded-xl text-sm font-semibold
+                           hover:bg-green-800 active:bg-green-900 transition-colors">
+                Publicar noticia
+            </button>
+        </form>
+    </section>
+
+    <!-- Listado de noticias -->
+    <section>
+        <h2 class="text-base font-semibold mb-3">Noticias publicadas</h2>
+
+        {% if news_items %}
+        <div class="space-y-3">
+            {% for item in news_items %}
+            <div class="bg-white rounded-xl border shadow-sm p-4
+                        {% if not item.active %}opacity-50{% endif %}">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                            <p class="font-semibold text-sm truncate">{{ item.title }}</p>
+                            <span class="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full
+                                {% if item.active %}bg-green-100 text-green-700{% else %}bg-gray-100 text-gray-500{% endif %}">
+                                {{ 'Activa' if item.active else 'Inactiva' }}
+                            </span>
+                        </div>
+                        <p class="text-xs text-gray-500 leading-relaxed">{{ item.content }}</p>
+                    </div>
+                    <div class="flex flex-col gap-1.5 shrink-0">
+                        <form method="POST"
+                              action="{{ url_for('admin.news_toggle', news_id=item.id) }}">
+                            <button type="submit"
+                                    class="w-full text-xs px-2.5 py-1 rounded-lg border transition-colors
+                                           {% if item.active %}bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100
+                                           {% else %}bg-green-50 text-green-700 border-green-200 hover:bg-green-100{% endif %}">
+                                {{ 'Desactivar' if item.active else 'Activar' }}
+                            </button>
+                        </form>
+                        <form method="POST"
+                              action="{{ url_for('admin.news_delete', news_id=item.id) }}"
+                              onsubmit="return confirm('¿Eliminar esta noticia?')">
+                            <button type="submit"
+                                    class="w-full text-xs px-2.5 py-1 rounded-lg border
+                                           bg-red-50 text-red-700 border-red-200 hover:bg-red-100 transition-colors">
+                                Eliminar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-white rounded-xl border border-dashed border-gray-200 p-8 text-center">
+            <p class="text-gray-400 text-sm">Todavía no hay noticias publicadas.</p>
+        </div>
+        {% endif %}
+    </section>
+
+</div>
+{% endblock %}

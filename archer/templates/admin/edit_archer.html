@@ -1,0 +1,61 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Editar Arquero — KiroArchery{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex items-center gap-3">
+    <a href="{{ url_for('admin.archers') }}"
+       class="text-sm text-gray-500 border border-gray-300 rounded-lg px-3 py-1.5
+              hover:bg-gray-100 transition-colors">
+        ← Volver
+    </a>
+    <h1 class="text-2xl font-bold">Editar Arquero</h1>
+</div>
+
+<div class="max-w-sm">
+    <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <form method="POST" novalidate>
+
+            <div class="mb-5">
+                <label for="name" class="block text-sm font-semibold mb-1">
+                    Nombre <span class="text-red-500">*</span>
+                </label>
+                <input id="name" name="name" type="text" maxlength="100"
+                       value="{{ archer.name }}"
+                       class="w-full border rounded-lg px-3 py-2 text-sm
+                              {% if field == 'name' %}border-red-500{% else %}border-gray-300{% endif %}
+                              focus:outline-none focus:ring-2 focus:ring-green-600"
+                       required />
+                {% if field == 'name' %}
+                <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+                {% endif %}
+            </div>
+
+            <div class="mb-6">
+                <label for="pin" class="block text-sm font-semibold mb-1">
+                    PIN (4 dígitos) <span class="text-red-500">*</span>
+                </label>
+                <input id="pin" name="pin" type="text" inputmode="numeric"
+                       maxlength="4" pattern="\d{4}"
+                       value="{{ archer.pin }}"
+                       class="w-full border rounded-lg px-3 py-2 text-sm font-mono
+                              {% if field == 'pin' %}border-red-500{% else %}border-gray-300{% endif %}
+                              focus:outline-none focus:ring-2 focus:ring-green-600"
+                       required />
+                {% if field == 'pin' %}
+                <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+                {% endif %}
+            </div>
+
+            {% if error and not field %}
+            <p class="text-red-600 text-sm mb-4">{{ error }}</p>
+            {% endif %}
+
+            <button type="submit"
+                    class="w-full bg-green-700 text-white py-2.5 rounded-xl text-sm font-semibold
+                           hover:bg-green-800 active:bg-green-900 transition-colors">
+                Guardar cambios
+            </button>
+        </form>
+    </section>
+</div>
+{% endblock %}

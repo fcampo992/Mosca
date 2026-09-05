@@ -1,0 +1,203 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Arqueros — KiroArchery{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold">Arqueros</h1>
+  <a href="/admin/tournaments" class="text-sm text-green-700 hover:underline">← Torneos</a>
+</div>
+
+<!-- Formulario: crear arquero -->
+<section class="bg-white rounded-xl shadow p-5 mb-8">
+    <h2 class="text-lg font-semibold mb-4">Nuevo arquero</h2>
+    <form method="POST" action="{{ url_for('admin.archers') }}" novalidate>
+
+        <div class="mb-4">
+            <label for="name" class="block text-sm font-medium mb-1">
+                Nombre <span class="text-red-500">*</span>
+            </label>
+            <input id="name" name="name" type="text" maxlength="100"
+                   value="{{ form_data.get('name', '') }}"
+                   class="w-full border rounded-lg px-3 py-2 text-sm
+                          {% if field == 'name' %}border-red-500{% else %}border-gray-300{% endif %}"
+                   placeholder="Ej. Juan Pérez" required />
+            {% if field == 'name' %}
+            <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+            {% endif %}
+        </div>
+
+        <div class="mb-4">
+            <label for="pin" class="block text-sm font-medium mb-1">
+                PIN (4 dígitos) <span class="text-red-500">*</span>
+            </label>
+            <input id="pin" name="pin" type="text" inputmode="numeric"
+                   maxlength="4" pattern="\d{4}"
+                   value="{{ form_data.get('pin', '') }}"
+                   class="w-full border rounded-lg px-3 py-2 text-sm
+                          {% if field == 'pin' %}border-red-500{% else %}border-gray-300{% endif %}"
+                   placeholder="Ej. 1234" required />
+            {% if field == 'pin' %}
+            <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+            {% endif %}
+        </div>
+
+        {% if error and not field %}
+        <p class="text-red-600 text-sm mb-3">{{ error }}</p>
+        {% endif %}
+
+        <button type="submit"
+                class="bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-semibold
+                       hover:bg-green-800 active:bg-green-900">
+            Crear arquero
+        </button>
+    </form>
+</section>
+
+<!-- Listado de arqueros -->
+<section>
+    <h2 class="text-lg font-semibold mb-3">Arqueros registrados</h2>
+
+    {% if archers %}
+    <div class="space-y-4">
+        {% for archer in archers %}
+        <div class="bg-white rounded-xl shadow p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="font-semibold">{{ archer.name }}</p>
+                    <p class="text-sm text-gray-500">PIN: <span class="font-mono">{{ archer.pin }}</span></p>
+                </div>
+                <div class="flex items-center gap-2">
+                    {% if tournaments %}
+                    <button onclick="toggleEnroll('{{ archer.id }}')"
+                            id="btn-{{ archer.id }}"
+                            class="text-sm bg-blue-50 text-blue-700 border border-blue-200
+                                   px-3 py-1.5 rounded-lg hover:bg-blue-100">
+                        + Inscribir
+                    </button>
+                    {% endif %}
+                    <a href="{{ url_for('admin.edit_archer', archer_id=archer.id) }}"
+                       class="text-sm bg-gray-50 text-gray-700 border border-gray-200
+                              px-3 py-1.5 rounded-lg hover:bg-gray-100">
+                        Editar
+                    </a>
+                    <a href="{{ url_for('stats.trend_view', archer_id=archer.id) }}"
+                       class="text-xs text-indigo-600 hover:underline">
+                        Ver stats
+                    </a>
+                    <form method="POST"
+                          action="{{ url_for('admin.delete_archer_route', archer_id=archer.id) }}"
+                          onsubmit="return confirm('¿Eliminar al arquero {{ archer.name }}? Esta acción no se puede deshacer.')">
+                        <button type="submit"
+                                class="text-sm bg-red-50 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100">
+                            Eliminar
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Formulario de inscripción inline -->
+            {% if tournaments %}
+            <div id="enroll-{{ archer.id }}" class="hidden mt-4 border-t pt-4">
+
+                {% if enroll_error and enroll_archer_id is defined and enroll_archer_id == archer.id %}
+                <p class="text-red-600 text-sm mb-3">{{ enroll_error }}</p>
+                {% endif %}
+
+                <form method="POST"
+                      action="{{ url_for('admin.enroll', archer_id=archer.id) }}"
+                      novalidate>
+
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium mb-1">Torneo</label>
+                        <select name="tournament_id"
+                                onchange="loadCategories(this.value, '{{ archer.id }}')"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                required>
+                            <option value="">— Seleccionar torneo —</option>
+                            {% for t in tournaments %}
+                            {% if t.status != 'finished' %}
+                            <option value="{{ t.id }}">{{ t.name }} ({{ t.status }})</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium mb-1">Categoría</label>
+                        <select name="category_id"
+                                id="cat-{{ archer.id }}"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                required>
+                            <option value="">— Seleccionar torneo primero —</option>
+                        </select>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button type="submit"
+                                class="bg-green-700 text-white px-4 py-2 rounded-lg text-sm
+                                       font-semibold hover:bg-green-800">
+                            Inscribir
+                        </button>
+                        <button type="button"
+                                onclick="toggleEnroll('{{ archer.id }}')"
+                                class="px-4 py-2 rounded-lg text-sm border border-gray-300
+                                       text-gray-600 hover:bg-gray-50">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-gray-500 text-sm">Todavía no hay arqueros registrados.</p>
+    {% endif %}
+</section>
+
+<script>
+function toggleEnroll(archerId) {
+    const div = document.getElementById('enroll-' + archerId);
+    div.classList.toggle('hidden');
+}
+
+async function loadCategories(tournamentId, archerId) {
+    const select = document.getElementById('cat-' + archerId);
+    select.innerHTML = '<option value="">Cargando...</option>';
+
+    if (!tournamentId) {
+        select.innerHTML = '<option value="">— Seleccionar torneo primero —</option>';
+        return;
+    }
+
+    try {
+        const resp = await fetch('/admin/tournaments/' + tournamentId + '/categories/json');
+        const cats = await resp.json();
+
+        if (cats.length === 0) {
+            select.innerHTML = '<option value="">Sin categorías — creá una primero</option>';
+            return;
+        }
+
+        select.innerHTML = '<option value="">— Seleccionar categoría —</option>';
+        cats.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.bow_type + ' · ' + c.distance + ' · ' + c.gender;
+            select.appendChild(opt);
+        });
+    } catch (e) {
+        select.innerHTML = '<option value="">Error al cargar categorías</option>';
+    }
+}
+
+// Si hay un error de inscripción, abrir el panel del arquero afectado
+{% if enroll_error and enroll_archer_id is defined %}
+document.addEventListener('DOMContentLoaded', () => {
+    const div = document.getElementById('enroll-{{ enroll_archer_id }}');
+    if (div) div.classList.remove('hidden');
+});
+{% endif %}
+</script>
+{% endblock %}

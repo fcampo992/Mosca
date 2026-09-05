@@ -1,0 +1,111 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Categorías — KiroArchery{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('admin.tournaments') }}"
+       class="text-sm text-green-700 hover:underline">← Volver a torneos</a>
+</div>
+
+<h1 class="text-2xl font-bold mb-6">Categorías del torneo</h1>
+
+<!-- Formulario: crear categoría (Req 2.3) -->
+<section class="bg-white rounded-xl shadow p-5 mb-8">
+    <h2 class="text-lg font-semibold mb-4">Nueva categoría</h2>
+    <form method="POST"
+          action="{{ url_for('admin.categories', tournament_id=tournament_id) }}"
+          novalidate>
+
+        <div class="mb-4">
+            <label for="bow_type" class="block text-sm font-medium mb-1">
+                Tipo de arco <span class="text-red-500">*</span>
+            </label>
+            <select id="bow_type" name="bow_type"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
+                           {% if field == 'bow_type' %}border-red-500{% endif %}"
+                    required>
+                <option value="">— Seleccionar —</option>
+                {% for opt in ['Recurvo', 'Compuesto', 'Raso'] %}
+                <option value="{{ opt }}"
+                    {% if form_data.get('bow_type') == opt %}selected{% endif %}>
+                    {{ opt }}
+                </option>
+                {% endfor %}
+            </select>
+            {% if field == 'bow_type' %}
+            <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+            {% endif %}
+        </div>
+
+        <div class="mb-4">
+            <label for="distance" class="block text-sm font-medium mb-1">
+                Distancia <span class="text-red-500">*</span>
+            </label>
+            <input
+                id="distance"
+                name="distance"
+                type="text"
+                value="{{ form_data.get('distance', '') }}"
+                class="w-full border rounded-lg px-3 py-2 text-sm
+                       {% if field == 'distance' %}border-red-500{% else %}border-gray-300{% endif %}"
+                placeholder="Ej. 70m, 50m, 18m"
+                required
+            />
+            {% if field == 'distance' %}
+            <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+            {% endif %}
+        </div>
+
+        <div class="mb-4">
+            <label for="gender" class="block text-sm font-medium mb-1">
+                Género <span class="text-red-500">*</span>
+            </label>
+            <select id="gender" name="gender"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
+                           {% if field == 'gender' %}border-red-500{% endif %}"
+                    required>
+                <option value="">— Seleccionar —</option>
+                {% for opt in ['Masculino', 'Femenino', 'Mixto'] %}
+                <option value="{{ opt }}"
+                    {% if form_data.get('gender') == opt %}selected{% endif %}>
+                    {{ opt }}
+                </option>
+                {% endfor %}
+            </select>
+            {% if field == 'gender' %}
+            <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+            {% endif %}
+        </div>
+
+        {% if error and not field %}
+        <p class="text-red-600 text-sm mb-3">{{ error }}</p>
+        {% endif %}
+
+        <button type="submit"
+                class="bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-semibold
+                       hover:bg-green-800 active:bg-green-900">
+            Crear categoría
+        </button>
+    </form>
+</section>
+
+<!-- Listado de categorías (Req 2.3) -->
+<section>
+    <h2 class="text-lg font-semibold mb-3">Categorías registradas</h2>
+
+    {% if categories %}
+    <div class="space-y-3">
+        {% for cat in categories %}
+        <div class="bg-white rounded-xl shadow p-4 flex items-center justify-between">
+            <div>
+                <p class="font-medium text-sm">{{ cat.bow_type }} · {{ cat.distance }} · {{ cat.gender }}</p>
+                <p class="text-xs text-gray-400 mt-0.5">ID: {{ cat.id }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-gray-500 text-sm">No hay categorías para este torneo. ¡Agrega la primera!</p>
+    {% endif %}
+</section>
+{% endblock %}

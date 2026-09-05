@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Podio — KiroArchery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        @keyframes confetti-fall {
+            0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        .confetti-piece {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            animation: confetti-fall linear forwards;
+        }
+        @keyframes pop-in {
+            0%   { transform: scale(0.5); opacity: 0; }
+            70%  { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .pop-in { animation: pop-in 0.5s ease-out forwards; }
+        .pop-in-delay-1 { animation-delay: 0.3s; opacity: 0; }
+        .pop-in-delay-2 { animation-delay: 0.6s; opacity: 0; }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-900 text-white overflow-x-hidden" id="podium-body">
+
+<!-- ── Confetti JS ── -->
+<script>
+(function() {
+    const colors = ['#fbbf24','#34d399','#60a5fa','#f87171','#a78bfa','#fb923c'];
+    for (let i = 0; i < 60; i++) {
+        setTimeout(() => {
+            const el = document.createElement('div');
+            el.className = 'confetti-piece';
+            el.style.left = Math.random() * 100 + 'vw';
+            el.style.top = '-20px';
+            el.style.background = colors[Math.floor(Math.random() * colors.length)];
+            el.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+            el.style.animationDuration = (2 + Math.random() * 3) + 's';
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 5000);
+        }, i * 80);
+    }
+})();
+</script>
+
+<!-- ── Header ── -->
+<div class="text-center pt-8 pb-4 px-4">
+    <p class="text-green-400 text-xs font-bold uppercase tracking-widest mb-1">🏹 KiroArchery</p>
+    <h1 class="text-3xl font-extrabold mb-1">{{ tournament_name }}</h1>
+    <p class="text-gray-400 text-sm">Podio Final</p>
+</div>
+
+<!-- ── Podio por categoría ── -->
+{% for cat in leaderboard %}
+{% if cat.entries %}
+<section class="max-w-sm mx-auto px-4 mb-10">
+    <p class="text-center text-xs font-bold text-green-400 uppercase tracking-widest mb-5">
+        {{ cat.bow_type }} · {{ cat.distance }} · {{ cat.gender }}
+    </p>
+
+    <div class="flex items-end justify-center gap-3">
+
+        <!-- 2do -->
+        {% if cat.entries | length >= 2 %}
+        <div class="flex-1 flex flex-col items-center pop-in pop-in-delay-1">
+            {% if cat.entries[1].photo_url %}
+            <img src="{{ cat.entries[1].photo_url }}" alt="{{ cat.entries[1].name }}"
+                 class="w-16 h-16 rounded-full object-cover border-4 border-gray-400 shadow-lg mb-2" />
+            {% else %}
+            <div class="w-16 h-16 rounded-full bg-gray-600 border-4 border-gray-400 shadow-lg mb-2
+                        flex items-center justify-center text-white font-black text-2xl">
+                {{ cat.entries[1].name[0] | upper }}
+            </div>
+            {% endif %}
+            <p class="text-sm font-bold text-gray-300 text-center truncate w-full px-1 mb-1">
+                {{ cat.entries[1].name }}
+            </p>
+            <p class="text-2xl font-extrabold text-gray-200 mb-1">{{ cat.entries[1].total_points }}</p>
+            <p class="text-2xl mb-2">🥈</p>
+            <div class="w-full bg-gray-600 rounded-t-xl" style="height:60px"></div>
+        </div>
+        {% endif %}
+
+        <!-- 1ro (más alto, destacado) -->
+        <div class="flex-1 flex flex-col items-center pop-in">
+            <div class="relative">
+                {% if cat.entries[0].photo_url %}
+                <img src="{{ cat.entries[0].photo_url }}" alt="{{ cat.entries[0].name }}"
+                     class="w-24 h-24 rounded-full object-cover border-4 border-yellow-400
+                            shadow-2xl mb-2 ring-4 ring-yellow-400/30" />
+                {% else %}
+                <div class="w-24 h-24 rounded-full bg-yellow-500 border-4 border-yellow-400
+                            shadow-2xl mb-2 ring-4 ring-yellow-400/30
+                            flex items-center justify-center text-white font-black text-4xl">
+                    {{ cat.entries[0].name[0] | upper }}
+                </div>
+                {% endif %}
+                <span class="absolute -top-3 left-1/2 -translate-x-1/2 text-3xl">👑</span>
+            </div>
+            <p class="text-base font-extrabold text-white text-center truncate w-full px-1 mb-1 mt-1">
+                {{ cat.entries[0].name }}
+            </p>
+            <p class="text-4xl font-extrabold text-yellow-400 mb-1">{{ cat.entries[0].total_points }}</p>
+            <p class="text-2xl mb-2">🥇</p>
+            <div class="w-full bg-yellow-500 rounded-t-xl" style="height:96px"></div>
+        </div>
+
+        <!-- 3ro -->
+        {% if cat.entries | length >= 3 %}
+        <div class="flex-1 flex flex-col items-center pop-in pop-in-delay-2">
+            {% if cat.entries[2].photo_url %}
+            <img src="{{ cat.entries[2].photo_url }}" alt="{{ cat.entries[2].name }}"
+                 class="w-14 h-14 rounded-full object-cover border-4 border-amber-600 shadow-lg mb-2" />
+            {% else %}
+            <div class="w-14 h-14 rounded-full bg-amber-700 border-4 border-amber-600 shadow-lg mb-2
+                        flex items-center justify-center text-white font-black text-xl">
+                {{ cat.entries[2].name[0] | upper }}
+            </div>
+            {% endif %}
+            <p class="text-xs font-bold text-gray-400 text-center truncate w-full px-1 mb-1">
+                {{ cat.entries[2].name }}
+            </p>
+            <p class="text-xl font-extrabold text-gray-300 mb-1">{{ cat.entries[2].total_points }}</p>
+            <p class="text-xl mb-2">🥉</p>
+            <div class="w-full bg-amber-700 rounded-t-xl" style="height:40px"></div>
+        </div>
+        {% endif %}
+
+    </div>
+</section>
+{% endif %}
+{% endfor %}
+
+<!-- ── Tabla completa ── -->
+{% for cat in leaderboard %}
+{% if cat.entries %}
+<section class="max-w-sm mx-auto px-4 mb-8">
+    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
+        {{ cat.bow_type }} · {{ cat.distance }} · {{ cat.gender }} — Clasificación completa
+    </h3>
+    <div class="bg-gray-800 rounded-2xl overflow-hidden">
+        <table class="w-full text-sm">
+            <tbody class="divide-y divide-gray-700">
+                {% for entry in cat.entries %}
+                <tr class="{% if entry.position == 1 %}bg-yellow-900/30{% endif %}">
+                    <td class="px-4 py-2.5 font-bold text-gray-400 w-8">{{ entry.position }}</td>
+                    <td class="px-4 py-2.5 font-medium text-gray-200">{{ entry.name }}</td>
+                    <td class="px-4 py-2.5 text-right font-bold text-green-400">{{ entry.total_points }}</td>
+                    <td class="px-4 py-2.5 text-right text-yellow-500 text-xs">{{ entry.x_count }}X</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+{% endfor %}
+
+<!-- ── Footer ── -->
+<div class="text-center py-8">
+    <a href="/leaderboard/{{ tournament_id }}"
+       class="inline-block bg-green-600 hover:bg-green-500 text-white font-semibold
+              px-6 py-3 rounded-2xl transition-colors text-sm">
+        ← Ver leaderboard en vivo
+    </a>
+</div>
+
+</body>
+</html>

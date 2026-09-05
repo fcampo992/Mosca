@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KiroArchery — Inicio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        @keyframes ticker {
+            0%   { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        .ticker-track { animation: ticker 28s linear infinite; white-space: nowrap; }
+        .ticker-track:hover { animation-play-state: paused; }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50 text-gray-900" style="min-width:360px">
+
+<!-- ── Marquesina de noticias ── -->
+<div class="text-xs py-1.5 overflow-hidden" style="background-color: {{ club.color_from }}; color: #d1fae5;">
+    <div class="ticker-track px-4">
+        {{ ticker }}
+    </div>
+</div>
+
+<!-- ── Header ── -->
+<header class="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm">
+    <div class="flex items-center gap-2">
+        <span class="text-2xl">🏹</span>
+        <span class="font-extrabold text-lg tracking-tight" style="color: {{ club.color_from }}">{{ club.club_name }}</span>
+    </div>
+    <a href="/admin/login"
+       class="text-xs text-gray-500 border border-gray-300 rounded-lg px-3 py-1.5
+              hover:bg-gray-100 transition-colors">
+        Admin
+    </a>
+</header>
+
+<!-- ── Hero ── -->
+<section class="text-white px-4 py-12 text-center"
+         style="background: linear-gradient(to bottom right, {{ club.color_from }}, {{ club.color_to }})">
+    <p class="text-xs font-bold uppercase tracking-widest mb-2 opacity-75">Gestión de torneos</p>
+    <h1 class="text-3xl font-extrabold mb-3 leading-tight">
+        {{ club.hero_title }}
+    </h1>
+    <p class="text-sm max-w-xs mx-auto opacity-90">
+        {{ club.hero_subtitle }}
+    </p>
+</section>
+
+<!-- ── Accesos directos ── -->
+<section class="px-4 py-8 max-w-lg mx-auto space-y-4">
+
+    <!-- Soy Arquero -->
+    <a href="/archer/login"
+       class="group flex items-center gap-4 bg-white rounded-2xl shadow-sm border border-gray-100
+              p-5 hover:border-green-400 hover:shadow-md transition-all duration-150">
+        <div class="w-14 h-14 rounded-xl bg-green-50 flex items-center justify-center text-3xl
+                    group-hover:bg-green-100 transition-colors shrink-0">
+            🎯
+        </div>
+        <div class="flex-1 min-w-0">
+            <p class="font-bold text-gray-900 text-base">Soy Arquero</p>
+            <p class="text-sm text-gray-500">Ingresá con tu PIN y cargá tus flechas</p>
+        </div>
+        <svg class="w-5 h-5 text-gray-300 group-hover:text-green-500 transition-colors shrink-0"
+             fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+    </a>
+
+    <!-- Soy Organizador -->
+    <a href="/admin/tournaments"
+       class="group flex items-center gap-4 bg-white rounded-2xl shadow-sm border border-gray-100
+              p-5 hover:border-blue-400 hover:shadow-md transition-all duration-150">
+        <div class="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center text-3xl
+                    group-hover:bg-blue-100 transition-colors shrink-0">
+            📋
+        </div>
+        <div class="flex-1 min-w-0">
+            <p class="font-bold text-gray-900 text-base">Soy Organizador</p>
+            <p class="text-sm text-gray-500">Gestioná torneos, categorías y arqueros</p>
+        </div>
+        <svg class="w-5 h-5 text-gray-300 group-hover:text-blue-500 transition-colors shrink-0"
+             fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+    </a>
+
+    <!-- Torneo activo (leaderboard) -->
+    {% if active_tournaments %}
+    <div>
+        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">
+            En vivo ahora
+        </p>
+        {% for t in active_tournaments %}
+        <a href="/leaderboard/{{ t.id }}"
+           class="group flex items-center gap-4 bg-white rounded-2xl shadow-sm border border-gray-100
+                  p-5 mb-3 hover:border-yellow-400 hover:shadow-md transition-all duration-150">
+            <div class="w-14 h-14 rounded-xl bg-yellow-50 flex items-center justify-center text-3xl
+                        group-hover:bg-yellow-100 transition-colors shrink-0">
+                🏆
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-0.5">
+                    <p class="font-bold text-gray-900 text-base truncate">{{ t.name }}</p>
+                    <span class="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold
+                                 bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
+                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse inline-block"></span>
+                        EN VIVO
+                    </span>
+                </div>
+                <p class="text-sm text-gray-500">Tabla de posiciones en tiempo real</p>
+            </div>
+            <svg class="w-5 h-5 text-gray-300 group-hover:text-yellow-500 transition-colors shrink-0"
+                 fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+            </svg>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Sin torneo activo: mostrar acceso al ranking -->
+    <a href="/stats/ranking/view"
+       class="group flex items-center gap-4 bg-white rounded-2xl shadow-sm border border-gray-100
+              p-5 hover:border-yellow-400 hover:shadow-md transition-all duration-150">
+        <div class="w-14 h-14 rounded-xl bg-yellow-50 flex items-center justify-center text-3xl
+                    group-hover:bg-yellow-100 transition-colors shrink-0">
+            🏆
+        </div>
+        <div class="flex-1 min-w-0">
+            <p class="font-bold text-gray-900 text-base">Ranking Global</p>
+            <p class="text-sm text-gray-500">Clasificación histórica de todos los torneos</p>
+        </div>
+        <svg class="w-5 h-5 text-gray-300 group-hover:text-yellow-500 transition-colors shrink-0"
+             fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+    </a>
+    {% endif %}
+
+</section>
+
+<!-- ── Tabla de posiciones mundial (top 5) ── -->
+{% if top_archers %}
+<section class="px-4 pb-6 max-w-lg mx-auto">
+    <div class="flex items-center justify-between mb-3">
+        <h2 class="font-bold text-gray-800 text-base">🌍 Ranking Mundial</h2>
+        <a href="/stats/ranking/view"
+           class="text-xs text-green-700 font-medium hover:underline">Ver todo →</a>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="bg-gray-50 border-b border-gray-100">
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-8">#</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Arquero</th>
+                    <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Pts.</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+                {% for a in top_archers %}
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-4 py-3 font-bold
+                        {% if loop.index == 1 %}text-yellow-500
+                        {% elif loop.index == 2 %}text-gray-400
+                        {% elif loop.index == 3 %}text-amber-600
+                        {% else %}text-gray-400{% endif %}">
+                        {% if loop.index == 1 %}🥇
+                        {% elif loop.index == 2 %}🥈
+                        {% elif loop.index == 3 %}🥉
+                        {% else %}{{ loop.index }}{% endif %}
+                    </td>
+                    <td class="px-4 py-3 font-medium text-gray-800">{{ a.name }}</td>
+                    <td class="px-4 py-3 text-right font-bold text-green-700">{{ a.total_points }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+<!-- ── Widget meteorológico ── -->
+<section class="px-4 pb-10 max-w-lg mx-auto"
+         x-data="weatherWidget()" x-init="load()">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl" x-text="icon">🌤</span>
+                <div>
+                    <p class="font-semibold text-gray-800 text-sm" x-text="summary">Cargando clima...</p>
+                    <p class="text-xs text-gray-400" x-text="location"></p>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-2xl font-bold text-gray-800" x-text="temp"></p>
+                <p class="text-xs text-gray-400" x-text="wind"></p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+function weatherWidget() {
+    return {
+        icon: '🌤', summary: 'Cargando clima...', location: '',
+        temp: '', wind: '',
+
+        async load() {
+            try {
+                // Obtener ubicación del navegador
+                const pos = await new Promise((res, rej) =>
+                    navigator.geolocation
+                        ? navigator.geolocation.getCurrentPosition(res, rej, {timeout:5000})
+                        : rej('no geolocation')
+                );
+                const { latitude: lat, longitude: lon } = pos.coords;
+
+                // Open-Meteo: API pública sin key
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m&timezone=auto`;
+                const r = await fetch(url);
+                const d = await r.json();
+                const c = d.current;
+
+                this.temp = Math.round(c.temperature_2m) + '°C';
+                this.wind = 'Viento ' + Math.round(c.windspeed_10m) + ' km/h';
+                this.icon = this._icon(c.weathercode);
+                this.summary = this._desc(c.weathercode);
+
+                // Nombre de ciudad via geocoding inverso (Open-Meteo)
+                const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+                const gd = await geo.json();
+                this.location = gd.address?.city || gd.address?.town || gd.address?.county || '';
+            } catch(e) {
+                this.summary = 'Clima no disponible';
+                this.icon = '📍';
+                this.location = 'Activá la ubicación para ver el clima';
+            }
+        },
+
+        _icon(code) {
+            if (code === 0) return '☀️';
+            if (code <= 2) return '⛅';
+            if (code <= 3) return '☁️';
+            if (code <= 49) return '🌫';
+            if (code <= 59) return '🌧';
+            if (code <= 69) return '❄️';
+            if (code <= 79) return '🌨';
+            if (code <= 82) return '🌧';
+            if (code <= 86) return '❄️';
+            if (code <= 99) return '⛈';
+            return '🌤';
+        },
+
+        _desc(code) {
+            if (code === 0) return 'Cielo despejado';
+            if (code <= 2) return 'Parcialmente nublado';
+            if (code <= 3) return 'Nublado';
+            if (code <= 49) return 'Neblina';
+            if (code <= 59) return 'Llovizna';
+            if (code <= 69) return 'Lluvia';
+            if (code <= 79) return 'Nevada';
+            if (code <= 82) return 'Lluvia intensa';
+            if (code <= 86) return 'Nevada intensa';
+            if (code <= 99) return 'Tormenta';
+            return 'Variable';
+        }
+    };
+}
+</script>
+
+<!-- ── Footer ── -->
+<footer class="text-center text-xs text-gray-400 py-6 border-t border-gray-100">
+    KiroArchery &copy; 2025
+</footer>
+
+</body>
+</html>

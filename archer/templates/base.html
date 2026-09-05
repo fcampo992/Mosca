@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}KiroArchery{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {% block head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-gray-50 text-gray-900" style="min-width:360px">
+
+    {% set club = club_settings() %}
+    <header class="text-white px-4 py-3 flex items-center justify-between shadow-md"
+            style="background: linear-gradient(to right, {{ club.color_from }}, {{ club.color_to }})">
+        <a href="/" class="flex items-center gap-2 font-bold text-lg tracking-tight">
+            <span>🏹</span>
+            <span>{{ club.club_name }}</span>
+        </a>
+        <nav class="flex gap-3 text-sm font-medium">
+            {% if session.get("admin_logged_in") %}
+            <a href="/admin/tournaments"
+               class="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-xs transition-colors">
+                Admin
+            </a>
+            {% else %}
+            <a href="/admin/login"
+               class="text-white/70 hover:text-white text-xs transition-colors">
+                Admin
+            </a>
+            {% endif %}
+            <a href="/archer/login"
+               class="bg-white font-semibold px-3 py-1.5 rounded-lg text-xs hover:bg-white/90 transition-colors"
+               style="color: {{ club.color_from }}">
+                Ingresar PIN
+            </a>
+        </nav>
+    </header>
+
+    <main class="px-4 py-6 max-w-3xl mx-auto">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="text-center text-xs text-gray-400 py-4 border-t border-gray-100">
+        {{ club.club_name }} &copy; 2025
+    </footer>
+
+</body>
+</html>

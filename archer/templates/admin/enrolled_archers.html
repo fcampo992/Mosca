@@ -1,0 +1,73 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Arqueros inscritos — {{ tournament.name if tournament else 'Torneo' }} — KiroArchery{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex items-center gap-3">
+    <a href="{{ url_for('admin.tournaments') }}"
+       class="text-sm text-gray-500 border border-gray-300 rounded-lg px-3 py-1.5
+              hover:bg-gray-100 active:bg-gray-200">
+        ← Volver
+    </a>
+    <h1 class="text-2xl font-bold">
+        Arqueros inscritos
+        {% if tournament %}
+        — {{ tournament.name }}
+        {% endif %}
+    </h1>
+</div>
+
+<section class="bg-white rounded-xl shadow p-5">
+    {% if archers %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-gray-200 text-left">
+                    <th class="pb-3 pr-4 font-semibold text-gray-700">Arquero</th>
+                    <th class="pb-3 font-semibold text-gray-700">Categoría</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for a in archers %}
+                <tr class="hover:bg-gray-50">
+                    <td class="py-3 pr-4 font-medium text-gray-900">{{ a.archer_name }}</td>
+                    <td class="py-3 text-gray-600">{{ a.category }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="text-xs text-gray-400 mt-4">{{ archers | length }} arquero{{ 's' if archers | length != 1 else '' }} inscrito{{ 's' if archers | length != 1 else '' }}</p>
+    {% else %}
+    <p class="text-gray-500 text-sm">No hay arqueros inscritos en este torneo todavía.</p>
+    {% endif %}
+</section>
+
+{% if tournament and tournament.status == 'active' %}
+<section class="bg-white rounded-xl shadow p-5 mt-6">
+    <h2 class="text-base font-semibold mb-3">Corregir flecha</h2>
+    <form method="POST" action="{{ url_for('admin.correct_score') }}">
+        <input type="hidden" name="redirect_to" value="{{ url_for('admin.enrolled_archers', tournament_id=tournament.id) }}" />
+        <div class="flex flex-wrap gap-3 items-end">
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">ID de puntuación</label>
+                <input type="text" name="score_id" required placeholder="UUID de la flecha"
+                       class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-64" />
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Valor</label>
+                <select name="arrow_val" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                    {% for v in ['X','10','9','8','7','6','5','4','3','2','1','M'] %}
+                    <option value="{{ v }}">{{ v }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit"
+                    class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold
+                           hover:bg-indigo-700 active:bg-indigo-800">
+                Corregir
+            </button>
+        </div>
+    </form>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,193 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Configuración del Club — KiroArchery{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold">Configuración del Club</h1>
+    <p class="text-sm text-gray-500 mt-1">Personalizá la apariencia de la Home para tu club.</p>
+</div>
+
+{% if success %}
+<div class="mb-5 flex items-center gap-2 bg-green-50 border border-green-200 text-green-800
+            text-sm rounded-xl px-4 py-3">
+    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+    </svg>
+    Configuración guardada correctamente.
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- Formulario -->
+    <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <form method="POST" action="{{ url_for('admin.club_settings') }}" novalidate>
+
+            <!-- Nombre del club -->
+            <div class="mb-5">
+                <label for="club_name" class="block text-sm font-semibold mb-1">Nombre del club</label>
+                <input id="club_name" name="club_name" type="text" maxlength="100"
+                       value="{{ settings.club_name }}"
+                       class="w-full border rounded-lg px-3 py-2 text-sm
+                              {% if field == 'club_name' %}border-red-500{% else %}border-gray-300{% endif %}
+                              focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent"
+                       placeholder="Ej. Club Arqueros del Sur" required />
+                {% if field == 'club_name' %}
+                <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Título hero -->
+            <div class="mb-5">
+                <label for="hero_title" class="block text-sm font-semibold mb-1">Título del hero</label>
+                <input id="hero_title" name="hero_title" type="text" maxlength="200"
+                       value="{{ settings.hero_title }}"
+                       class="w-full border rounded-lg px-3 py-2 text-sm
+                              {% if field == 'hero_title' %}border-red-500{% else %}border-gray-300{% endif %}
+                              focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent"
+                       placeholder="Ej. Bienvenido al Club Arqueros del Sur" required />
+                {% if field == 'hero_title' %}
+                <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Subtítulo hero -->
+            <div class="mb-5">
+                <label for="hero_subtitle" class="block text-sm font-semibold mb-1">Subtítulo del hero</label>
+                <textarea id="hero_subtitle" name="hero_subtitle" rows="2" maxlength="300"
+                          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none
+                                 focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent"
+                          placeholder="Descripción breve que aparece bajo el título...">{{ settings.hero_subtitle }}</textarea>
+            </div>
+
+            <!-- Texto marquesina -->
+            <div class="mb-5">
+                <label for="ticker_text" class="block text-sm font-semibold mb-1">Texto de la marquesina</label>
+                <input id="ticker_text" name="ticker_text" type="text" maxlength="500"
+                       value="{{ settings.ticker_text }}"
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent"
+                       placeholder="Ej. 🏹 Próximo torneo el 15 de marzo · ¡Inscribite ya!" />
+                <p class="text-xs text-gray-400 mt-1">Se desplaza en el banner superior de la Home.</p>
+            </div>
+
+            <!-- Colores del gradiente -->
+            <div class="mb-6">
+                <p class="text-sm font-semibold mb-2">Gradiente del hero</p>
+                <div class="flex gap-4 items-center">
+                    <div class="flex-1">
+                        <label for="color_from" class="block text-xs text-gray-500 mb-1">Color inicial</label>
+                        <div class="flex items-center gap-2">
+                            <input id="color_from" name="color_from" type="color"
+                                   value="{{ settings.color_from }}"
+                                   class="w-10 h-10 rounded-lg border border-gray-200 cursor-pointer p-0.5"
+                                   oninput="updatePreview()" />
+                            <input type="text" id="color_from_text"
+                                   value="{{ settings.color_from }}"
+                                   maxlength="7"
+                                   class="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-mono
+                                          focus:outline-none focus:ring-2 focus:ring-green-600"
+                                   oninput="syncColor('from')"
+                                   placeholder="#166534" />
+                        </div>
+                        {% if field == 'color_from' %}
+                        <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="flex-1">
+                        <label for="color_to" class="block text-xs text-gray-500 mb-1">Color final</label>
+                        <div class="flex items-center gap-2">
+                            <input id="color_to" name="color_to" type="color"
+                                   value="{{ settings.color_to }}"
+                                   class="w-10 h-10 rounded-lg border border-gray-200 cursor-pointer p-0.5"
+                                   oninput="updatePreview()" />
+                            <input type="text" id="color_to_text"
+                                   value="{{ settings.color_to }}"
+                                   maxlength="7"
+                                   class="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-mono
+                                          focus:outline-none focus:ring-2 focus:ring-green-600"
+                                   oninput="syncColor('to')"
+                                   placeholder="#16a34a" />
+                        </div>
+                        {% if field == 'color_to' %}
+                        <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {% if error and not field %}
+            <p class="text-red-600 text-sm mb-4">{{ error }}</p>
+            {% endif %}
+
+            <button type="submit"
+                    class="w-full bg-green-700 text-white py-2.5 rounded-xl text-sm font-semibold
+                           hover:bg-green-800 active:bg-green-900 transition-colors">
+                Guardar configuración
+            </button>
+        </form>
+    </section>
+
+    <!-- Preview en vivo -->
+    <section>
+        <p class="text-sm font-semibold text-gray-600 mb-3">Preview del hero</p>
+        <div id="preview-hero"
+             class="rounded-2xl text-white px-6 py-10 text-center shadow-md transition-all duration-300"
+             style="background: linear-gradient(to bottom right, {{ settings.color_from }}, {{ settings.color_to }})">
+            <p id="preview-subtitle-label" class="text-xs font-bold uppercase tracking-widest mb-2 opacity-75">
+                Gestión de torneos
+            </p>
+            <h2 id="preview-title" class="text-2xl font-extrabold mb-2 leading-tight">
+                {{ settings.hero_title }}
+            </h2>
+            <p id="preview-subtitle" class="text-sm opacity-90 max-w-xs mx-auto">
+                {{ settings.hero_subtitle }}
+            </p>
+        </div>
+
+        <p class="text-sm font-semibold text-gray-600 mt-5 mb-2">Preview de la marquesina</p>
+        <div class="rounded-xl overflow-hidden bg-gray-800 text-gray-200 text-xs py-2">
+            <div id="preview-ticker" class="px-4 truncate">
+                {{ settings.ticker_text }}
+            </div>
+        </div>
+
+        <p class="text-xs text-gray-400 mt-4">
+            Los cambios se aplican inmediatamente en la Home al guardar.
+        </p>
+    </section>
+
+</div>
+
+<script>
+function updatePreview() {
+    const from = document.getElementById('color_from').value;
+    const to   = document.getElementById('color_to').value;
+    document.getElementById('preview-hero').style.background =
+        'linear-gradient(to bottom right, ' + from + ', ' + to + ')';
+    document.getElementById('color_from_text').value = from;
+    document.getElementById('color_to_text').value   = to;
+}
+
+function syncColor(dir) {
+    const textEl = document.getElementById('color_' + dir + '_text');
+    const pickerEl = document.getElementById('color_' + dir);
+    const val = textEl.value.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+        pickerEl.value = val;
+        updatePreview();
+    }
+}
+
+// Live preview of title and subtitle
+document.getElementById('hero_title').addEventListener('input', function() {
+    document.getElementById('preview-title').textContent = this.value || 'Título del hero';
+});
+document.getElementById('hero_subtitle').addEventListener('input', function() {
+    document.getElementById('preview-subtitle').textContent = this.value || 'Subtítulo del hero';
+});
+document.getElementById('ticker_text').addEventListener('input', function() {
+    document.getElementById('preview-ticker').textContent = this.value || '...';
+});
+</script>
+{% endblock %}

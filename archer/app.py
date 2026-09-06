@@ -34,17 +34,21 @@ def create_app(config_object: object = Config) -> Flask:
         )
 
     # ── Initialise database ───────────────────────────────────────────────────
-    try:
-        from archer.db import get_connection, init_db  # noqa: PLC0415
+    # Se hace en el primer request via before_request para evitar timeouts en import time
+    _db_initialized = False
 
-        with app.app_context():
+    @app.before_request
+    def ensure_db():
+        nonlocal _db_initialized
+        if _db_initialized:
+            return
+        try:
+            from archer.db import get_connection, init_db  # noqa: PLC0415
             conn = get_connection()
             init_db(conn)
-    except ImportError:
-        logger.warning(
-            "archer.db module not found; skipping database initialisation. "
-            "This is expected during the initial project scaffold."
-        )
+            _db_initialized = True
+        except Exception as exc:
+            logger.error("Error inicializando DB: %s", exc)
 
     # ── Context processors ────────────────────────────────────────────────────
     @app.context_processor

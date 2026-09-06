@@ -49,7 +49,7 @@ def _connect_turso(url: str, token: str):
             raise TimeoutError("Turso connection timed out")
 
         signal.signal(signal.SIGALRM, _timeout_handler)
-        signal.alarm(10)
+        signal.alarm(20)  # 20 segundos en producción
         try:
             conn = _do_connect()
             signal.alarm(0)
@@ -65,7 +65,7 @@ def _connect_turso(url: str, token: str):
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(_do_connect)
             try:
-                return future.result(timeout=10)
+                return future.result(timeout=20)  # 20 segundos
             except Exception as exc:
                 logger.error("Error al conectar a Turso: %s", exc)
                 return None

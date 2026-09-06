@@ -133,7 +133,26 @@ def create_app(config_object: object = Config) -> Flask:
                                club=club,
                                ticker=ticker)
 
-    # ── Centralized error handlers ────────────────────────────────────────────
+    # ── Health / debug endpoint ───────────────────────────────────────────────
+    @app.route("/health")
+    def health():
+        from flask import jsonify  # noqa: PLC0415
+        import os
+        info = {
+            "status": "ok",
+            "turso_url_set": bool(os.environ.get("TURSO_DATABASE_URL")),
+            "turso_token_set": bool(os.environ.get("TURSO_AUTH_TOKEN")),
+            "cloudinary_set": bool(os.environ.get("CLOUDINARY_URL")),
+        }
+        try:
+            from archer.db import get_connection  # noqa: PLC0415
+            conn = get_connection()
+            cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            info["tables"] = [r[0] for r in cursor.fetchall()]
+            info["db_type"] = "turso" if os.environ.get("TURSO_DATABASE_URL") else "sqlite"
+        except Exception as e:
+            info["db_error"] = str(e)
+        return jsonify(info)
     from flask import jsonify  # noqa: PLC0415
 
     @app.errorhandler(404)

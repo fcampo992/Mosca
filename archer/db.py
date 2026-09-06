@@ -102,7 +102,7 @@ def get_connection():
         logger.info("Conectando a Turso: %s", turso_url)
         conn = _connect_turso(turso_url, turso_token)
         if conn is None:
-            logger.warning("Turso falló — usando SQLite local como fallback.")
+            logger.error("Turso falló — usando SQLite /tmp como fallback. DATOS NO PERSISTIRÁN.")
             conn = _connect_sqlite()
         else:
             logger.info("Conexión a Turso establecida correctamente.")

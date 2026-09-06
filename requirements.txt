@@ -1,6 +1,6 @@
 flask==3.1.0
 libsql-experimental
-cloudinary
+cloudinary>=1.36.0
 hypothesis==6.112.2
 pytest==8.3.4
 pytest-flask==1.3.0

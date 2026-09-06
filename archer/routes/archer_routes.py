@@ -421,6 +421,8 @@ def upload_photo():
             import cloudinary                          # type: ignore
             import cloudinary.uploader                 # type: ignore
             import io
+            # Configurar explícitamente desde la URL de entorno
+            cloudinary.config(cloudinary_url=cloudinary_url)
             result = cloudinary.uploader.upload(
                 io.BytesIO(data),
                 public_id=f"archer_photos/{archer_id}",

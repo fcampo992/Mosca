@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Podio — KiroArchery</title>
+    <title>Podio — {{ club_settings().club_name }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
@@ -27,6 +27,7 @@
         .pop-in-delay-2 { animation-delay: 0.6s; opacity: 0; }
     </style>
 </head>
+{% set club = club_settings() %}
 <body class="min-h-screen bg-gray-900 text-white overflow-x-hidden" id="podium-body">
 
 <!-- ── Confetti JS ── -->
@@ -51,7 +52,7 @@
 
 <!-- ── Header ── -->
 <div class="text-center pt-8 pb-4 px-4">
-    <p class="text-green-400 text-xs font-bold uppercase tracking-widest mb-1">🏹 KiroArchery</p>
+    <p class="text-xs font-bold uppercase tracking-widest mb-2" style="color: {{ club.color_to }}">🏹 {{ club.club_name }}</p>
     <h1 class="text-3xl font-extrabold mb-1">{{ tournament_name }}</h1>
     <p class="text-gray-400 text-sm">Podio Final</p>
 </div>

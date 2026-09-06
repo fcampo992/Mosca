@@ -3,29 +3,31 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}Admin — KiroArchery{% endblock %}</title>
+    <title>{% block title %}Admin — {{ club_settings().club_name }}{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     {% block head %}{% endblock %}
 </head>
+{% set club = club_settings() %}
 <body class="min-h-screen bg-gray-100 text-gray-900" style="min-width:360px"
       x-data="{ sidebarOpen: false }">
 
 <!-- ── Top bar ── -->
-<header class="bg-green-800 text-white h-14 flex items-center justify-between px-4 fixed top-0 left-0 right-0 z-40 shadow-md">
+<header class="text-white h-14 flex items-center justify-between px-4 fixed top-0 left-0 right-0 z-40 shadow-md"
+        style="background: linear-gradient(to right, {{ club.color_from }}, {{ club.color_to }})">
     <div class="flex items-center gap-3">
         <!-- Hamburger (mobile only) -->
         <button @click="sidebarOpen = !sidebarOpen"
-                class="lg:hidden p-2 rounded-lg hover:bg-green-700 active:bg-green-900 transition-colors"
+                class="lg:hidden p-2 rounded-lg hover:bg-white/20 active:bg-white/30 transition-colors"
                 aria-label="Menú">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path x-show="!sidebarOpen" stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
                 <path x-show="sidebarOpen"  stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>
         </button>
-        <a href="/" class="font-bold text-lg tracking-wide">🏹 KiroArchery</a>
-        <span class="hidden sm:inline text-green-300 text-xs font-medium uppercase tracking-widest">Admin</span>
+        <a href="/" class="font-bold text-lg tracking-wide">🏹 {{ club.club_name }}</a>
+        <span class="hidden sm:inline text-white/60 text-xs font-medium uppercase tracking-widest">Admin</span>
     </div>
     <div class="flex items-center gap-3 text-sm">
         {% if session.get("admin_username") %}
@@ -33,7 +35,7 @@
         {% endif %}
         <form method="POST" action="{{ url_for('admin.logout') }}">
             <button type="submit"
-                    class="bg-green-700 hover:bg-green-600 active:bg-green-900 px-3 py-1.5
+                    class="bg-white/20 hover:bg-white/30 active:bg-white/40 px-3 py-1.5
                            rounded-lg text-xs font-medium transition-colors">
                 Salir
             </button>

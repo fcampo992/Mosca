@@ -56,13 +56,13 @@ def create_app(config_object: object = Config) -> Flask:
             from archer.db import get_connection, init_db  # noqa: PLC0415
             logger.info("Inicializando base de datos...")
             conn = get_connection()
-            logger.info("Conexión obtenida correctamente.")
+            logger.info("Conexión obtenida: %s", type(conn).__name__)
             init_db(conn)
             logger.info("Base de datos inicializada correctamente.")
             _db_initialized = True
         except Exception as exc:
-            logger.error("Error inicializando DB: %s", exc)
-            logger.exception("Stack trace:")
+            import traceback
+            logger.error("Error inicializando DB: %s\n%s", exc, traceback.format_exc())
 
     # ── Context processors ────────────────────────────────────────────────────
     @app.context_processor

@@ -148,18 +148,16 @@ def init_db(conn) -> None:
     ]
 
     for statement in statements:
-        conn.execute(statement)
+        try:
+            conn.execute(statement)
+        except Exception as e:
+            logger.error("Error en CREATE TABLE: %s | SQL: %s", e, statement[:80])
 
-    # Confirmar los cambios en caso de que la conexión maneje transacciones
-    # explícitas (turso_serverless/sqlite3 en modo autocommit=False).
     try:
         conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("commit tras DDL: %s", e)
 
-    # -----------------------------------------------------------------------
-    # Tabla de noticias / alertas para la marquesina
-    # -----------------------------------------------------------------------
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS news (
@@ -172,10 +170,6 @@ def init_db(conn) -> None:
         """
     )
 
-    # -----------------------------------------------------------------------
-    # Tabla de configuración del club (multi-tenant / branding)
-    # Una sola fila con id='default' — INSERT OR IGNORE para no perder datos.
-    # -----------------------------------------------------------------------
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS club_settings (

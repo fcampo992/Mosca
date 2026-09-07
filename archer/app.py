@@ -163,8 +163,13 @@ def create_app(config_object: object = Config) -> Flask:
         try:
             from archer.db import get_connection  # noqa: PLC0415
             conn = get_connection()
-            cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
-            info["tables"] = [r[0] for r in cursor.fetchall()]
+            info["conn_type"] = type(conn).__name__
+            info["conn_module"] = type(conn).__module__
+            # Usar una query que sólo funciona en Turso/libSQL (no en sqlite_master vacío)
+            cursor = conn.execute("SELECT 1 as ping")
+            info["ping"] = cursor.fetchone()[0]
+            cursor2 = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            info["tables"] = [r[0] for r in cursor2.fetchall()]
             info["db_type"] = "turso" if os.environ.get("TURSO_DATABASE_URL") else "sqlite"
         except Exception as e:
             info["db_error"] = str(e)

@@ -5,7 +5,8 @@ description = "Archer tournament management app"
 requires-python = ">=3.12"
 dependencies = [
     "flask==3.1.0",
-    "libsql-experimental==0.0.10",
+    "turso-serverless==0.1.0",
+    "cloudinary>=1.36.0",
 ]
 
 [tool.vercel]

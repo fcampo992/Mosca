@@ -1,0 +1,299 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ tournament.name }} — {{ club_settings().club_name }}{% endblock %}
+
+{% block content %}
+
+{# ── Helpers de fecha ── #}
+{% set meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'] %}
+{% set partes = tournament.date.split('-') if tournament.date else [] %}
+{% set fecha_legible = (partes[2]|int)|string + ' ' + meses[(partes[1]|int) - 1] + ', ' + partes[0] if partes|length == 3 else tournament.date %}
+
+{# ── Encabezado ── #}
+<div class="flex items-center gap-3 mb-1">
+    <a href="{{ url_for('admin.tournaments') }}"
+       class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+    </a>
+    <div class="min-w-0">
+        <h1 class="text-xl font-bold text-gray-900 truncate">{{ tournament.name }}</h1>
+        <p class="text-sm text-gray-400">{{ fecha_legible }}
+            · {{ tournament.rounds_count or 1 }} ronda{{ 's' if (tournament.rounds_count or 1)|int != 1 else '' }}
+            · {{ tournament.rounds or 10 }} tandas
+            · {{ tournament.arrows_per_end or 5 }} flechas/tanda
+        </p>
+    </div>
+</div>
+
+{# Badge de estado #}
+<div class="mb-6 mt-2 flex items-center gap-3">
+    {% if tournament.status == 'active' %}
+    <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-green-100 text-green-700">
+        <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse inline-block"></span>
+        En curso
+    </span>
+    {% elif tournament.status == 'created' %}
+    <span class="text-xs font-semibold px-3 py-1.5 rounded-full bg-blue-50 text-blue-600">Próximo</span>
+    {% else %}
+    <span class="text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-100 text-gray-500">Finalizado</span>
+    {% endif %}
+
+    {# Acciones rápidas inline #}
+    {% if tournament.status == 'active' %}
+    <a href="{{ url_for('leaderboard.live', tournament_id=tournament.id) }}" target="_blank"
+       class="text-xs font-medium text-green-700 border border-green-200 bg-green-50 px-3 py-1.5 rounded-full hover:bg-green-100 transition-colors">
+        Leaderboard →
+    </a>
+    <a href="{{ url_for('leaderboard.podium', tournament_id=tournament.id) }}" target="_blank"
+       class="text-xs font-medium text-yellow-700 border border-yellow-200 bg-yellow-50 px-3 py-1.5 rounded-full hover:bg-yellow-100 transition-colors">
+        🏆 Podio
+    </a>
+    {% elif tournament.status == 'finished' %}
+    <a href="{{ url_for('stats.tournament_view', tournament_id=tournament.id) }}"
+       class="text-xs font-medium text-indigo-700 border border-indigo-200 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition-colors">
+        Estadísticas
+    </a>
+    <a href="{{ url_for('leaderboard.podium', tournament_id=tournament.id) }}"
+       class="text-xs font-medium text-yellow-700 border border-yellow-200 bg-yellow-50 px-3 py-1.5 rounded-full hover:bg-yellow-100 transition-colors">
+        🏆 Podio
+    </a>
+    {% endif %}
+</div>
+
+{# ── Tabs ── #}
+<div x-data="{ tab: '{{ 'categorias' if not error else 'categorias' }}' }">
+
+    {# Barra de tabs #}
+    <div class="flex border-b border-gray-200 mb-5 gap-1">
+        <button @click="tab = 'categorias'"
+                :class="tab === 'categorias'
+                    ? 'border-b-2 border-green-600 text-green-700 font-semibold'
+                    : 'text-gray-500 hover:text-gray-700'"
+                class="px-4 py-2.5 text-sm transition-colors flex items-center gap-1.5">
+            Categorías
+            <span class="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 font-normal">{{ categories|length }}</span>
+        </button>
+        <button @click="tab = 'arqueros'"
+                :class="tab === 'arqueros'
+                    ? 'border-b-2 border-green-600 text-green-700 font-semibold'
+                    : 'text-gray-500 hover:text-gray-700'"
+                class="px-4 py-2.5 text-sm transition-colors flex items-center gap-1.5">
+            Arqueros
+            <span class="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 font-normal">{{ archers|length }}</span>
+        </button>
+        <button @click="tab = 'acciones'"
+                :class="tab === 'acciones'
+                    ? 'border-b-2 border-green-600 text-green-700 font-semibold'
+                    : 'text-gray-500 hover:text-gray-700'"
+                class="px-4 py-2.5 text-sm transition-colors">
+            Acciones
+        </button>
+    </div>
+
+    {# ── Tab: Categorías ── #}
+    <div x-show="tab === 'categorias'" x-cloak>
+
+        {# Formulario nueva categoría #}
+        <form method="POST"
+              action="{{ url_for('admin.categories', tournament_id=tournament.id) }}"
+              class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4"
+              novalidate>
+
+            <h3 class="text-sm font-semibold text-gray-700 mb-4">Nueva categoría</h3>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Tipo de arco <span class="text-red-500">*</span></label>
+                    <select name="bow_type"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500
+                                   {% if field == 'bow_type' %}border-red-400{% endif %}" required>
+                        <option value="">— Tipo —</option>
+                        {% for opt in ['Recurvo', 'Compuesto', 'Raso'] %}
+                        <option value="{{ opt }}" {% if form_data.get('bow_type') == opt %}selected{% endif %}>{{ opt }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if field == 'bow_type' %}<p class="text-red-600 text-xs mt-1">{{ error }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Distancia <span class="text-red-500">*</span></label>
+                    <input name="distance" type="text" value="{{ form_data.get('distance', '') }}"
+                           placeholder="Ej. 70m"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500
+                                  {% if field == 'distance' %}border-red-400{% endif %}" required />
+                    {% if field == 'distance' %}<p class="text-red-600 text-xs mt-1">{{ error }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Género <span class="text-red-500">*</span></label>
+                    <select name="gender"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500
+                                   {% if field == 'gender' %}border-red-400{% endif %}" required>
+                        <option value="">— Género —</option>
+                        {% for opt in ['Masculino', 'Femenino', 'Mixto'] %}
+                        <option value="{{ opt }}" {% if form_data.get('gender') == opt %}selected{% endif %}>{{ opt }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if field == 'gender' %}<p class="text-red-600 text-xs mt-1">{{ error }}</p>{% endif %}
+                </div>
+            </div>
+            {% if error and not field %}
+            <p class="text-red-600 text-sm mb-3">{{ error }}</p>
+            {% endif %}
+            <button type="submit"
+                    class="bg-green-700 hover:bg-green-800 text-white text-sm font-semibold px-5 py-2 rounded-xl transition-colors">
+                Agregar categoría
+            </button>
+        </form>
+
+        {# Listado #}
+        {% if categories %}
+        <div class="space-y-2">
+            {% for cat in categories %}
+            <div class="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-center justify-between">
+                <span class="text-sm font-medium text-gray-800">
+                    {{ cat.bow_type }}
+                    <span class="text-gray-400 font-normal">·</span>
+                    {{ cat.distance }}
+                    <span class="text-gray-400 font-normal">·</span>
+                    {{ cat.gender }}
+                </span>
+                <span class="text-xs text-gray-300 font-mono hidden sm:inline">{{ cat.id[:8] }}…</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-400 text-center py-8">Todavía no hay categorías. Agregá la primera arriba.</p>
+        {% endif %}
+    </div>
+
+    {# ── Tab: Arqueros ── #}
+    <div x-show="tab === 'arqueros'" x-cloak>
+        {% if archers %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 border-b border-gray-100">
+                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Arquero</th>
+                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Categoría</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for a in archers %}
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-4 py-3 font-medium text-gray-900">{{ a.archer_name }}</td>
+                        <td class="px-4 py-3 text-gray-500 text-xs">{{ a.category }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <p class="text-xs text-gray-400 px-4 py-3 border-t border-gray-50">
+                {{ archers|length }} arquero{{ 's' if archers|length != 1 else '' }} inscrito{{ 's' if archers|length != 1 else '' }}
+            </p>
+        </div>
+        {% else %}
+        <div class="text-center py-12 text-gray-400">
+            <div class="text-4xl mb-2">🎯</div>
+            <p class="text-sm">No hay arqueros inscritos aún.</p>
+            <p class="text-xs mt-1">Inscribílos desde la sección <a href="{{ url_for('admin.archers') }}" class="text-green-700 underline">Arqueros</a>.</p>
+        </div>
+        {% endif %}
+
+        {# Corrección de flecha (solo torneos activos) #}
+        {% if tournament.status == 'active' %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mt-4">
+            <h3 class="text-sm font-semibold text-gray-700 mb-4">Corregir flecha</h3>
+            <form method="POST" action="{{ url_for('admin.correct_score') }}">
+                <input type="hidden" name="redirect_to"
+                       value="{{ url_for('admin.tournament_detail', tournament_id=tournament.id) }}" />
+                <div class="flex flex-wrap gap-3 items-end">
+                    <div class="flex-1 min-w-48">
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">ID de puntuación</label>
+                        <input type="text" name="score_id" required placeholder="UUID de la flecha"
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Valor</label>
+                        <select name="arrow_val"
+                                class="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                            {% for v in ['X','10','9','8','7','6','5','4','3','2','1','M'] %}
+                            <option value="{{ v }}">{{ v }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit"
+                            class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                        Corregir
+                    </button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+
+    {# ── Tab: Acciones ── #}
+    <div x-show="tab === 'acciones'" x-cloak>
+        <div class="space-y-3">
+
+            {# Cambiar estado #}
+            {% if tournament.status == 'created' %}
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-gray-800">Activar torneo</p>
+                    <p class="text-xs text-gray-400 mt-0.5">El torneo pasará a estado "En curso" y los arqueros podrán cargar puntajes.</p>
+                </div>
+                <form method="POST" action="{{ url_for('admin.tournament_status', tournament_id=tournament.id) }}">
+                    <input type="hidden" name="new_status" value="active" />
+                    <button type="submit"
+                            class="bg-green-700 hover:bg-green-800 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors whitespace-nowrap">
+                        Activar
+                    </button>
+                </form>
+            </div>
+            {% elif tournament.status == 'active' %}
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-gray-800">Finalizar torneo</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Cierra el torneo. Ya no se podrán cargar puntajes.</p>
+                </div>
+                <form method="POST" action="{{ url_for('admin.tournament_status', tournament_id=tournament.id) }}">
+                    <input type="hidden" name="new_status" value="finished" />
+                    <button type="submit"
+                            class="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors whitespace-nowrap">
+                        Finalizar
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+
+            {# Eliminar (solo created) #}
+            {% if tournament.status == 'created' %}
+            <div class="bg-white rounded-2xl shadow-sm border border-red-100 p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-red-700">Eliminar torneo</p>
+                    <p class="text-xs text-red-400 mt-0.5">Acción irreversible. Se borran categorías e inscripciones.</p>
+                </div>
+                <form method="POST"
+                      action="{{ url_for('admin.delete_tournament_route', tournament_id=tournament.id) }}"
+                      onsubmit="return confirm('¿Eliminar el torneo {{ tournament.name }}? Esta acción no se puede deshacer.')">
+                    <button type="submit"
+                            class="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200
+                                   text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors whitespace-nowrap">
+                        Eliminar
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+
+            {# Info del torneo si está finalizado #}
+            {% if tournament.status == 'finished' %}
+            <div class="bg-gray-50 rounded-2xl border border-gray-200 p-5 text-center text-sm text-gray-500">
+                Este torneo está finalizado. No hay acciones disponibles.
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+</div>{# /x-data tabs #}
+
+{% endblock %}

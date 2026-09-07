@@ -200,7 +200,7 @@ def tournament_status(tournament_id: str):
             status_code,
         )
 
-    return redirect(url_for("admin.tournaments"))
+    return redirect(url_for("admin.tournament_detail", tournament_id=tournament_id))
 
 
 @admin_bp.route("/tournaments/<tournament_id>/delete", methods=["POST"])
@@ -227,6 +227,33 @@ def delete_tournament_route(tournament_id: str):
             form_data={},
         ), status_code
     return redirect(url_for("admin.tournaments"))
+
+
+# ---------------------------------------------------------------------------
+# Detalle del torneo (vista con tabs)
+# ---------------------------------------------------------------------------
+
+@admin_bp.route("/tournaments/<tournament_id>", methods=["GET"])
+@require_admin
+def tournament_detail(tournament_id: str):
+    """
+    GET — Vista de detalle del torneo con tabs: Categorías, Arqueros, Acciones.
+    Centraliza toda la gestión de un torneo en una sola pantalla.
+    """
+    tournament = get_tournament(tournament_id)
+    if tournament is None:
+        return redirect(url_for("admin.tournaments"))
+    categories_list = list_categories(tournament_id)
+    archers_list = list_enrolled_archers(tournament_id)
+    return render_template(
+        "admin/tournament_detail.html",
+        tournament=tournament,
+        categories=categories_list,
+        archers=archers_list,
+        error=None,
+        field=None,
+        form_data={},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -271,8 +298,8 @@ def categories(tournament_id: str):
                 status_code,
             )
 
-        # Éxito → redirigir (POST-Redirect-GET)
-        return redirect(url_for("admin.categories", tournament_id=tournament_id))
+        # Éxito → redirigir al detalle del torneo
+        return redirect(url_for("admin.tournament_detail", tournament_id=tournament_id))
 
     # GET
     return render_template(

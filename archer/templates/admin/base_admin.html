@@ -7,44 +7,38 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>[x-cloak]{display:none!important}</style>
     {% block head %}{% endblock %}
 </head>
 {% set club = club_settings() %}
-<body class="min-h-screen bg-gray-100 text-gray-900" style="min-width:360px"
+<body class="min-h-screen bg-gray-50 text-gray-900" style="min-width:360px"
       x-data="{ sidebarOpen: false }">
 
-<!-- ── Top bar ── -->
-<header class="text-white h-14 flex items-center justify-between px-4 fixed top-0 left-0 right-0 z-40 shadow-md"
-        style="background: linear-gradient(to right, {{ club.color_from }}, {{ club.color_to }})">
+<!-- ── Top bar (color sólido, sin gradiente) ── -->
+<header class="h-14 flex items-center justify-between px-4 fixed top-0 left-0 right-0 z-40 shadow-sm border-b border-white/10"
+        style="background-color: {{ club.color_from }}">
     <div class="flex items-center gap-3">
-        <!-- Hamburger (mobile only) -->
+        <!-- Hamburger (mobile) -->
         <button @click="sidebarOpen = !sidebarOpen"
-                class="lg:hidden p-2 rounded-lg hover:bg-white/20 active:bg-white/30 transition-colors"
+                class="lg:hidden p-2 rounded-lg hover:bg-white/20 active:bg-white/30 transition-colors text-white"
                 aria-label="Menú">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path x-show="!sidebarOpen" stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
                 <path x-show="sidebarOpen"  stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>
         </button>
-        <a href="/" class="font-bold text-lg tracking-wide">🏹 {{ club.club_name }}</a>
-        <span class="hidden sm:inline text-white/60 text-xs font-medium uppercase tracking-widest">Admin</span>
+        <a href="/" class="font-bold text-lg tracking-wide text-white">🏹 {{ club.club_name }}</a>
+        <span class="hidden sm:inline text-white/50 text-xs font-semibold uppercase tracking-widest">Admin</span>
     </div>
-    <div class="flex items-center gap-3 text-sm">
-        {% if session.get("admin_username") %}
-        <span class="hidden sm:inline text-green-200 text-xs">{{ session.admin_username }}</span>
-        {% endif %}
-        <form method="POST" action="{{ url_for('admin.logout') }}">
-            <button type="submit"
-                    class="bg-white/20 hover:bg-white/30 active:bg-white/40 px-3 py-1.5
-                           rounded-lg text-xs font-medium transition-colors">
-                Salir
-            </button>
-        </form>
-    </div>
+    <!-- Sin botón Salir aquí — está en el sidebar -->
+    {% if session.get("admin_username") %}
+    <span class="hidden sm:inline text-white/70 text-xs font-medium">{{ session.admin_username }}</span>
+    {% endif %}
 </header>
 
 <!-- ── Overlay (mobile) ── -->
 <div x-show="sidebarOpen"
+     x-cloak
      x-transition:enter="transition-opacity ease-out duration-200"
      x-transition:enter-start="opacity-0"
      x-transition:enter-end="opacity-100"
@@ -52,25 +46,22 @@
      x-transition:leave-start="opacity-100"
      x-transition:leave-end="opacity-0"
      @click="sidebarOpen = false"
-     class="fixed inset-0 bg-black/40 z-30 lg:hidden"
-     style="display:none"></div>
+     class="fixed inset-0 bg-black/40 z-30 lg:hidden"></div>
 
 <!-- ── Sidebar ── -->
 <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
        class="fixed top-14 left-0 bottom-0 w-64 bg-white shadow-xl z-30
               transform transition-transform duration-200 ease-in-out
               lg:translate-x-0 lg:shadow-none lg:border-r lg:border-gray-200
-              overflow-y-auto">
+              overflow-y-auto flex flex-col">
 
-    <nav class="p-4 space-y-1">
+    <nav class="p-4 space-y-1 flex-1">
 
         <!-- Torneos -->
         <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 pt-2 pb-1">Torneos</p>
-
         <a href="{{ url_for('admin.tournaments') }}"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
-                  {% if request.endpoint == 'admin.tournaments' %}bg-green-50 text-green-800{% else %}text-gray-700 hover:bg-gray-100{% endif %}
-                  transition-colors">
+           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+                  {% if request.endpoint == 'admin.tournaments' or request.endpoint == 'admin.tournament_detail' %}bg-green-50 text-green-800{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
             </svg>
@@ -79,43 +70,36 @@
 
         <!-- Arqueros -->
         <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 pt-4 pb-1">Arqueros</p>
-
         <a href="{{ url_for('admin.archers') }}"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
-                  {% if request.endpoint == 'admin.archers' %}bg-green-50 text-green-800{% else %}text-gray-700 hover:bg-gray-100{% endif %}
-                  transition-colors">
+           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+                  {% if request.endpoint == 'admin.archers' %}bg-green-50 text-green-800{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
             Arqueros
         </a>
 
-        <!-- Configuración -->
+        <!-- Club -->
         <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 pt-4 pb-1">Club</p>
-
         <a href="{{ url_for('admin.club_settings') }}"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
-                  {% if request.endpoint == 'admin.club_settings' %}bg-green-50 text-green-800{% else %}text-gray-700 hover:bg-gray-100{% endif %}
-                  transition-colors">
+           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+                  {% if request.endpoint == 'admin.club_settings' %}bg-green-50 text-green-800{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
             Configuración del Club
         </a>
-
-        <!-- Noticias -->
         <a href="{{ url_for('admin.news') }}"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
-                  {% if request.endpoint == 'admin.news' %}bg-green-50 text-green-800{% else %}text-gray-700 hover:bg-gray-100{% endif %}
-                  transition-colors">
+           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+                  {% if request.endpoint == 'admin.news' %}bg-green-50 text-green-800{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 12h6m-3-4h.01"/>
             </svg>
             Gestor de Noticias
         </a>
 
-        <!-- Divider -->
+        <!-- Stats -->
         <div class="border-t border-gray-100 mt-4 pt-4">
             <a href="{{ url_for('stats.ranking_view') }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
@@ -126,8 +110,24 @@
                 Ranking Global
             </a>
         </div>
-
     </nav>
+
+    <!-- Cerrar sesión al fondo del sidebar -->
+    <div class="p-4 border-t border-gray-100">
+        {% if session.get("admin_username") %}
+        <p class="text-xs text-gray-400 px-3 mb-2">{{ session.admin_username }}</p>
+        {% endif %}
+        <form method="POST" action="{{ url_for('admin.logout') }}">
+            <button type="submit"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                           text-red-600 hover:bg-red-50 transition-colors">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                </svg>
+                Cerrar sesión
+            </button>
+        </form>
+    </div>
 </aside>
 
 <!-- ── Main content ── -->

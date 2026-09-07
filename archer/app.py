@@ -14,16 +14,14 @@ from flask import Flask
 
 from archer.config import Config
 
+# Configurar root logger — captura todos los loggers del proyecto en Vercel
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.INFO,
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    force=True,
+)
 logger = logging.getLogger(__name__)
-
-# Configurar logging básico para que los logs se envíen a stdout (necesario en Vercel)
-if not logger.handlers:
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
 
 
 def create_app(config_object: object = Config) -> Flask:

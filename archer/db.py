@@ -1,13 +1,5 @@
 """
 DB_Module — conexión singleton e inicialización de tablas.
-
-Implementa:
-  - get_connection(): patrón singleton vía app.config['DB_CONN'].
-      * Si TURSO_DATABASE_URL y TURSO_AUTH_TOKEN están definidas, intenta
-        conectar a Turso con turso_serverless (HTTP, sin conexiones persistentes).
-      * Si las variables no están definidas, usa sqlite3.
-      * Si la conexión Turso falla, usa SQLite en /tmp como fallback (DATOS NO PERSISTIRÁN).
-  - init_db(conn): ejecuta los cinco CREATE TABLE IF NOT EXISTS del esquema.
 """
 
 import logging
@@ -17,7 +9,22 @@ import sys
 
 from flask import current_app
 
+# Logging al root para que Vercel capture todos los mensajes independientemente del handler
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.INFO,
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    force=True,
+)
 logger = logging.getLogger(__name__)
+
+# Import al nivel del módulo para evitar overhead y detectar fallo de instalación al arrancar
+try:
+    import turso_serverless as _turso  # type: ignore
+    logger.info("turso_serverless disponible, versión: %s", getattr(_turso, "__version__", "?"))
+except ImportError:
+    _turso = None  # type: ignore
+    logger.warning("turso_serverless no está instalado — se usará SQLite como fallback")
 
 # ---------------------------------------------------------------------------
 # Helpers internos
@@ -26,20 +33,18 @@ logger = logging.getLogger(__name__)
 
 def _connect_turso(url: str, token: str):
     """Conecta a Turso con turso_serverless (DB-API 2.0 nativo). Retorna la conexión o None."""
-    try:
-        import turso_serverless  # type: ignore
-    except ImportError as exc:
-        logger.error("turso_serverless no está instalado: %s", exc)
+    if _turso is None:
+        logger.error("turso_serverless no disponible")
         return None
 
+    logger.info("Llamando a turso_serverless.connect...")
     try:
-        conn = turso_serverless.connect(url, auth_token=token)
-        # Configurar row_factory para que dict(row) funcione igual que con sqlite3
-        conn.row_factory = turso_serverless.Row
-        logger.info("Conexión a Turso establecida.")
+        conn = _turso.connect(url, auth_token=token)
+        conn.row_factory = _turso.Row
+        logger.info("turso_serverless.connect OK — tipo: %s", type(conn).__name__)
         return conn
     except Exception as exc:
-        logger.error("Error al conectar a Turso: %s", exc, exc_info=True)
+        logger.error("turso_serverless.connect falló: %s", exc, exc_info=True)
         return None
 
 
@@ -58,28 +63,31 @@ def _connect_sqlite() -> sqlite3.Connection:
 
 def get_connection():
     """Retorna la conexión activa (Turso o SQLite). Patrón singleton."""
+    logger.info("get_connection() llamada")
     conn = current_app.config.get("DB_CONN")
     if conn is not None:
+        logger.info("Reutilizando conexión existente: %s", type(conn).__name__)
         return conn
 
     turso_url = os.environ.get("TURSO_DATABASE_URL")
     turso_token = os.environ.get("TURSO_AUTH_TOKEN")
+    logger.info("TURSO_URL presente=%s, TURSO_TOKEN presente=%s", bool(turso_url), bool(turso_token))
 
     if turso_url and turso_token:
-        logger.info("Conectando a Turso: %s", turso_url)
+        logger.info("Intentando conectar a Turso...")
         conn = _connect_turso(turso_url, turso_token)
         if conn is None:
-            logger.error("Turso falló — usando SQLite /tmp como fallback. DATOS NO PERSISTIRÁN.")
+            logger.error("_connect_turso retornó None — fallback a SQLite /tmp")
             conn = _connect_sqlite()
         else:
-            logger.info("Conexión a Turso establecida correctamente.")
+            logger.info("Conexión Turso lista: %s", type(conn).__name__)
     else:
-        logger.info("Variables de entorno Turso no definidas. Usando SQLite local.")
+        logger.info("Sin credenciales Turso — usando SQLite /tmp")
         conn = _connect_sqlite()
 
+    logger.info("Guardando conexión en app.config: %s", type(conn).__name__)
     current_app.config["DB_CONN"] = conn
     return conn
-
 
 def init_db(conn) -> None:
     """Ejecuta los cinco CREATE TABLE IF NOT EXISTS del esquema KiroArchery.

@@ -25,84 +25,22 @@ logger = logging.getLogger(__name__)
 
 
 def _connect_turso(url: str, token: str):
-    """Intenta conectar a Turso con turso_serverless. Retorna un wrapper compatible con sqlite3."""
+    """Conecta a Turso con turso_serverless (DB-API 2.0 nativo). Retorna la conexión o None."""
     try:
         import turso_serverless  # type: ignore
-        logger.info("turso_serverless importado correctamente.")
     except ImportError as exc:
         logger.error("turso_serverless no está instalado: %s", exc)
         return None
 
     try:
-        logger.info("Conectando a Turso: %s", url[:40] + "...")
-        # turso_serverless.connect() usa HTTP y no mantiene conexiones persistentes
-        # Ideal para serverless como Vercel
         conn = turso_serverless.connect(url, auth_token=token)
-        logger.info("Conexión a Turso establecida con turso_serverless.")
-        return _TursoClientWrapper(conn)
+        # Configurar row_factory para que dict(row) funcione igual que con sqlite3
+        conn.row_factory = turso_serverless.Row
+        logger.info("Conexión a Turso establecida.")
+        return conn
     except Exception as exc:
         logger.error("Error al conectar a Turso: %s", exc, exc_info=True)
-        import traceback
-        logger.error("Traceback: %s", traceback.format_exc())
         return None
-
-
-class _TursoClientWrapper:
-    """Wrapper para turso_serverless.Connection para que se comporte como sqlite3.Connection."""
-
-    def __init__(self, conn):
-        self._conn = conn
-
-    def execute(self, query, params=None):
-        """Ejecuta una consulta y retorna un cursor compatible con sqlite3."""
-        # turso_serverless no soporta params, necesito interpolación manual
-        # O usar prepare statement si está disponible
-        if params:
-            # Para ahora, usar execute con query directo (sin params)
-            result = self._conn.execute(query)
-        else:
-            result = self._conn.execute(query)
-        return _TursoCursorWrapper(result)
-
-    def commit(self):
-        """Commit es automático en Turso, pero lo necesitamos para compatibilidad."""
-        pass
-
-    def close(self):
-        """Cerrar la conexión."""
-        self._conn.close()
-
-
-class _TursoCursorWrapper:
-    """Wrapper para turso_serverless result para que se comporte como sqlite3.Cursor."""
-
-    def __init__(self, result):
-        self._result = result
-        # turso_serverless devuelve filas como tuples o dicts?
-        # Necesito verificar la estructura
-        self._rows = list(result)  # Convertir a lista para iterar múltiples veces
-        self._index = 0
-
-    def fetchone(self):
-        """Retorna la siguiente fila o None."""
-        if self._index >= len(self._rows):
-            return None
-        row = self._rows[self._index]
-        self._index += 1
-        return row
-
-    def fetchall(self):
-        """Retorna todas las filas restantes."""
-        remaining = self._rows[self._index:]
-        self._index = len(self._rows)
-        return remaining
-
-    def __iter__(self):
-        return iter(self._rows)
-
-    def __getattr__(self, name):
-        """Delegar otros atributos al result original."""
-        return getattr(self._result, name)
 
 
 def _connect_sqlite() -> sqlite3.Connection:

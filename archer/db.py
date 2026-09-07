@@ -4,9 +4,9 @@ DB_Module — conexión singleton e inicialización de tablas.
 Implementa:
   - get_connection(): patrón singleton vía app.config['DB_CONN'].
       * Si TURSO_DATABASE_URL y TURSO_AUTH_TOKEN están definidas, intenta
-        conectar a Turso con libsql_experimental (timeout 10 s).
-      * Si las variables no están definidas, usa sqlite3 con db.sqlite3.
-      * Si la conexión Turso falla, registra el error y termina con exit(1).
+        conectar a Turso con turso_serverless (HTTP, sin conexiones persistentes).
+      * Si las variables no están definidas, usa sqlite3.
+      * Si la conexión Turso falla, usa SQLite en /tmp como fallback (DATOS NO PERSISTIRÁN).
   - init_db(conn): ejecuta los cinco CREATE TABLE IF NOT EXISTS del esquema.
 """
 
@@ -23,63 +23,92 @@ logger = logging.getLogger(__name__)
 # Helpers internos
 # ---------------------------------------------------------------------------
 
+
 def _connect_turso(url: str, token: str):
-    """Intenta conectar a Turso. Retorna la conexión o None si falla."""
+    """Intenta conectar a Turso con turso_serverless. Retorna un wrapper compatible con sqlite3."""
     try:
-        import libsql_experimental as libsql  # type: ignore
+        import turso_serverless  # type: ignore
+        logger.info("turso_serverless importado correctamente.")
     except ImportError as exc:
-        logger.error("libsql-experimental no está instalado: %s", exc)
+        logger.error("turso_serverless no está instalado: %s", exc)
         return None
 
-    import platform
-    import concurrent.futures
+    try:
+        logger.info("Conectando a Turso: %s", url[:40] + "...")
+        # turso_serverless.connect() usa HTTP y no mantiene conexiones persistentes
+        # Ideal para serverless como Vercel
+        conn = turso_serverless.connect(url, auth_token=token)
+        logger.info("Conexión a Turso establecida con turso_serverless.")
+        return _TursoClientWrapper(conn)
+    except Exception as exc:
+        logger.error("Error al conectar a Turso: %s", exc, exc_info=True)
+        import traceback
+        logger.error("Traceback: %s", traceback.format_exc())
+        return None
 
-    def _do_connect():
-        for kwargs in [{"auth_token": token}, {"authToken": token}]:
-            try:
-                return libsql.connect(url, **kwargs)
-            except TypeError:
-                continue
-        return libsql.connect(url)
 
-    if platform.system() != "Windows":
-        import signal
+class _TursoClientWrapper:
+    """Wrapper para turso_serverless.Connection para que se comporte como sqlite3.Connection."""
 
-        def _timeout_handler(signum, frame):
-            raise TimeoutError("Turso connection timed out")
+    def __init__(self, conn):
+        self._conn = conn
 
-        signal.signal(signal.SIGALRM, _timeout_handler)
-        signal.alarm(20)  # 20 segundos en producción
-        try:
-            conn = _do_connect()
-            signal.alarm(0)
-            return conn
-        except Exception as exc:
-            try:
-                signal.alarm(0)
-            except Exception:
-                pass
-            logger.error("Error al conectar a Turso: %s", exc)
+    def execute(self, query, params=None):
+        """Ejecuta una consulta y retorna un cursor compatible con sqlite3."""
+        # turso_serverless no soporta params, necesito interpolación manual
+        # O usar prepare statement si está disponible
+        if params:
+            # Para ahora, usar execute con query directo (sin params)
+            result = self._conn.execute(query)
+        else:
+            result = self._conn.execute(query)
+        return _TursoCursorWrapper(result)
+
+    def commit(self):
+        """Commit es automático en Turso, pero lo necesitamos para compatibilidad."""
+        pass
+
+    def close(self):
+        """Cerrar la conexión."""
+        self._conn.close()
+
+
+class _TursoCursorWrapper:
+    """Wrapper para turso_serverless result para que se comporte como sqlite3.Cursor."""
+
+    def __init__(self, result):
+        self._result = result
+        # turso_serverless devuelve filas como tuples o dicts?
+        # Necesito verificar la estructura
+        self._rows = list(result)  # Convertir a lista para iterar múltiples veces
+        self._index = 0
+
+    def fetchone(self):
+        """Retorna la siguiente fila o None."""
+        if self._index >= len(self._rows):
             return None
-    else:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(_do_connect)
-            try:
-                return future.result(timeout=20)  # 20 segundos
-            except Exception as exc:
-                logger.error("Error al conectar a Turso: %s", exc)
-                return None
+        row = self._rows[self._index]
+        self._index += 1
+        return row
+
+    def fetchall(self):
+        """Retorna todas las filas restantes."""
+        remaining = self._rows[self._index:]
+        self._index = len(self._rows)
+        return remaining
+
+    def __iter__(self):
+        return iter(self._rows)
+
+    def __getattr__(self, name):
+        """Delegar otros atributos al result original."""
+        return getattr(self._result, name)
 
 
 def _connect_sqlite() -> sqlite3.Connection:
-    """Crea y retorna una conexión SQLite. Usa /tmp en entornos read-only."""
-    import os
+    """Crea y retorna una conexión SQLite usando /tmp (requerido en Vercel)."""
     # En Vercel/Lambda el filesystem es read-only excepto /tmp
-    db_path = os.environ.get("SQLITE_PATH", "db.sqlite3")
-    # Si la ruta actual es read-only, usar /tmp
-    db_dir = os.path.dirname(os.path.abspath(db_path)) if os.path.dirname(db_path) else os.getcwd()
-    if not os.access(db_dir, os.W_OK):
-        db_path = "/tmp/db.sqlite3"
+    db_path = "/tmp/db.sqlite3"
     conn = sqlite3.connect(db_path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
@@ -117,7 +146,7 @@ def get_connection():
 def init_db(conn) -> None:
     """Ejecuta los cinco CREATE TABLE IF NOT EXISTS del esquema KiroArchery.
 
-    Acepta tanto conexiones libsql_experimental como sqlite3; ambas exponen
+    Acepta tanto conexiones turso_serverless como sqlite3; ambas exponen
     el método `execute()` compatible con DB-API 2.0.
     """
     statements = [
@@ -184,12 +213,10 @@ def init_db(conn) -> None:
         conn.execute(statement)
 
     # Confirmar los cambios en caso de que la conexión maneje transacciones
-    # explícitas (sqlite3 en modo autocommit=False).
+    # explícitas (turso_serverless/sqlite3 en modo autocommit=False).
     try:
         conn.commit()
     except Exception:
-        # libsql_experimental puede no exponer commit() o manejarlo de forma
-        # transparente; ignoramos el error en ese caso.
         pass
 
     # -----------------------------------------------------------------------

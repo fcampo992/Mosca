@@ -8,12 +8,22 @@ Vercel uses the `app` variable at module level as the WSGI entrypoint.
 from __future__ import annotations
 
 import logging
+import sys
 
 from flask import Flask
 
 from archer.config import Config
 
 logger = logging.getLogger(__name__)
+
+# Configurar logging básico para que los logs se envíen a stdout (necesario en Vercel)
+if not logger.handlers:
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
 
 
 def create_app(config_object: object = Config) -> Flask:
@@ -44,11 +54,15 @@ def create_app(config_object: object = Config) -> Flask:
             return
         try:
             from archer.db import get_connection, init_db  # noqa: PLC0415
+            logger.info("Inicializando base de datos...")
             conn = get_connection()
+            logger.info("Conexión obtenida correctamente.")
             init_db(conn)
+            logger.info("Base de datos inicializada correctamente.")
             _db_initialized = True
         except Exception as exc:
             logger.error("Error inicializando DB: %s", exc)
+            logger.exception("Stack trace:")
 
     # ── Context processors ────────────────────────────────────────────────────
     @app.context_processor

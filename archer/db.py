@@ -26,6 +26,20 @@ except ImportError:
     _turso = None  # type: ignore
     logger.warning("turso_serverless no está instalado — se usará SQLite como fallback")
 
+
+class _DictRow(dict):
+    """Row compatible con sqlite3.Row: soporta dict(row), row['col'] y row[idx]."""
+
+    def __init__(self, cursor, row):
+        keys = [col[0] for col in cursor.description]
+        super().__init__(zip(keys, row))
+        self._data = row
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self._data[key]
+        return super().__getitem__(key)
+
 # ---------------------------------------------------------------------------
 # Helpers internos
 # ---------------------------------------------------------------------------
@@ -40,7 +54,8 @@ def _connect_turso(url: str, token: str):
     logger.info("Llamando a turso_serverless.connect...")
     try:
         conn = _turso.connect(url, auth_token=token)
-        conn.row_factory = _turso.Row
+        # _DictRow: soporta dict(row), row['col'] Y row[idx] — compatible con todo el código
+        conn.row_factory = _DictRow
         logger.info("turso_serverless.connect OK — tipo: %s", type(conn).__name__)
         return conn
     except Exception as exc:

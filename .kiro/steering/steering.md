@@ -25,30 +25,31 @@ archer/
     club.py       — Branding del club (club_settings)
     news.py       — Noticias/ticker
     scoring.py    — Lógica de puntajes
-    stats.py      — Estadísticas y ranking
+    stats.py      — Estadísticas, ranking, archer_kpis(), archer_history(), archer_trend()
   routes/
-    admin_routes.py       — Blueprint /admin
-    archer_routes.py      — Blueprint /archer
+    admin_routes.py       — Blueprint /admin (incluye tournament_detail con tabs)
+    archer_routes.py      — Blueprint /archer (incluye /archer/dashboard)
     leaderboard_routes.py — Blueprint /leaderboard (SSE)
     stats_routes.py       — Blueprint /stats
   templates/
-    admin/base_admin.html       — Layout con sidebar + navbar sólido
-    admin/login.html            — Página standalone (sin sidebar)
-    admin/tournaments.html      — Lista de torneos (modal+FAB)
+    admin/base_admin.html       — Layout con sidebar + navbar sólido (color_from) + Salir en sidebar
+    admin/login.html            — Página standalone (sin sidebar, sin footer)
+    admin/tournaments.html      — Lista torneos (modal+FAB)
     admin/tournament_detail.html — Detalle con tabs (Categorías/Arqueros/Acciones)
-    admin/archers.html          — Lista de arqueros (modal+FAB, inscripción colapsable)
+    admin/archers.html          — Lista arqueros (modal+FAB, inscripción colapsable)
     admin/news.html             — Gestor de noticias
-    admin/club_settings.html    — Branding con preview en vivo
+    admin/club_settings.html    — Branding con preview sticky, presets color, sticky save bar
     admin/edit_archer.html      — Editar nombre y PIN
     admin/enrolled_archers.html — Arqueros de un torneo
-    admin/categories.html       — Categorías (legacy, mantener para fallback)
-    archer/login.html           — Teclado PIN táctil
-    archer/score.html           — Teclado de flechas + modal confirmación
+    admin/categories.html       — Categorías (legacy)
+    archer/login.html           — Teclado PIN táctil (extiende base.html, sin nav en header)
+    archer/score.html           — Teclado de flechas + modal (standalone, sin base.html)
+    archer/dashboard.html       — Dashboard personal: KPIs, banner torneo, historial, chart
     stats/ranking.html          — Ranking global con podio
     stats/tournament.html       — Estadísticas de torneo con gráfico
     stats/trend.html            — Historial de un arquero
-    base.html                   — Layout público (sin sidebar)
-    home.html                   — Página de inicio pública
+    base.html                   — Layout público (sin footer, avatar/dropdown si archer_logged, bottom nav)
+    home.html                   — Página standalone (drawer hamburguesa, banner descartable)
 api/index.py      — Entrypoint Vercel
 pyproject.toml    — Dependencias para Vercel (uv)
 requirements.txt  — Dependencias para dev local
@@ -59,29 +60,50 @@ requirements.txt  — Dependencias para dev local
 ### Principios
 - **Mobile-first:** botones grandes (mín. 44px), teclado táctil, FAB en móvil
 - **Contenido sobre creación:** los listados son el elemento principal, los formularios van en modales
-- **Minimalista:** sin textos de ayuda innecesarios, sin gradientes en navbar
+- **Minimalista:** sin textos de ayuda innecesarios, sin gradientes en navbar, sin footers
+- **Sin footers:** ningún template tiene footer
+
+### Layouts disponibles
+
+#### `admin/base_admin.html` — Panel admin
+- Navbar color sólido: `style="background-color: {{ club.color_from }}"` (sin gradiente)
+- Sidebar con nav items y botón Salir al pie con ícono logout
+- Sin footer
+- Ítem activo: `bg-green-50 text-green-800` / hover: `hover:bg-gray-100`
+
+#### `base.html` — Páginas públicas y del arquero
+- Header con `background-color: {{ club.color_from }}`
+- Si `session.archer_id`: avatar con dropdown (Mi Dashboard / Cargar flechas / Cerrar sesión)
+- Si no hay sesión: botones Admin (tenue) + Ingresar PIN
+- `{% block header_nav %}` sobreescribible para suprimir el nav (usado en `archer/login.html`)
+- Bottom nav fija si hay `session.archer_id`: Inicio / Competencia / Historial
+- Sin footer
+- `pb-24` automático en `<main>` si hay bottom nav
+
+#### `home.html` — Standalone (no extiende base.html)
+- Tiene su propio header con hamburguesa
+- Drawer lateral con: Inicio → Ranking → Leaderboard activo → Ingresar como Arquero (CTA) → Panel Admin (🔒)
+- Banner de anuncio estático descartable (Alpine.js `bannerVisible`)
+- Widget clima condicional: `x-show="ready"`, solo aparece si geolocalización funciona
+
+#### `admin/login.html` — Standalone (no extiende nada)
+- Página centrada, sin sidebar, sin footer
 
 ### Componentes reutilizables
 
 #### Modal / Offcanvas (Alpine.js)
 ```html
-<!-- Disparo desde botón -->
 <button @click="$dispatch('open-NOMBRE-modal')">...</button>
 
-<!-- Estructura del modal -->
 <div x-data="{ open: false }" @open-NOMBRE-modal.window="open = true"
      x-show="open" x-cloak class="fixed inset-0 z-50 flex items-end sm:items-center ...">
-  <!-- Backdrop -->
-  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="open = false"
-       x-transition:...></div>
-  <!-- Panel: slide desde abajo en móvil, centrado en desktop -->
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="open = false"></div>
   <div class="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl ..."
-       x-transition:enter-start="translate-y-full sm:translate-y-4 opacity-0" ...>
+       x-transition:enter-start="translate-y-full sm:translate-y-4 opacity-0">
     <!-- Handle móvil -->
     <div class="flex justify-center pt-3 pb-1 sm:hidden">
       <div class="w-10 h-1.5 bg-gray-200 rounded-full"></div>
     </div>
-    <!-- Contenido del modal -->
   </div>
 </div>
 ```
@@ -92,23 +114,20 @@ requirements.txt  — Dependencias para dev local
         class="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full
                bg-green-700 text-white shadow-lg flex items-center justify-center
                transition-colors lg:hidden">
-  <svg .../>
-</button>
 ```
 
-#### Stepper (Alpine.js)
+#### Stepper (Alpine.js) — para campos numéricos
 ```html
 <div x-data="stepper(VALOR_INICIAL, MIN, MAX)"
      class="flex items-center border border-gray-200 rounded-xl overflow-hidden">
-  <button type="button" @click="dec()" class="w-12 h-11 ... text-xl font-light select-none">−</button>
+  <button type="button" @click="dec()" class="w-12 h-11 text-xl font-light select-none">−</button>
   <input type="number" name="CAMPO" :value="val" x-model="val"
          class="flex-1 text-center text-sm font-semibold border-0 focus:outline-none h-11" />
-  <button type="button" @click="inc()" class="w-12 h-11 ... text-xl font-light select-none">+</button>
+  <button type="button" @click="inc()" class="w-12 h-11 text-xl font-light select-none">+</button>
 </div>
-
 <script>
 function stepper(initial, min, max) {
-  return { val: parseInt(initial) || min, inc() { if (this.val < max) this.val++; }, dec() { if (this.val > min) this.val--; } };
+  return { val: parseInt(initial)||min, inc(){if(this.val<max)this.val++;}, dec(){if(this.val>min)this.val--;} };
 }
 </script>
 ```
@@ -118,20 +137,20 @@ function stepper(initial, min, max) {
 <div x-data="{ tab: 'tab1' }">
   <div class="flex border-b border-gray-200 mb-5 gap-1">
     <button @click="tab = 'tab1'"
-            :class="tab === 'tab1' ? 'border-b-2 border-green-600 text-green-700 font-semibold' : 'text-gray-500'"
+            :class="tab==='tab1' ? 'border-b-2 border-green-600 text-green-700 font-semibold' : 'text-gray-500'"
             class="px-4 py-2.5 text-sm transition-colors">Tab 1</button>
   </div>
   <div x-show="tab === 'tab1'" x-cloak>...</div>
 </div>
 ```
 
-#### Badge de estado
+#### Badge de estado del torneo
 ```html
 <!-- En curso -->
 <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-700">
   <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse inline-block"></span>En curso
 </span>
-<!-- Próximo -->
+<!-- Próximo (created) -->
 <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600">Próximo</span>
 <!-- Finalizado -->
 <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Finalizado</span>
@@ -144,10 +163,10 @@ function stepper(initial, min, max) {
               {% if field == 'campo' %}border-red-400 bg-red-50{% endif %}" />
 ```
 
-#### Tarjeta de item en lista
+#### Tarjeta de item en lista (clicable)
 ```html
-<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4
-            hover:border-green-300 hover:shadow-md transition-all duration-150">
+<a href="..." class="block bg-white rounded-2xl shadow-sm border border-gray-100 p-4
+                     hover:border-green-300 hover:shadow-md transition-all duration-150">
 ```
 
 #### Botón primario
@@ -165,28 +184,18 @@ function stepper(initial, min, max) {
 </div>
 ```
 
-### Formateo de fechas en Jinja2
+#### Formateo de fechas en Jinja2
 ```jinja2
 {% set meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'] %}
 {% set partes = t.date.split('-') if t.date else [] %}
 {% set fecha_legible = (partes[2]|int)|string + ' ' + meses[(partes[1]|int) - 1] + ', ' + partes[0] if partes|length == 3 else t.date %}
 ```
 
-### Navbar (`base_admin.html`)
-- Color sólido: `style="background-color: {{ club.color_from }}"` (sin gradiente)
-- Sin botón Salir en el header — está al pie del sidebar con ícono de logout
-- Username visible solo en el sidebar
-
-### Panel lateral (`base_admin.html`)
-- Cerrar sesión al fondo del `<aside>` dentro de `<div class="p-4 border-t border-gray-100">`
-- Ítem activo: `bg-green-50 text-green-800`
-- Ítem hover: `hover:bg-gray-100`
-
 ---
 
 ## Conexión a Base de Datos (`archer/db.py`)
 
-- `turso_serverless` se importa a nivel de módulo (no lazy) para detectar fallos al arrancar
+- `turso_serverless` se importa a nivel de módulo (no lazy)
 - `_DictRow` es el row_factory para Turso: soporta `dict(row)`, `row['col']` y `row[0]`
 - `sqlite3.Row` para conexiones locales
 - Singleton en `current_app.config["DB_CONN"]`
@@ -208,9 +217,12 @@ function stepper(initial, min, max) {
 
 1. **`pyproject.toml` es la fuente de verdad para Vercel** — uv lo lee e ignora `requirements.txt`
 2. **`turso-serverless` en lugar de `libsql-experimental`** — HTTP puro, sin conexiones persistentes
-3. **`_DictRow` row_factory** — `turso_serverless.Row.__iter__` itera valores (no key-value), `dict(row)` producía `{0: val}`. `_DictRow(dict)` resuelve soportando los tres modos de acceso
+3. **`_DictRow` row_factory** — `turso_serverless.Row.__iter__` itera valores (no key-value). `_DictRow(dict)` resuelve soportando los tres modos de acceso
 4. **Logging root con `basicConfig(force=True)`** — Flask sobreescribe handlers; `force=True` garantiza captura en Vercel
-5. **Vista detalle de torneo** — `/admin/tournaments/<id>` con tabs reemplaza la navegación fragmentada por botones separados
+5. **Vista detalle de torneo** — `/admin/tournaments/<id>` con tabs reemplaza botones separados
+6. **Dashboard del arquero** — `/archer/dashboard` con `archer_kpis()` y `archer_history()` en `stats.py`
+7. **`home.html` standalone** — no extiende `base.html` porque tiene su propio drawer y lógica de sesión dual (arquero/público)
+8. **`archer/score.html` standalone** — layout full-screen sin header/footer para la pantalla de tiro
 
 ## Schema de Base de Datos
 
@@ -224,9 +236,9 @@ news           (id, title, content, active, created_at)
 club_settings  (id, club_name, hero_title, hero_subtitle, ticker_text, color_from, color_to, updated_at)
 ```
 
-## Estado actual del proyecto
+## Estado Actual del Proyecto
 
 - Deploy en Vercel funcionando: `mosca-bice.vercel.app`
 - Turso conectado con `_DictRow` row_factory
-- UI modernizada: modal+FAB en torneos y arqueros, tabs en detalle de torneo, navbar sólido, Salir en sidebar
-- Commit más reciente: `784cc9d`
+- UI completamente modernizada con design system consistente
+- Último commit: `c7295fe` — fix: quitar footer de base.html, block header_nav para login del arquero

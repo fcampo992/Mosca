@@ -1,12 +1,9 @@
 {% extends "admin/base_admin.html" %}
-{% block title %}Configuración del Club — KiroArchery{% endblock %}
+{% block title %}Configuración del Club — {{ club_settings().club_name }}{% endblock %}
 
 {% block content %}
-<div class="mb-6">
-    <h1 class="text-2xl font-bold">Configuración del Club</h1>
-    <p class="text-sm text-gray-500 mt-1">Personalizá la apariencia de la Home para tu club.</p>
-</div>
 
+{# Estado de éxito (arriba, fuera del layout de dos columnas) #}
 {% if success %}
 <div class="mb-5 flex items-center gap-2 bg-green-50 border border-green-200 text-green-800
             text-sm rounded-xl px-4 py-3">
@@ -17,177 +14,231 @@
 </div>
 {% endif %}
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<h1 class="text-2xl font-bold mb-1">Configuración del Club</h1>
+<p class="text-sm text-gray-400 mb-6">Personalizá la apariencia de la Home para tu club.</p>
 
-    <!-- Formulario -->
-    <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <form method="POST" action="{{ url_for('admin.club_settings') }}" novalidate>
+<form method="POST" action="{{ url_for('admin.club_settings') }}" novalidate
+      x-data="clubSettings()"
+      x-init="init()">
 
-            <!-- Nombre del club -->
-            <div class="mb-5">
-                <label for="club_name" class="block text-sm font-semibold mb-1">Nombre del club</label>
+{# ── Layout 2 columnas en desktop ── #}
+<div class="flex flex-col lg:flex-row gap-6 pb-20">
+
+    {# ── Columna izquierda: formulario ── #}
+    <div class="flex-1 min-w-0 space-y-5">
+
+        {# Nombre del club #}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Identidad</h2>
+
+            <div class="mb-4">
+                <label for="club_name" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Nombre del club <span class="text-red-500">*</span>
+                </label>
                 <input id="club_name" name="club_name" type="text" maxlength="100"
                        value="{{ settings.club_name }}"
-                       class="w-full border rounded-lg px-3 py-2 text-sm
-                              {% if field == 'club_name' %}border-red-500{% else %}border-gray-300{% endif %}
-                              focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent"
+                       @input="preview.club_name = $event.target.value"
+                       class="w-full border rounded-xl px-3 py-2.5 text-sm
+                              {% if field == 'club_name' %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}
+                              focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                        placeholder="Ej. Club Arqueros del Sur" required />
-                {% if field == 'club_name' %}
-                <p class="text-red-600 text-xs mt-1">{{ error }}</p>
-                {% endif %}
+                {% if field == 'club_name' %}<p class="text-red-600 text-xs mt-1">{{ error }}</p>{% endif %}
             </div>
 
-            <!-- Título hero -->
-            <div class="mb-5">
-                <label for="hero_title" class="block text-sm font-semibold mb-1">Título del hero</label>
+            <div class="mb-4">
+                <label for="hero_title" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Título del hero <span class="text-red-500">*</span>
+                </label>
                 <input id="hero_title" name="hero_title" type="text" maxlength="200"
                        value="{{ settings.hero_title }}"
-                       class="w-full border rounded-lg px-3 py-2 text-sm
-                              {% if field == 'hero_title' %}border-red-500{% else %}border-gray-300{% endif %}
-                              focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent"
-                       placeholder="Ej. Bienvenido al Club Arqueros del Sur" required />
-                {% if field == 'hero_title' %}
-                <p class="text-red-600 text-xs mt-1">{{ error }}</p>
-                {% endif %}
+                       @input="preview.hero_title = $event.target.value"
+                       class="w-full border rounded-xl px-3 py-2.5 text-sm
+                              {% if field == 'hero_title' %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}
+                              focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                       required />
+                {% if field == 'hero_title' %}<p class="text-red-600 text-xs mt-1">{{ error }}</p>{% endif %}
             </div>
 
-            <!-- Subtítulo hero -->
-            <div class="mb-5">
-                <label for="hero_subtitle" class="block text-sm font-semibold mb-1">Subtítulo del hero</label>
+            <div class="mb-4">
+                <label for="hero_subtitle" class="block text-sm font-medium text-gray-700 mb-1.5">Subtítulo</label>
                 <textarea id="hero_subtitle" name="hero_subtitle" rows="2" maxlength="300"
-                          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none
-                                 focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent"
-                          placeholder="Descripción breve que aparece bajo el título...">{{ settings.hero_subtitle }}</textarea>
+                          @input="preview.hero_subtitle = $event.target.value"
+                          class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none
+                                 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          placeholder="Descripción breve...">{{ settings.hero_subtitle }}</textarea>
             </div>
 
-            <!-- Texto marquesina -->
-            <div class="mb-5">
-                <label for="ticker_text" class="block text-sm font-semibold mb-1">Texto de la marquesina</label>
+            <div>
+                <label for="ticker_text" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Texto de anuncio
+                </label>
                 <input id="ticker_text" name="ticker_text" type="text" maxlength="500"
                        value="{{ settings.ticker_text }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent"
-                       placeholder="Ej. 🏹 Próximo torneo el 15 de marzo · ¡Inscribite ya!" />
-                <p class="text-xs text-gray-400 mt-1">Se desplaza en el banner superior de la Home.</p>
+                       @input="preview.ticker_text = $event.target.value"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                       placeholder="Ej. 🏹 Próximo torneo el 15 de marzo" />
+                <p class="text-xs text-gray-400 mt-1">Se muestra en el banner superior de la Home.</p>
+            </div>
+        </div>
+
+        {# Colores #}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Colores</h2>
+
+            {# Presets de color #}
+            <p class="text-xs font-medium text-gray-600 mb-2">Preajustes</p>
+            <div class="grid grid-cols-4 gap-2 mb-4">
+                <template x-for="preset in presets" :key="preset.name">
+                    <button type="button"
+                            @click="applyPreset(preset)"
+                            class="group flex flex-col items-center gap-1.5 p-2 rounded-xl
+                                   border-2 border-transparent hover:border-gray-300 transition-all"
+                            :class="isActivePreset(preset) ? 'border-gray-400 bg-gray-50' : ''">
+                        <div class="w-8 h-8 rounded-lg shadow-sm"
+                             :style="`background: linear-gradient(135deg, ${preset.from}, ${preset.to})`"></div>
+                        <span class="text-[9px] text-gray-500 font-medium text-center leading-tight"
+                              x-text="preset.name"></span>
+                    </button>
+                </template>
             </div>
 
-            <!-- Colores del gradiente -->
-            <div class="mb-6">
-                <p class="text-sm font-semibold mb-2">Gradiente del hero</p>
-                <div class="flex gap-4 items-center">
-                    <div class="flex-1">
-                        <label for="color_from" class="block text-xs text-gray-500 mb-1">Color inicial</label>
-                        <div class="flex items-center gap-2">
-                            <input id="color_from" name="color_from" type="color"
-                                   value="{{ settings.color_from }}"
-                                   class="w-10 h-10 rounded-lg border border-gray-200 cursor-pointer p-0.5"
-                                   oninput="updatePreview()" />
-                            <input type="text" id="color_from_text"
-                                   value="{{ settings.color_from }}"
-                                   maxlength="7"
-                                   class="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-mono
-                                          focus:outline-none focus:ring-2 focus:ring-green-600"
-                                   oninput="syncColor('from')"
-                                   placeholder="#166534" />
-                        </div>
-                        {% if field == 'color_from' %}
-                        <p class="text-red-600 text-xs mt-1">{{ error }}</p>
-                        {% endif %}
+            {# Inputs hex custom #}
+            <p class="text-xs font-medium text-gray-600 mb-3">Personalizado</p>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1.5">Color inicial</label>
+                    <div class="flex items-center gap-2">
+                        <input type="color"
+                               x-model="preview.color_from"
+                               class="w-10 h-10 rounded-lg border border-gray-200 cursor-pointer p-0.5 shrink-0" />
+                        <input type="text"
+                               :value="preview.color_from"
+                               @input="if (/^#[0-9a-fA-F]{6}$/.test($event.target.value)) preview.color_from = $event.target.value"
+                               maxlength="7"
+                               class="flex-1 border border-gray-200 rounded-xl px-2 py-2 text-xs font-mono
+                                      focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="#166534" />
                     </div>
-                    <div class="flex-1">
-                        <label for="color_to" class="block text-xs text-gray-500 mb-1">Color final</label>
-                        <div class="flex items-center gap-2">
-                            <input id="color_to" name="color_to" type="color"
-                                   value="{{ settings.color_to }}"
-                                   class="w-10 h-10 rounded-lg border border-gray-200 cursor-pointer p-0.5"
-                                   oninput="updatePreview()" />
-                            <input type="text" id="color_to_text"
-                                   value="{{ settings.color_to }}"
-                                   maxlength="7"
-                                   class="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-mono
-                                          focus:outline-none focus:ring-2 focus:ring-green-600"
-                                   oninput="syncColor('to')"
-                                   placeholder="#16a34a" />
-                        </div>
-                        {% if field == 'color_to' %}
-                        <p class="text-red-600 text-xs mt-1">{{ error }}</p>
-                        {% endif %}
+                    {# input hidden sincronizado para el submit #}
+                    <input type="hidden" name="color_from" :value="preview.color_from" />
+                    {% if field == 'color_from' %}<p class="text-red-600 text-xs mt-1">{{ error }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1.5">Color final</label>
+                    <div class="flex items-center gap-2">
+                        <input type="color"
+                               x-model="preview.color_to"
+                               class="w-10 h-10 rounded-lg border border-gray-200 cursor-pointer p-0.5 shrink-0" />
+                        <input type="text"
+                               :value="preview.color_to"
+                               @input="if (/^#[0-9a-fA-F]{6}$/.test($event.target.value)) preview.color_to = $event.target.value"
+                               maxlength="7"
+                               class="flex-1 border border-gray-200 rounded-xl px-2 py-2 text-xs font-mono
+                                      focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="#16a34a" />
                     </div>
+                    <input type="hidden" name="color_to" :value="preview.color_to" />
+                    {% if field == 'color_to' %}<p class="text-red-600 text-xs mt-1">{{ error }}</p>{% endif %}
                 </div>
             </div>
-
-            {% if error and not field %}
-            <p class="text-red-600 text-sm mb-4">{{ error }}</p>
-            {% endif %}
-
-            <button type="submit"
-                    class="w-full bg-green-700 text-white py-2.5 rounded-xl text-sm font-semibold
-                           hover:bg-green-800 active:bg-green-900 transition-colors">
-                Guardar configuración
-            </button>
-        </form>
-    </section>
-
-    <!-- Preview en vivo -->
-    <section>
-        <p class="text-sm font-semibold text-gray-600 mb-3">Preview del hero</p>
-        <div id="preview-hero"
-             class="rounded-2xl text-white px-6 py-10 text-center shadow-md transition-all duration-300"
-             style="background: linear-gradient(to bottom right, {{ settings.color_from }}, {{ settings.color_to }})">
-            <p id="preview-subtitle-label" class="text-xs font-bold uppercase tracking-widest mb-2 opacity-75">
-                Gestión de torneos
-            </p>
-            <h2 id="preview-title" class="text-2xl font-extrabold mb-2 leading-tight">
-                {{ settings.hero_title }}
-            </h2>
-            <p id="preview-subtitle" class="text-sm opacity-90 max-w-xs mx-auto">
-                {{ settings.hero_subtitle }}
-            </p>
         </div>
 
-        <p class="text-sm font-semibold text-gray-600 mt-5 mb-2">Preview de la marquesina</p>
-        <div class="rounded-xl overflow-hidden bg-gray-800 text-gray-200 text-xs py-2">
-            <div id="preview-ticker" class="px-4 truncate">
-                {{ settings.ticker_text }}
+        {% if error and not field %}
+        <p class="text-red-600 text-sm">{{ error }}</p>
+        {% endif %}
+
+    </div>{# /columna izquierda #}
+
+    {# ── Columna derecha: preview sticky (solo desktop) ── #}
+    <div class="w-full lg:w-80 shrink-0">
+        <div class="lg:sticky lg:top-20 space-y-4">
+
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Vista previa</p>
+
+            {# Preview hero #}
+            <div class="rounded-2xl text-white px-5 py-8 text-center shadow-sm transition-all duration-300"
+                 :style="`background: linear-gradient(to bottom right, ${preview.color_from}, ${preview.color_to})`">
+                <p class="text-xs font-bold uppercase tracking-widest mb-2 opacity-75">
+                    Gestión de torneos
+                </p>
+                <h2 class="text-xl font-extrabold mb-2 leading-tight" x-text="preview.hero_title"></h2>
+                <p class="text-xs opacity-90 max-w-xs mx-auto" x-text="preview.hero_subtitle"></p>
             </div>
+
+            {# Preview banner anuncio #}
+            <div class="rounded-xl text-white px-4 py-2.5 flex items-center gap-2 text-xs font-medium"
+                 :style="`background-color: ${preview.color_to}`">
+                <span class="shrink-0">📢</span>
+                <p class="flex-1 truncate" x-text="preview.ticker_text || '(sin anuncio)'"></p>
+                <span class="shrink-0 opacity-50">✕</span>
+            </div>
+
+            {# Preview navbar #}
+            <div class="rounded-xl text-white px-4 h-10 flex items-center gap-2 text-sm font-bold shadow-sm"
+                 :style="`background-color: ${preview.color_from}`">
+                <span>🏹</span>
+                <span x-text="preview.club_name || 'Nombre del club'"></span>
+            </div>
+
         </div>
+    </div>
 
-        <p class="text-xs text-gray-400 mt-4">
-            Los cambios se aplican inmediatamente en la Home al guardar.
-        </p>
-    </section>
+</div>{# /flex #}
 
+{# ── Sticky save bar ── #}
+<div class="fixed bottom-0 left-0 right-0 z-30 lg:pl-64">
+    <div class="bg-white/90 backdrop-blur-sm border-t border-gray-200 px-4 py-3
+                flex items-center justify-between max-w-4xl mx-auto">
+        <p class="text-xs text-gray-400 hidden sm:block">Los cambios se aplican en la Home al guardar.</p>
+        <button type="submit"
+                class="w-full sm:w-auto text-white font-semibold py-2.5 px-8 rounded-xl
+                       text-sm transition-colors"
+                :style="`background-color: ${preview.color_from}`">
+            Guardar configuración
+        </button>
+    </div>
 </div>
 
+</form>
+
 <script>
-function updatePreview() {
-    const from = document.getElementById('color_from').value;
-    const to   = document.getElementById('color_to').value;
-    document.getElementById('preview-hero').style.background =
-        'linear-gradient(to bottom right, ' + from + ', ' + to + ')';
-    document.getElementById('color_from_text').value = from;
-    document.getElementById('color_to_text').value   = to;
-}
+function clubSettings() {
+    return {
+        preview: {
+            club_name:    '{{ settings.club_name | e }}',
+            hero_title:   '{{ settings.hero_title | e }}',
+            hero_subtitle:'{{ settings.hero_subtitle | e }}',
+            ticker_text:  '{{ settings.ticker_text | e }}',
+            color_from:   '{{ settings.color_from }}',
+            color_to:     '{{ settings.color_to }}',
+        },
+        presets: [
+            { name: 'Verde Campo',     from: '#166534', to: '#16a34a' },
+            { name: 'Violeta Noche',   from: '#3b0764', to: '#7c3aed' },
+            { name: 'Azul Real',       from: '#1e3a8a', to: '#2563eb' },
+            { name: 'Rojo Pasión',     from: '#7f1d1d', to: '#dc2626' },
+            { name: 'Naranja Solar',   from: '#7c2d12', to: '#ea580c' },
+            { name: 'Índigo',          from: '#1e1b4b', to: '#4f46e5' },
+            { name: 'Rosa',            from: '#831843', to: '#ec4899' },
+            { name: 'Carbón',          from: '#111827', to: '#374151' },
+        ],
 
-function syncColor(dir) {
-    const textEl = document.getElementById('color_' + dir + '_text');
-    const pickerEl = document.getElementById('color_' + dir);
-    const val = textEl.value.trim();
-    if (/^#[0-9a-fA-F]{6}$/.test(val)) {
-        pickerEl.value = val;
-        updatePreview();
-    }
-}
+        init() {
+            // Sincronizar preview con los datos cargados desde el servidor
+        },
 
-// Live preview of title and subtitle
-document.getElementById('hero_title').addEventListener('input', function() {
-    document.getElementById('preview-title').textContent = this.value || 'Título del hero';
-});
-document.getElementById('hero_subtitle').addEventListener('input', function() {
-    document.getElementById('preview-subtitle').textContent = this.value || 'Subtítulo del hero';
-});
-document.getElementById('ticker_text').addEventListener('input', function() {
-    document.getElementById('preview-ticker').textContent = this.value || '...';
-});
+        applyPreset(preset) {
+            this.preview.color_from = preset.from;
+            this.preview.color_to   = preset.to;
+        },
+
+        isActivePreset(preset) {
+            return this.preview.color_from === preset.from &&
+                   this.preview.color_to   === preset.to;
+        },
+    };
+}
 </script>
+
 {% endblock %}

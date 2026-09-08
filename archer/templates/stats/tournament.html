@@ -1,40 +1,77 @@
 {% extends "base.html" %}
-{% block title %}Estadisticas del Torneo — KiroArchery{% endblock %}
+{% block title %}Estadísticas del torneo — KiroArchery{% endblock %}
 
 {% block content %}
-<div class="mb-4">
-    <a href="{{ url_for('admin.tournaments') }}"
-       class="text-sm text-green-700 hover:underline">&larr; Torneos</a>
-</div>
 
-<h1 class="text-2xl font-bold mb-6">Estadisticas del Torneo</h1>
+{# ── Encabezado ── #}
+<div class="flex items-center gap-3 mb-6">
+    <a href="{{ url_for('admin.tournament_detail', tournament_id=data.tournament_id) if data and data.tournament_id else url_for('admin.tournaments') }}"
+       class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+    </a>
+    <div>
+        <h1 class="text-xl font-bold text-gray-900">Estadísticas del torneo</h1>
+        {% if data and data.tournament_name %}
+        <p class="text-sm text-gray-400">{{ data.tournament_name }}</p>
+        {% endif %}
+    </div>
+</div>
 
 {% if data and data.archers %}
 
-{# ── Grafico de barras — evolucion por ronda (Req 10.4) ─────────────── #}
-<section class="bg-white rounded-2xl shadow p-5 mb-8">
-    <h2 class="text-base font-semibold mb-4">Evolucion por ronda</h2>
-    <canvas id="roundChart" aria-label="Grafico de evolucion por ronda"></canvas>
+{# ── Métricas resumen por arquero ── #}
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+    {% for archer in data.archers %}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 rounded-full bg-green-100 border-2 border-green-200
+                        flex items-center justify-center text-green-700 font-bold text-sm shrink-0">
+                {{ archer.name[0] | upper }}
+            </div>
+            <p class="font-semibold text-sm text-gray-800 truncate">{{ archer.name }}</p>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+            <div class="bg-gray-50 rounded-xl p-3 text-center">
+                <p class="text-xl font-black text-green-700">{{ archer.avg_points_per_arrow }}</p>
+                <p class="text-[10px] text-gray-400 mt-0.5 uppercase tracking-wide">Prom/flecha</p>
+            </div>
+            <div class="bg-gray-50 rounded-xl p-3 text-center">
+                <p class="text-xl font-black text-blue-600">{{ archer.top_zone_percentage }}%</p>
+                <p class="text-[10px] text-gray-400 mt-0.5 uppercase tracking-wide">Zona alta</p>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{# ── Gráfico evolución por ronda ── #}
+<section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
+    <h2 class="text-sm font-semibold text-gray-600 mb-4">Evolución por ronda</h2>
+    <canvas id="roundChart" aria-label="Gráfico de evolución por ronda" height="200"></canvas>
 </section>
 
-{# ── Tabla de metricas por arquero (Req 7.1, 7.2) ─────────────────────── #}
-<section class="mb-8">
-    <h2 class="text-base font-semibold mb-3">Metricas por arquero</h2>
-    <div class="overflow-x-auto rounded-xl shadow">
-        <table class="w-full text-sm bg-white">
-            <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+{# ── Tabla detallada ── #}
+<section class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-4 py-3 border-b border-gray-100">
+        <h2 class="text-sm font-semibold text-gray-700">Métricas por arquero</h2>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b border-gray-100">
                 <tr>
-                    <th class="px-3 py-2 text-left">Arquero</th>
-                    <th class="px-3 py-2 text-right">Promedio / flecha</th>
-                    <th class="px-3 py-2 text-right">% Zona alta</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Arquero</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Prom / flecha</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">% Zona alta</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody class="divide-y divide-gray-50">
                 {% for archer in data.archers %}
-                <tr class="border-t border-gray-100">
-                    <td class="px-3 py-2.5 font-semibold">{{ archer.name }}</td>
-                    <td class="px-3 py-2.5 text-right">{{ archer.avg_points_per_arrow }}</td>
-                    <td class="px-3 py-2.5 text-right">{{ archer.top_zone_percentage }}%</td>
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-4 py-3 font-medium text-gray-900">{{ archer.name }}</td>
+                    <td class="px-4 py-3 text-right font-bold text-green-700">{{ archer.avg_points_per_arrow }}</td>
+                    <td class="px-4 py-3 text-right text-blue-600">{{ archer.top_zone_percentage }}%</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -42,18 +79,17 @@
     </div>
 </section>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 (function () {
     const archers = {{ data.archers | tojson }};
-
-    // Build datasets: one dataset per archer, x-axis = round_number
     const allRounds = [...new Set(
         archers.flatMap(a => a.rounds.map(r => r.round_number))
     )].sort((a, b) => a - b);
 
     const colors = [
-        '#16a34a', '#2563eb', '#dc2626', '#d97706', '#7c3aed',
-        '#0891b2', '#be185d', '#65a30d', '#ea580c', '#6b7280',
+        '#16a34a','#2563eb','#dc2626','#d97706','#7c3aed',
+        '#0891b2','#be185d','#65a30d','#ea580c','#6b7280',
     ];
 
     const datasets = archers.map((archer, idx) => {
@@ -63,9 +99,10 @@
         return {
             label: archer.name,
             data: allRounds.map(r => pointsMap[r] ?? 0),
-            backgroundColor: colors[idx % colors.length] + '99',
+            backgroundColor: colors[idx % colors.length] + '33',
             borderColor: colors[idx % colors.length],
-            borderWidth: 2,
+            borderWidth: 2.5,
+            borderRadius: 4,
         };
     });
 
@@ -75,18 +112,20 @@
             type: 'bar',
             data: {
                 labels: allRounds.map(r => 'Ronda ' + r),
-                datasets: datasets,
+                datasets,
             },
             options: {
                 responsive: true,
                 plugins: {
-                    legend: { position: 'top' },
+                    legend: { position: 'top', labels: { boxWidth: 12, font: { size: 12 } } },
                 },
                 scales: {
                     y: {
                         beginAtZero: true,
                         title: { display: true, text: 'Puntos' },
+                        grid: { color: '#f3f4f6' },
                     },
+                    x: { grid: { display: false } },
                 },
             },
         });
@@ -95,6 +134,10 @@
 </script>
 
 {% else %}
-<p class="text-gray-500 text-sm">No hay datos disponibles para este torneo.</p>
+<div class="text-center py-16 text-gray-400">
+    <div class="text-5xl mb-3">📊</div>
+    <p class="font-medium">No hay datos disponibles para este torneo.</p>
+</div>
 {% endif %}
+
 {% endblock %}

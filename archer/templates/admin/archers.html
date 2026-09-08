@@ -1,185 +1,242 @@
 {% extends "admin/base_admin.html" %}
-{% block title %}Arqueros — KiroArchery{% endblock %}
+{% block title %}Arqueros — {{ club_settings().club_name }}{% endblock %}
 
 {% block content %}
+
+{# ── Encabezado ── #}
 <div class="flex items-center justify-between mb-6">
-  <h1 class="text-2xl font-bold">Arqueros</h1>
-  <a href="/admin/tournaments" class="text-sm text-green-700 hover:underline">← Torneos</a>
+    <h1 class="text-2xl font-bold">Arqueros</h1>
+    <button @click="$dispatch('open-archer-modal')"
+            class="inline-flex items-center gap-2 bg-green-700 hover:bg-green-800 active:bg-green-900
+                   text-white text-sm font-semibold px-4 py-2 rounded-xl shadow transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+        </svg>
+        Nuevo arquero
+    </button>
 </div>
 
-<!-- Formulario: crear arquero -->
-<section class="bg-white rounded-xl shadow p-5 mb-8">
-    <h2 class="text-lg font-semibold mb-4">Nuevo arquero</h2>
-    <form method="POST" action="{{ url_for('admin.archers') }}" novalidate>
+{# ── Error global ── #}
+{% if error and not field %}
+<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{{ error }}</div>
+{% endif %}
 
-        <div class="mb-4">
-            <label for="name" class="block text-sm font-medium mb-1">
-                Nombre <span class="text-red-500">*</span>
-            </label>
-            <input id="name" name="name" type="text" maxlength="100"
-                   value="{{ form_data.get('name', '') }}"
-                   class="w-full border rounded-lg px-3 py-2 text-sm
-                          {% if field == 'name' %}border-red-500{% else %}border-gray-300{% endif %}"
-                   placeholder="Ej. Juan Pérez" required />
-            {% if field == 'name' %}
-            <p class="text-red-600 text-xs mt-1">{{ error }}</p>
-            {% endif %}
-        </div>
-
-        <div class="mb-4">
-            <label for="pin" class="block text-sm font-medium mb-1">
-                PIN (4 dígitos) <span class="text-red-500">*</span>
-            </label>
-            <input id="pin" name="pin" type="text" inputmode="numeric"
-                   maxlength="4" pattern="\d{4}"
-                   value="{{ form_data.get('pin', '') }}"
-                   class="w-full border rounded-lg px-3 py-2 text-sm
-                          {% if field == 'pin' %}border-red-500{% else %}border-gray-300{% endif %}"
-                   placeholder="Ej. 1234" required />
-            {% if field == 'pin' %}
-            <p class="text-red-600 text-xs mt-1">{{ error }}</p>
-            {% endif %}
-        </div>
-
-        {% if error and not field %}
-        <p class="text-red-600 text-sm mb-3">{{ error }}</p>
-        {% endif %}
-
-        <button type="submit"
-                class="bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-semibold
-                       hover:bg-green-800 active:bg-green-900">
-            Crear arquero
-        </button>
-    </form>
-</section>
-
-<!-- Listado de arqueros -->
+{# ── Listado de arqueros ── #}
 <section>
-    <h2 class="text-lg font-semibold mb-3">Arqueros registrados</h2>
-
     {% if archers %}
-    <div class="space-y-4">
+    <div class="space-y-3">
         {% for archer in archers %}
-        <div class="bg-white rounded-xl shadow p-4">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="font-semibold">{{ archer.name }}</p>
-                    <p class="text-sm text-gray-500">PIN: <span class="font-mono">{{ archer.pin }}</span></p>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4"
+             x-data="{ enrollOpen: {{ 'true' if enroll_error and enroll_archer_id is defined and enroll_archer_id == archer.id else 'false' }} }">
+
+            {# Cabecera del arquero #}
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-10 h-10 rounded-full bg-green-100 border-2 border-green-200
+                                flex items-center justify-center text-green-700 font-bold text-base shrink-0">
+                        {{ archer.name[0] | upper }}
+                    </div>
+                    <div class="min-w-0">
+                        <p class="font-semibold text-gray-900 truncate">{{ archer.name }}</p>
+                        <p class="text-xs text-gray-400 font-mono">PIN: {{ archer.pin }}</p>
+                    </div>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1.5 shrink-0">
                     {% if tournaments %}
-                    <button onclick="toggleEnroll('{{ archer.id }}')"
-                            id="btn-{{ archer.id }}"
-                            class="text-sm bg-blue-50 text-blue-700 border border-blue-200
-                                   px-3 py-1.5 rounded-lg hover:bg-blue-100">
+                    <button @click="enrollOpen = !enrollOpen"
+                            :class="enrollOpen ? 'bg-green-700 text-white border-green-700' : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'"
+                            class="text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors">
                         + Inscribir
                     </button>
                     {% endif %}
                     <a href="{{ url_for('admin.edit_archer', archer_id=archer.id) }}"
-                       class="text-sm bg-gray-50 text-gray-700 border border-gray-200
-                              px-3 py-1.5 rounded-lg hover:bg-gray-100">
+                       class="text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">
                         Editar
                     </a>
                     <a href="{{ url_for('stats.trend_view', archer_id=archer.id) }}"
-                       class="text-xs text-indigo-600 hover:underline">
-                        Ver stats
+                       class="text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors hidden sm:inline-flex">
+                        Stats
                     </a>
                     <form method="POST"
                           action="{{ url_for('admin.delete_archer_route', archer_id=archer.id) }}"
-                          onsubmit="return confirm('¿Eliminar al arquero {{ archer.name }}? Esta acción no se puede deshacer.')">
+                          onsubmit="return confirm('¿Eliminar a {{ archer.name }}? Esta acción no se puede deshacer.')">
                         <button type="submit"
-                                class="text-sm bg-red-50 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100">
+                                class="text-xs font-medium text-red-600 bg-red-50 border border-red-100 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors">
                             Eliminar
                         </button>
                     </form>
                 </div>
             </div>
 
-            <!-- Formulario de inscripción inline -->
-            {% if tournaments %}
-            <div id="enroll-{{ archer.id }}" class="hidden mt-4 border-t pt-4">
+            {# Panel de inscripción colapsable #}
+            <div x-show="enrollOpen"
+                 x-cloak
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 -translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 class="mt-4 pt-4 border-t border-gray-100">
 
                 {% if enroll_error and enroll_archer_id is defined and enroll_archer_id == archer.id %}
-                <p class="text-red-600 text-sm mb-3">{{ enroll_error }}</p>
+                <p class="text-red-600 text-sm mb-3 bg-red-50 rounded-lg px-3 py-2">{{ enroll_error }}</p>
                 {% endif %}
 
-                <form method="POST"
-                      action="{{ url_for('admin.enroll', archer_id=archer.id) }}"
-                      novalidate>
-
-                    <div class="mb-3">
-                        <label class="block text-sm font-medium mb-1">Torneo</label>
-                        <select name="tournament_id"
-                                onchange="loadCategories(this.value, '{{ archer.id }}')"
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                                required>
-                            <option value="">— Seleccionar torneo —</option>
-                            {% for t in tournaments %}
-                            {% if t.status != 'finished' %}
-                            <option value="{{ t.id }}">{{ t.name }} ({{ t.status }})</option>
-                            {% endif %}
-                            {% endfor %}
-                        </select>
+                <form method="POST" action="{{ url_for('admin.enroll', archer_id=archer.id) }}" novalidate>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1.5">Torneo</label>
+                            <select name="tournament_id"
+                                    onchange="loadCategories(this.value, '{{ archer.id }}')"
+                                    class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                                           focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                                <option value="">— Seleccionar torneo —</option>
+                                {% for t in tournaments %}
+                                {% if t.status != 'finished' %}
+                                <option value="{{ t.id }}">{{ t.name }}</option>
+                                {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1.5">Categoría</label>
+                            <select name="category_id" id="cat-{{ archer.id }}"
+                                    class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                                           focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                                <option value="">— Seleccionar torneo primero —</option>
+                            </select>
+                        </div>
                     </div>
-
-                    <div class="mb-3">
-                        <label class="block text-sm font-medium mb-1">Categoría</label>
-                        <select name="category_id"
-                                id="cat-{{ archer.id }}"
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                                required>
-                            <option value="">— Seleccionar torneo primero —</option>
-                        </select>
-                    </div>
-
                     <div class="flex gap-2">
                         <button type="submit"
-                                class="bg-green-700 text-white px-4 py-2 rounded-lg text-sm
-                                       font-semibold hover:bg-green-800">
+                                class="bg-green-700 hover:bg-green-800 text-white text-sm font-semibold
+                                       px-5 py-2 rounded-xl transition-colors">
                             Inscribir
                         </button>
-                        <button type="button"
-                                onclick="toggleEnroll('{{ archer.id }}')"
-                                class="px-4 py-2 rounded-lg text-sm border border-gray-300
-                                       text-gray-600 hover:bg-gray-50">
+                        <button type="button" @click="enrollOpen = false"
+                                class="text-sm font-medium text-gray-600 border border-gray-200 px-4 py-2
+                                       rounded-xl hover:bg-gray-50 transition-colors">
                             Cancelar
                         </button>
                     </div>
                 </form>
             </div>
-            {% endif %}
+
         </div>
         {% endfor %}
     </div>
     {% else %}
-    <p class="text-gray-500 text-sm">Todavía no hay arqueros registrados.</p>
+    <div class="text-center py-16 text-gray-400">
+        <div class="text-5xl mb-3">🎯</div>
+        <p class="font-medium">Todavía no hay arqueros</p>
+        <p class="text-sm mt-1">Creá el primero con el botón de arriba</p>
+    </div>
     {% endif %}
 </section>
 
-<script>
-function toggleEnroll(archerId) {
-    const div = document.getElementById('enroll-' + archerId);
-    div.classList.toggle('hidden');
-}
+{# ── FAB móvil ── #}
+<button @click="$dispatch('open-archer-modal')"
+        class="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full
+               bg-green-700 hover:bg-green-800 active:bg-green-900
+               text-white shadow-lg flex items-center justify-center
+               transition-colors lg:hidden"
+        aria-label="Nuevo arquero">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+    </svg>
+</button>
 
+{# ── Modal: Nuevo arquero ── #}
+<div x-data="{ open: false }"
+     @open-archer-modal.window="open = true"
+     x-show="open"
+     x-cloak
+     class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+         x-transition:enter="transition-opacity duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click="open = false"></div>
+
+    <div class="relative w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl"
+         x-transition:enter="transition ease-out duration-250"
+         x-transition:enter-start="translate-y-full sm:translate-y-4 opacity-0"
+         x-transition:enter-end="translate-y-0 opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="translate-y-0 opacity-100"
+         x-transition:leave-end="translate-y-full sm:translate-y-4 opacity-0">
+
+        <div class="flex justify-center pt-3 pb-1 sm:hidden">
+            <div class="w-10 h-1.5 bg-gray-200 rounded-full"></div>
+        </div>
+
+        <div class="px-5 pt-2 pb-6 sm:pt-5">
+            <div class="flex items-center justify-between mb-5">
+                <h2 class="text-lg font-bold">Nuevo arquero</h2>
+                <button @click="open = false"
+                        class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <form method="POST" action="{{ url_for('admin.archers') }}" novalidate
+                  x-init="{{ 'open = true' if field else '' }}">
+
+                <div class="mb-4">
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5">
+                        Nombre <span class="text-red-500">*</span>
+                    </label>
+                    <input id="name" name="name" type="text" maxlength="100"
+                           value="{{ form_data.get('name', '') }}"
+                           class="w-full border rounded-xl px-3 py-2.5 text-sm
+                                  {% if field == 'name' %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}
+                                  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                           placeholder="Ej. Juan Pérez" required />
+                    {% if field == 'name' %}<p class="text-red-600 text-xs mt-1">{{ error }}</p>{% endif %}
+                </div>
+
+                <div class="mb-5">
+                    <label for="pin" class="block text-sm font-medium text-gray-700 mb-1.5">
+                        PIN (4 dígitos) <span class="text-red-500">*</span>
+                    </label>
+                    <input id="pin" name="pin" type="text" inputmode="numeric"
+                           maxlength="4" pattern="\d{4}"
+                           value="{{ form_data.get('pin', '') }}"
+                           class="w-full border rounded-xl px-3 py-2.5 text-sm font-mono tracking-widest
+                                  {% if field == 'pin' %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}
+                                  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                           placeholder="1234" required />
+                    {% if field == 'pin' %}<p class="text-red-600 text-xs mt-1">{{ error }}</p>{% endif %}
+                </div>
+
+                <button type="submit"
+                        class="w-full bg-green-700 hover:bg-green-800 active:bg-green-900
+                               text-white font-semibold py-3 rounded-xl text-sm transition-colors">
+                    Crear arquero
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
 async function loadCategories(tournamentId, archerId) {
     const select = document.getElementById('cat-' + archerId);
-    select.innerHTML = '<option value="">Cargando...</option>';
-
     if (!tournamentId) {
         select.innerHTML = '<option value="">— Seleccionar torneo primero —</option>';
         return;
     }
-
+    select.innerHTML = '<option value="">Cargando...</option>';
     try {
         const resp = await fetch('/admin/tournaments/' + tournamentId + '/categories/json');
         const cats = await resp.json();
-
         if (cats.length === 0) {
             select.innerHTML = '<option value="">Sin categorías — creá una primero</option>';
             return;
         }
-
         select.innerHTML = '<option value="">— Seleccionar categoría —</option>';
         cats.forEach(c => {
             const opt = document.createElement('option');
@@ -187,17 +244,10 @@ async function loadCategories(tournamentId, archerId) {
             opt.textContent = c.bow_type + ' · ' + c.distance + ' · ' + c.gender;
             select.appendChild(opt);
         });
-    } catch (e) {
-        select.innerHTML = '<option value="">Error al cargar categorías</option>';
+    } catch {
+        select.innerHTML = '<option value="">Error al cargar</option>';
     }
 }
-
-// Si hay un error de inscripción, abrir el panel del arquero afectado
-{% if enroll_error and enroll_archer_id is defined %}
-document.addEventListener('DOMContentLoaded', () => {
-    const div = document.getElementById('enroll-{{ enroll_archer_id }}');
-    if (div) div.classList.remove('hidden');
-});
-{% endif %}
 </script>
+
 {% endblock %}

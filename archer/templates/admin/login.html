@@ -1,54 +1,72 @@
-{% extends "base.html" %}
-{% block title %}Login Admin — KiroArchery{% endblock %}
+{% set club = club_settings() %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin — {{ club.club_name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>[x-cloak]{display:none!important}</style>
+</head>
+<body class="min-h-screen bg-gray-50 flex items-center justify-center px-4" style="min-width:360px">
 
-{% block content %}
-<div class="max-w-sm mx-auto mt-8">
-    <h1 class="text-2xl font-bold mb-6 text-center">Acceso Administrador</h1>
+<div class="w-full max-w-sm">
+
+    {# Logo / marca #}
+    <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl shadow-sm mb-4"
+             style="background-color: {{ club.color_from }}">
+            <span class="text-3xl">🏹</span>
+        </div>
+        <h1 class="text-2xl font-extrabold text-gray-900">{{ club.club_name }}</h1>
+        <p class="text-sm text-gray-400 mt-1">Panel de administración</p>
+    </div>
 
     {% if error %}
-    <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+    <div class="mb-4 flex items-center gap-2 bg-red-50 border border-red-200 text-red-700
+                text-sm rounded-xl px-4 py-3">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
         {{ error }}
     </div>
     {% endif %}
 
-    <div class="bg-white rounded-xl shadow p-6">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <form method="POST" action="" novalidate>
+
             <div class="mb-4">
-                <label for="username" class="block text-sm font-medium mb-1">
-                    Usuario <span class="text-red-500">*</span>
+                <label for="username" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Usuario
                 </label>
-                <input
-                    id="username"
-                    name="username"
-                    type="text"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
-                           focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent"
-                    autocomplete="username"
-                    required
-                />
+                <input id="username" name="username" type="text" autocomplete="username"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                       required autofocus />
             </div>
 
             <div class="mb-6">
-                <label for="password" class="block text-sm font-medium mb-1">
-                    Contraseña <span class="text-red-500">*</span>
+                <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Contraseña
                 </label>
-                <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
-                           focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent"
-                    autocomplete="current-password"
-                    required
-                />
+                <input id="password" name="password" type="password" autocomplete="current-password"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                       required />
             </div>
 
             <button type="submit"
-                    class="w-full bg-green-700 text-white py-2.5 rounded-lg text-sm font-semibold
-                           hover:bg-green-800 active:bg-green-900 transition-colors">
+                    class="w-full text-white font-semibold py-3 rounded-xl text-sm transition-colors"
+                    style="background-color: {{ club.color_from }}">
                 Ingresar
             </button>
         </form>
     </div>
+
+    <p class="text-center mt-6">
+        <a href="/" class="text-sm text-gray-400 hover:text-gray-600 transition-colors">← Volver al inicio</a>
+    </p>
+
 </div>
-{% endblock %}
+</body>
+</html>

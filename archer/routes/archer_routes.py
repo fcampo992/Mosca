@@ -42,6 +42,7 @@ from archer.modules.archer import (
     is_session_valid,
     save_arrow,
 )
+from archer.modules.stats import archer_kpis, archer_history, archer_trend
 
 archer_bp = Blueprint("archer", __name__, url_prefix="/archer")
 
@@ -93,9 +94,9 @@ def login():
 
     Requerimientos: 4.1, 4.2, 4.6, 4.7
     """
-    # Si ya tiene sesión válida, redirigir directamente
+    # Si ya tiene sesión válida, redirigir al dashboard
     if session.get("archer_id") and is_session_valid(session.get("last_active", "")):
-        return redirect(url_for("archer.score"))
+        return redirect(url_for("archer.dashboard"))
 
     if request.method == "GET":
         return render_template("archer/login.html", error=None, field=None, locked=False)
@@ -167,7 +168,7 @@ def login():
         session["end_number"]      = end_number
         session["tournament_done"] = tournament_done
         session.pop("photo_url", None)  # forzar recarga de foto
-        return redirect(url_for("archer.score"))
+        return redirect(url_for("archer.dashboard"))
 
     # Determinar código HTTP apropiado
     locked = result.get("blocked", False)
@@ -195,6 +196,51 @@ def logout():
     """
     session.clear()
     return redirect(url_for("archer.login"))
+
+
+# ---------------------------------------------------------------------------
+# Dashboard personal del arquero
+# ---------------------------------------------------------------------------
+
+@archer_bp.route("/dashboard", methods=["GET"])
+@require_session
+def dashboard():
+    """
+    GET — Dashboard de rendimiento personal.
+    Muestra KPIs históricos, estado del torneo activo, historial y gráfico.
+    """
+    archer_id   = session["archer_id"]
+    archer_name = session.get("archer_name", "")
+    photo_url   = session.get("photo_url")
+
+    # Cargar foto si no está en sesión
+    if not photo_url:
+        try:
+            from archer.db import get_connection  # noqa: PLC0415
+            conn = get_connection()
+            row = conn.execute(
+                "SELECT photo_url FROM archers WHERE id = ?", (archer_id,)
+            ).fetchone()
+            if row and row["photo_url"]:
+                photo_url = row["photo_url"]
+                session["photo_url"] = photo_url
+        except Exception:
+            pass
+
+    tournament  = get_active_tournament(archer_id)
+    kpis        = archer_kpis(archer_id)
+    history     = archer_history(archer_id)
+    trend       = archer_trend(archer_id)
+
+    return render_template(
+        "archer/dashboard.html",
+        archer_name=archer_name,
+        photo_url=photo_url,
+        tournament=tournament,
+        kpis=kpis,
+        history=history,
+        trend=trend,
+    )
 
 
 # ---------------------------------------------------------------------------

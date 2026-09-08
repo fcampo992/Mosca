@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Mi Dashboard — {{ club_settings().club_name }}{% endblock %}
+
+{% block content %}
+
+{# ── Helper fecha ── #}
+{% set meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'] %}
+{% macro fmt_date(d) %}{% if d %}{% set p = d.split('-') %}{% if p|length == 3 %}{{ p[2]|int }} {{ meses[(p[1]|int)-1] }}, {{ p[0] }}{% else %}{{ d }}{% endif %}{% endif %}{% endmacro %}
+
+{# ── Header de perfil ── #}
+<div class="flex items-center gap-4 mb-6">
+    {% if photo_url %}
+    <img src="{{ photo_url }}" alt="Foto"
+         class="w-14 h-14 rounded-full object-cover border-3 border-white shadow-md shrink-0" />
+    {% else %}
+    {% set club = club_settings() %}
+    <div class="w-14 h-14 rounded-full border-2 border-white shadow-md shrink-0
+                flex items-center justify-center font-black text-xl text-white"
+         style="background-color: {{ club.color_from }}">
+        {{ archer_name[0] | upper if archer_name else '?' }}
+    </div>
+    {% endif %}
+    <div class="min-w-0">
+        <h1 class="text-xl font-extrabold text-gray-900 truncate">{{ archer_name }}</h1>
+        <p class="text-sm text-gray-400">Dashboard personal</p>
+    </div>
+</div>
+
+{# ── Banner torneo activo / inactivo ── #}
+{% if tournament %}
+{% set club = club_settings() %}
+<a href="{{ url_for('archer.score') }}"
+   class="block rounded-2xl p-4 mb-6 shadow-sm text-white transition-all active:opacity-90"
+   style="background-color: {{ club.color_from }}">
+    <div class="flex items-center justify-between">
+        <div class="min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+                <span class="w-2 h-2 bg-white rounded-full animate-pulse inline-block"></span>
+                <span class="text-xs font-bold uppercase tracking-widest opacity-80">En curso</span>
+            </div>
+            <p class="font-bold text-base truncate">{{ tournament.name }}</p>
+            <p class="text-xs opacity-70 mt-0.5">Tocá para cargar flechas</p>
+        </div>
+        <div class="shrink-0 ml-3">
+            <div class="bg-white/20 rounded-xl px-3 py-2 text-center">
+                <svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+</a>
+{% else %}
+<div class="rounded-2xl bg-gray-100 border border-gray-200 p-4 mb-6 flex items-center gap-3">
+    <span class="text-2xl shrink-0">⚪</span>
+    <div>
+        <p class="font-semibold text-sm text-gray-700">Sin competencia en curso</p>
+        <p class="text-xs text-gray-400 mt-0.5">Estarás listo cuando el organizador active tu categoría.</p>
+    </div>
+</div>
+{% endif %}
+
+{# ── KPIs ── #}
+<div class="grid grid-cols-2 gap-3 mb-6">
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
+        <p class="text-3xl font-black text-green-700">{{ kpis.avg_per_arrow }}</p>
+        <p class="text-xs text-gray-400 mt-1 uppercase tracking-wide">Prom / flecha</p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
+        <p class="text-3xl font-black text-yellow-500">{{ kpis.best_tournament_pts }}</p>
+        <p class="text-xs text-gray-400 mt-1 uppercase tracking-wide">Mejor marca</p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
+        <p class="text-3xl font-black text-blue-600">{{ kpis.tournaments_played }}</p>
+        <p class="text-xs text-gray-400 mt-1 uppercase tracking-wide">Torneos</p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
+        <p class="text-3xl font-black text-indigo-600">{{ kpis.top_zone_pct }}%</p>
+        <p class="text-xs text-gray-400 mt-1 uppercase tracking-wide">Zona X/10</p>
+    </div>
+
+</div>
+
+{# ── Gráfico de progresión ── #}
+{% if trend and trend | length > 1 %}
+<section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
+    <h2 class="text-sm font-semibold text-gray-700 mb-4">Evolución del promedio</h2>
+    <canvas id="trendChart" height="160" aria-label="Gráfico de evolución"></canvas>
+</section>
+
+<script>
+(function () {
+    const trend = {{ trend | tojson }};
+    if (!trend || trend.length < 2) return;
+    const labels = trend.map(t => t.tournament_name);
+    const data   = trend.map(t => t.avg_points_per_arrow);
+    const pointColors = data.map((v, i) => i === 0 ? '#16a34a' : v >= data[i-1] ? '#16a34a' : '#dc2626');
+    new Chart(document.getElementById('trendChart'), {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                data,
+                borderColor: '#16a34a',
+                backgroundColor: 'rgba(22,163,74,0.07)',
+                borderWidth: 2.5,
+                pointRadius: 5,
+                pointBackgroundColor: pointColors,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                fill: true,
+                tension: 0.35,
+            }],
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: {
+                    min: Math.max(0, Math.min(...data) - 1),
+                    max: Math.min(10, Math.max(...data) + 1),
+                    grid: { color: '#f3f4f6' },
+                    ticks: { font: { size: 11 } },
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { size: 10 }, maxRotation: 30 },
+                },
+            },
+        },
+    });
+})();
+</script>
+{% endif %}
+
+{# ── Historial de torneos ── #}
+<section>
+    <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-gray-700">Mis torneos</h2>
+        {% if history | length > 0 %}
+        <a href="{{ url_for('stats.trend_view', archer_id=session.archer_id) }}"
+           class="text-xs text-green-700 hover:underline font-medium">Ver todo →</a>
+        {% endif %}
+    </div>
+
+    {% if history %}
+    <div class="space-y-2">
+        {% for t in history[:5] %}
+        {# Calcular badge de posición si hay datos disponibles #}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4
+                    flex items-center justify-between gap-3">
+            <div class="min-w-0">
+                <p class="font-semibold text-sm text-gray-900 truncate">{{ t.tournament_name }}</p>
+                <p class="text-xs text-gray-400 mt-0.5">{{ fmt_date(t.date) }}</p>
+            </div>
+            <div class="text-right shrink-0">
+                <p class="text-lg font-black text-green-700">{{ t.total_points }}</p>
+                <p class="text-[10px] text-gray-400">pts</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
+        <p class="text-4xl mb-2">🏹</p>
+        <p class="text-sm text-gray-400">Tus torneos finalizados aparecerán aquí.</p>
+    </div>
+    {% endif %}
+</section>
+
+{% endblock %}

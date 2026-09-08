@@ -333,3 +333,113 @@ def global_ranking() -> list[dict]:
         )
 
     return ranking
+
+
+# ---------------------------------------------------------------------------
+# archer_kpis  (dashboard personal del arquero)
+# ---------------------------------------------------------------------------
+
+def archer_kpis(archer_id: str) -> dict:
+    """Calcula KPIs históricos consolidados de un arquero.
+
+    Solo considera torneos 'finished'.
+
+    Returns:
+        {
+            "avg_per_arrow":      float,  # promedio global pts/flecha
+            "best_tournament_pts": int,   # mayor puntaje total en un torneo
+            "tournaments_played": int,   # torneos finished disputados
+            "top_zone_pct":       float, # % de X y 10 sobre todas las flechas
+        }
+    """
+    conn = get_connection()
+
+    cursor = conn.execute(
+        """
+        SELECT
+            COUNT(s.id)                                              AS total_arrows,
+            COALESCE(SUM(s.points), 0)                               AS total_points,
+            SUM(CASE WHEN s.arrow_val IN ('X', '10') THEN 1 ELSE 0 END) AS top_zone,
+            COUNT(DISTINCT CASE WHEN t.status = 'finished' THEN t.id ELSE NULL END) AS t_played
+        FROM registrations r
+        JOIN tournaments t ON t.id = r.tournament_id AND t.status = 'finished'
+        LEFT JOIN scores s ON s.archer_id = r.archer_id AND s.tournament_id = t.id
+        WHERE r.archer_id = ?
+        """,
+        (archer_id,),
+    )
+    row = cursor.fetchone()
+
+    total_arrows = row["total_arrows"] if row else 0
+    total_points = row["total_points"] if row else 0
+    top_zone     = row["top_zone"]     if row else 0
+    t_played     = row["t_played"]     if row else 0
+
+    avg_per_arrow = round(total_points / total_arrows, 2) if total_arrows else 0.0
+    top_zone_pct  = round(top_zone / total_arrows * 100, 2) if total_arrows else 0.0
+
+    # Mejor puntaje por torneo
+    best_cursor = conn.execute(
+        """
+        SELECT COALESCE(SUM(s.points), 0) AS pts
+        FROM registrations r
+        JOIN tournaments t ON t.id = r.tournament_id AND t.status = 'finished'
+        LEFT JOIN scores s ON s.archer_id = r.archer_id AND s.tournament_id = t.id
+        WHERE r.archer_id = ?
+        GROUP BY t.id
+        ORDER BY pts DESC
+        LIMIT 1
+        """,
+        (archer_id,),
+    )
+    best_row = best_cursor.fetchone()
+    best_tournament_pts = best_row["pts"] if best_row else 0
+
+    return {
+        "avg_per_arrow":       avg_per_arrow,
+        "best_tournament_pts": best_tournament_pts,
+        "tournaments_played":  t_played,
+        "top_zone_pct":        top_zone_pct,
+    }
+
+
+def archer_history(archer_id: str) -> list[dict]:
+    """Historial de torneos 'finished' del arquero con puntaje total.
+
+    Returns lista ordenada DESC por fecha (más reciente primero):
+        [{"tournament_id", "tournament_name", "date", "total_points",
+          "avg_points_per_arrow"}, ...]
+    """
+    conn = get_connection()
+
+    cursor = conn.execute(
+        """
+        SELECT
+            t.id                                    AS tournament_id,
+            t.name                                  AS tournament_name,
+            t.date                                  AS date,
+            COUNT(s.id)                             AS total_arrows,
+            COALESCE(SUM(s.points), 0)              AS total_points
+        FROM registrations r
+        JOIN tournaments t ON t.id = r.tournament_id AND t.status = 'finished'
+        LEFT JOIN scores s ON s.archer_id = r.archer_id AND s.tournament_id = t.id
+        WHERE r.archer_id = ?
+        GROUP BY t.id, t.name, t.date
+        ORDER BY t.date DESC
+        """,
+        (archer_id,),
+    )
+    rows = cursor.fetchall()
+    history = []
+    for row in rows:
+        arrows = row["total_arrows"]
+        pts    = row["total_points"]
+        avg    = round(pts / arrows, 2) if arrows else 0.0
+        history.append({
+            "tournament_id":       row["tournament_id"],
+            "tournament_name":     row["tournament_name"],
+            "date":                row["date"],
+            "total_points":        pts,
+            "avg_points_per_arrow": avg,
+        })
+    return history

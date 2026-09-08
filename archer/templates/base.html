@@ -7,18 +7,97 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>[x-cloak]{display:none!important}</style>
     {% block head %}{% endblock %}
 </head>
+{% set club = club_settings() %}
+{% set archer_logged = session.get('archer_id') %}
 <body class="min-h-screen bg-gray-50 text-gray-900" style="min-width:360px">
 
-    {% set club = club_settings() %}
-    <header class="text-white px-4 py-3 flex items-center justify-between shadow-md"
-            style="background: linear-gradient(to right, {{ club.color_from }}, {{ club.color_to }})">
-        <a href="/" class="flex items-center gap-2 font-bold text-lg tracking-tight">
+    <!-- ── Header ── -->
+    <header class="text-white px-4 h-14 flex items-center justify-between shadow-sm sticky top-0 z-40"
+            style="background-color: {{ club.color_from }}">
+        <a href="{{ '/archer/dashboard' if archer_logged else '/' }}"
+           class="flex items-center gap-2 font-bold text-lg tracking-tight">
             <span>🏹</span>
             <span>{{ club.club_name }}</span>
         </a>
-        <nav class="flex gap-3 text-sm font-medium">
+
+        <nav class="flex items-center gap-2 text-sm font-medium">
+            {% if archer_logged %}
+            {# Arquero autenticado: avatar con menú desplegable #}
+            <div x-data="{ open: false }" class="relative">
+                <button @click="open = !open" @click.outside="open = false"
+                        class="flex items-center gap-2 focus:outline-none">
+                    {% if session.get('photo_url') %}
+                    <img src="{{ session.photo_url }}" alt="Foto"
+                         class="w-8 h-8 rounded-full object-cover border-2 border-white/40" />
+                    {% else %}
+                    <div class="w-8 h-8 rounded-full bg-white/20 border-2 border-white/40
+                                flex items-center justify-center text-white font-bold text-sm select-none">
+                        {{ session.get('archer_name', '?')[0] | upper }}
+                    </div>
+                    {% endif %}
+                    <svg class="w-3.5 h-3.5 text-white/70 transition-transform duration-150"
+                         :class="open ? 'rotate-180' : ''"
+                         fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+
+                <!-- Dropdown -->
+                <div x-show="open" x-cloak
+                     x-transition:enter="transition ease-out duration-100"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     x-transition:leave="transition ease-in duration-75"
+                     x-transition:leave-start="opacity-100 scale-100"
+                     x-transition:leave-end="opacity-0 scale-95"
+                     class="absolute right-0 top-10 w-44 bg-white rounded-2xl shadow-xl
+                            border border-gray-100 py-1.5 z-50 origin-top-right">
+
+                    <div class="px-3 py-2 border-b border-gray-100 mb-1">
+                        <p class="text-xs font-semibold text-gray-800 truncate">
+                            {{ session.get('archer_name', '') }}
+                        </p>
+                        <p class="text-[10px] text-gray-400">Arquero</p>
+                    </div>
+
+                    <a href="{{ url_for('archer.dashboard') }}"
+                       class="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700
+                              hover:bg-gray-50 transition-colors">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16 8v8m-4-5v5m-4-2v2M3 20h18"/>
+                        </svg>
+                        Mi Dashboard
+                    </a>
+
+                    <a href="{{ url_for('archer.score') }}"
+                       class="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700
+                              hover:bg-gray-50 transition-colors">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>
+                        </svg>
+                        Cargar flechas
+                    </a>
+
+                    <div class="border-t border-gray-100 mt-1 pt-1">
+                        <form method="POST" action="{{ url_for('archer.logout') }}">
+                            <button type="submit"
+                                    class="w-full flex items-center gap-2.5 px-3 py-2 text-sm
+                                           text-red-600 hover:bg-red-50 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                </svg>
+                                Cerrar sesión
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            {% else %}
+            {# Usuario no autenticado #}
             {% if session.get("admin_logged_in") %}
             <a href="/admin/tournaments"
                class="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-xs transition-colors">
@@ -35,14 +114,61 @@
                style="color: {{ club.color_from }}">
                 Ingresar PIN
             </a>
+            {% endif %}
         </nav>
     </header>
 
-    <main class="px-4 py-6 max-w-3xl mx-auto">
+    <!-- ── Contenido principal ── -->
+    <main class="px-4 py-6 max-w-3xl mx-auto {% block main_class %}{% endblock %}
+                 {% if archer_logged %}pb-24{% endif %}">
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="text-center text-xs text-gray-400 py-4 border-t border-gray-100">
+    <!-- ── Bottom Navigation (solo para arquero autenticado) ── -->
+    {% if archer_logged %}
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200
+                flex items-center justify-around h-16 z-40 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
+
+        {% set current = request.endpoint %}
+
+        {# Inicio / Dashboard #}
+        <a href="{{ url_for('archer.dashboard') }}"
+           class="flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-colors
+                  {{ 'text-green-700' if current == 'archer.dashboard' else 'text-gray-400 hover:text-gray-600' }}">
+            <svg class="w-6 h-6" fill="{{ 'currentColor' if current == 'archer.dashboard' else 'none' }}"
+                 stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16 8v8m-4-5v5m-4-2v2M3 20h18"/>
+            </svg>
+            <span class="text-[10px] font-medium">Inicio</span>
+        </a>
+
+        {# Competencia / Score #}
+        <a href="{{ url_for('archer.score') }}"
+           class="flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-colors
+                  {{ 'text-green-700' if current in ('archer.score', 'archer.score_post') else 'text-gray-400 hover:text-gray-600' }}">
+            <svg class="w-6 h-6" fill="{{ 'currentColor' if current in ('archer.score', 'archer.score_post') else 'none' }}"
+                 stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>
+            </svg>
+            <span class="text-[10px] font-medium">Competencia</span>
+        </a>
+
+        {# Historial / Stats #}
+        <a href="{{ url_for('stats.trend_view', archer_id=session.archer_id) }}"
+           class="flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-colors
+                  {{ 'text-green-700' if current == 'stats.trend_view' else 'text-gray-400 hover:text-gray-600' }}">
+            <svg class="w-6 h-6" fill="{{ 'none' }}"
+                 stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+            <span class="text-[10px] font-medium">Historial</span>
+        </a>
+
+    </nav>
+    {% endif %}
+
+    <footer class="text-center text-xs text-gray-400 py-4 border-t border-gray-100
+                   {% if archer_logged %}hidden{% endif %}">
         {{ club.club_name }} &copy; 2025
     </footer>
 

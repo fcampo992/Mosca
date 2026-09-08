@@ -1,5 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Ingresar PIN — KiroArchery{% endblock %}
+{% block title %}Ingresar PIN — {{ club_settings().club_name }}{% endblock %}
+
+{# En la pantalla de login no se necesita nav en el header #}
+{% block header_nav %}{% endblock %}
 
 {% block content %}
 <div class="flex flex-col items-center justify-center min-h-[70vh] px-2">

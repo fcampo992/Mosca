@@ -43,6 +43,10 @@ from archer.modules.archer import (
     save_arrow,
 )
 from archer.modules.stats import archer_kpis, archer_history, archer_trend
+from archer.modules.profile import (
+    get_profile, save_profile, upload_banner,
+    list_setups, get_setup, create_setup, update_setup, delete_setup,
+)
 
 archer_bp = Blueprint("archer", __name__, url_prefix="/archer")
 
@@ -507,3 +511,229 @@ def upload_photo():
         return _render_score(error=f"Error al guardar la foto: {exc}"), 500
 
     return redirect(url_for("archer.score"))
+
+
+# ---------------------------------------------------------------------------
+# Perfil del arquero
+# ---------------------------------------------------------------------------
+
+@archer_bp.route("/profile", methods=["GET", "POST"])
+@require_session
+def profile():
+    """
+    GET  — Muestra el perfil extendido del arquero (datos personales + banner).
+    POST — Persiste los cambios del formulario.
+    """
+    archer_id = session["archer_id"]
+    error = None
+    field = None
+    success = False
+
+    if request.method == "POST":
+        result = save_profile(
+            archer_id=archer_id,
+            name=request.form.get("name", "").strip(),
+            nickname=request.form.get("nickname", "").strip(),
+            club=request.form.get("club", "").strip(),
+            dominant_hand=request.form.get("dominant_hand", "Diestro").strip(),
+            bow_category=request.form.get("bow_category", "").strip(),
+            season_goal=request.form.get("season_goal", "").strip(),
+        )
+        if "error" in result:
+            error = result["error"]
+            field = result.get("field")
+        else:
+            # Actualizar nombre en sesión
+            session["archer_name"] = request.form.get("name", session.get("archer_name", ""))
+            success = True
+
+    profile_data = get_profile(archer_id)
+    setups = list_setups(archer_id)
+
+    return render_template(
+        "archer/profile.html",
+        profile=profile_data,
+        setups=setups,
+        error=error,
+        field=field,
+        success=success,
+    )
+
+
+@archer_bp.route("/profile/banner", methods=["POST"])
+@require_session
+def upload_banner_route():
+    """POST — Sube la imagen de banner a Cloudinary."""
+    archer_id = session["archer_id"]
+
+    if "banner" not in request.files:
+        return redirect(url_for("archer.profile"))
+
+    banner = request.files["banner"]
+    if banner.filename == "":
+        return redirect(url_for("archer.profile"))
+
+    if not _allowed_photo(banner.filename):
+        return render_template(
+            "archer/profile.html",
+            profile=get_profile(archer_id),
+            setups=list_setups(archer_id),
+            error="Formato no permitido. Usá JPG, PNG o WEBP.",
+            field="banner",
+            success=False,
+        ), 400
+
+    data = banner.read()
+    if len(data) > _MAX_PHOTO_BYTES:
+        return render_template(
+            "archer/profile.html",
+            profile=get_profile(archer_id),
+            setups=list_setups(archer_id),
+            error="La imagen supera el límite de 5 MB.",
+            field="banner",
+            success=False,
+        ), 400
+
+    result = upload_banner(archer_id, data, banner.filename)
+    if "error" in result:
+        return render_template(
+            "archer/profile.html",
+            profile=get_profile(archer_id),
+            setups=list_setups(archer_id),
+            error=result["error"],
+            field="banner",
+            success=False,
+        ), 500
+
+    return redirect(url_for("archer.profile"))
+
+
+# ---------------------------------------------------------------------------
+# Equipo del arquero (bow setups)
+# ---------------------------------------------------------------------------
+
+@archer_bp.route("/equipment", methods=["GET"])
+@require_session
+def equipment():
+    """GET — Lista todos los setups de equipo del arquero."""
+    archer_id = session["archer_id"]
+    setups = list_setups(archer_id)
+    return render_template(
+        "archer/equipment.html",
+        setups=setups,
+        error=None,
+        field=None,
+        form_data={},
+        edit_setup=None,
+    )
+
+
+@archer_bp.route("/equipment/new", methods=["POST"])
+@require_session
+def equipment_new():
+    """POST — Crea un nuevo setup de equipo."""
+    archer_id = session["archer_id"]
+    form = request.form
+
+    # Parsear sight_marks desde el formulario (JSON enviado como campo oculto)
+    import json as _json
+    try:
+        sight_marks = _json.loads(form.get("sight_marks_json", "[]"))
+    except Exception:
+        sight_marks = []
+
+    result = create_setup(
+        archer_id=archer_id,
+        name=form.get("name", ""),
+        bow_type=form.get("bow_type", ""),
+        draw_weight=form.get("draw_weight", ""),
+        draw_length=form.get("draw_length", ""),
+        string_material=form.get("string_material", ""),
+        arrow_model=form.get("arrow_model", ""),
+        arrow_spine=form.get("arrow_spine", ""),
+        arrow_length=form.get("arrow_length", ""),
+        point_weight=form.get("point_weight", ""),
+        vanes=form.get("vanes", ""),
+        nock=form.get("nock", ""),
+        sight_marks=sight_marks,
+    )
+
+    if "error" in result:
+        return render_template(
+            "archer/equipment.html",
+            setups=list_setups(archer_id),
+            error=result["error"],
+            field=result.get("field"),
+            form_data=dict(form),
+            edit_setup=None,
+        ), 400
+
+    return redirect(url_for("archer.equipment"))
+
+
+@archer_bp.route("/equipment/<setup_id>/edit", methods=["GET", "POST"])
+@require_session
+def equipment_edit(setup_id: str):
+    """
+    GET  — Carga el formulario de edición del setup.
+    POST — Persiste los cambios.
+    """
+    archer_id = session["archer_id"]
+    setup = get_setup(setup_id, archer_id)
+    if setup is None:
+        return redirect(url_for("archer.equipment"))
+
+    if request.method == "GET":
+        return render_template(
+            "archer/equipment.html",
+            setups=list_setups(archer_id),
+            error=None,
+            field=None,
+            form_data={},
+            edit_setup=setup,
+        )
+
+    # POST
+    import json as _json
+    try:
+        sight_marks = _json.loads(request.form.get("sight_marks_json", "[]"))
+    except Exception:
+        sight_marks = []
+
+    result = update_setup(
+        setup_id=setup_id,
+        archer_id=archer_id,
+        name=request.form.get("name", ""),
+        bow_type=request.form.get("bow_type", ""),
+        draw_weight=request.form.get("draw_weight", ""),
+        draw_length=request.form.get("draw_length", ""),
+        string_material=request.form.get("string_material", ""),
+        arrow_model=request.form.get("arrow_model", ""),
+        arrow_spine=request.form.get("arrow_spine", ""),
+        arrow_length=request.form.get("arrow_length", ""),
+        point_weight=request.form.get("point_weight", ""),
+        vanes=request.form.get("vanes", ""),
+        nock=request.form.get("nock", ""),
+        sight_marks=sight_marks,
+    )
+
+    if "error" in result:
+        return render_template(
+            "archer/equipment.html",
+            setups=list_setups(archer_id),
+            error=result["error"],
+            field=result.get("field"),
+            form_data=dict(request.form),
+            edit_setup=setup,
+        ), 400
+
+    return redirect(url_for("archer.equipment"))
+
+
+@archer_bp.route("/equipment/<setup_id>/delete", methods=["POST"])
+@require_session
+def equipment_delete(setup_id: str):
+    """POST — Elimina (soft-delete) un setup."""
+    archer_id = session["archer_id"]
+    delete_setup(setup_id, archer_id)
+    return redirect(url_for("archer.equipment"))

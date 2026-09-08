@@ -231,9 +231,58 @@ def init_db(conn) -> None:
         try:
             conn.execute(migration)
         except Exception:
-            # La columna ya existe; no hay nada que hacer.
             pass
 
+    try:
+        conn.commit()
+    except Exception:
+        pass
+
+    # -----------------------------------------------------------------------
+    # Perfil extendido del arquero (datos personales editables)
+    # -----------------------------------------------------------------------
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS archer_profiles (
+            archer_id       TEXT PRIMARY KEY,
+            nickname        TEXT,
+            club            TEXT,
+            dominant_hand   TEXT CHECK(dominant_hand IN ('Diestro', 'Zurdo')) DEFAULT 'Diestro',
+            bow_category    TEXT,
+            season_goal     TEXT,
+            banner_url      TEXT,
+            updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (archer_id) REFERENCES archers(id)
+        )
+        """
+    )
+
+    # -----------------------------------------------------------------------
+    # Setups de equipo del arquero
+    # -----------------------------------------------------------------------
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS bow_setups (
+            id              TEXT PRIMARY KEY,
+            archer_id       TEXT NOT NULL,
+            name            TEXT NOT NULL,
+            bow_type        TEXT NOT NULL,
+            draw_weight     REAL,
+            draw_length     REAL,
+            string_material TEXT,
+            arrow_model     TEXT,
+            arrow_spine     TEXT,
+            arrow_length    REAL,
+            point_weight    INTEGER,
+            vanes           TEXT,
+            nock            TEXT,
+            sight_marks     TEXT,
+            is_active       INTEGER NOT NULL DEFAULT 1,
+            created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (archer_id) REFERENCES archers(id)
+        )
+        """
+    )
     try:
         conn.commit()
     except Exception:

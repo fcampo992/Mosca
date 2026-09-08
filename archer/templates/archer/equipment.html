@@ -1,0 +1,462 @@
+{% extends "base.html" %}
+{% block title %}Mi Equipo — {{ club_settings().club_name }}{% endblock %}
+
+{% block content %}
+{% set club = club_settings() %}
+
+{# ── Encabezado ── #}
+<div class="flex items-center gap-3 mb-6">
+    <a href="{{ url_for('archer.profile') }}"
+       class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+    </a>
+    <h1 class="text-2xl font-bold text-gray-900">Mi Equipo</h1>
+    <button @click="$dispatch('open-setup-modal')"
+            class="ml-auto inline-flex items-center gap-2 text-white text-sm font-semibold
+                   px-4 py-2 rounded-xl shadow transition-colors"
+            style="background-color: {{ club.color_from }}">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+        </svg>
+        Nuevo setup
+    </button>
+</div>
+
+{# ── Error global ── #}
+{% if error and not field %}
+<div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">{{ error }}</div>
+{% endif %}
+
+{# ── Lista de setups ── #}
+{% if setups and not edit_setup %}
+<div class="space-y-3 mb-6">
+    {% for s in setups %}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+
+        {# Cabecera del setup #}
+        <div class="flex items-center justify-between gap-3 mb-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-xl shrink-0">🏹</div>
+                <div class="min-w-0">
+                    <p class="font-bold text-sm text-gray-900 truncate">{{ s.name }}</p>
+                    <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">{{ s.bow_type }}</span>
+                </div>
+            </div>
+            <div class="flex gap-1.5 shrink-0">
+                <a href="{{ url_for('archer.equipment_edit', setup_id=s.id) }}"
+                   class="p-2 rounded-xl text-gray-500 bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                </a>
+                <form method="POST"
+                      action="{{ url_for('archer.equipment_delete', setup_id=s.id) }}"
+                      onsubmit="return confirm('¿Eliminar el setup {{ s.name }}?')">
+                    <button type="submit"
+                            class="p-2 rounded-xl text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {# Detalles arco y flechas en 2 cols #}
+        <div class="grid grid-cols-2 gap-3 text-xs mb-3">
+            <div class="space-y-1.5">
+                <p class="font-semibold text-gray-500 uppercase tracking-wide text-[10px]">Arco</p>
+                {% if s.draw_weight %}<p class="text-gray-700"><span class="text-gray-400">Libraje:</span> {{ s.draw_weight }} lbs</p>{% endif %}
+                {% if s.draw_length %}<p class="text-gray-700"><span class="text-gray-400">Apertura:</span> {{ s.draw_length }}"</p>{% endif %}
+                {% if s.string_material %}<p class="text-gray-700"><span class="text-gray-400">Cuerda:</span> {{ s.string_material }}</p>{% endif %}
+            </div>
+            <div class="space-y-1.5">
+                <p class="font-semibold text-gray-500 uppercase tracking-wide text-[10px]">Flechas</p>
+                {% if s.arrow_model %}<p class="text-gray-700 truncate"><span class="text-gray-400">Modelo:</span> {{ s.arrow_model }}</p>{% endif %}
+                {% if s.arrow_spine %}<p class="text-gray-700"><span class="text-gray-400">Spine:</span> {{ s.arrow_spine }}</p>{% endif %}
+                {% if s.point_weight %}<p class="text-gray-700"><span class="text-gray-400">Puntal:</span> {{ s.point_weight }} gr</p>{% endif %}
+            </div>
+        </div>
+
+        {# Tarjetero de marcas de mira #}
+        {% if s.sight_marks and s.sight_marks | length > 0 %}
+        <div class="border-t border-gray-100 pt-3">
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Marcas de mira</p>
+            <div class="flex flex-wrap gap-2">
+                {% for mark in s.sight_marks %}
+                <div class="bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-center min-w-[52px]">
+                    <p class="text-[10px] text-gray-400 font-medium">{{ mark.distance }}</p>
+                    <p class="text-sm font-bold text-gray-800">{{ mark.value }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+    {% endfor %}
+</div>
+{% elif not edit_setup %}
+<div class="text-center py-12 text-gray-400 mb-6">
+    <div class="text-5xl mb-3">🏹</div>
+    <p class="font-medium text-gray-600">Todavía no tenés setups de equipo</p>
+    <p class="text-sm mt-1">Creá el primero con el botón de arriba</p>
+</div>
+{% endif %}
+
+{# ── Formulario de edición inline (cuando se edita un setup) ── #}
+{% if edit_setup %}
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
+    <h2 class="text-base font-bold text-gray-800 mb-4">Editando: {{ edit_setup.name }}</h2>
+    {% include "archer/_setup_form.html" with context %}
+    {# Pasar setup a editar #}
+    {# El include usa edit_setup si existe, sino valores vacíos #}
+</div>
+{% endif %}
+
+{# ── FAB móvil ── #}
+<button @click="$dispatch('open-setup-modal')"
+        class="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full text-white shadow-lg
+               flex items-center justify-center transition-colors lg:hidden"
+        style="background-color: {{ club.color_from }}"
+        aria-label="Nuevo setup">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+    </svg>
+</button>
+
+{# ── Modal: Nuevo setup ── #}
+<div x-data="{ open: false, sightMarks: [], newDist: '', newVal: '' }"
+     @open-setup-modal.window="open = true"
+     x-show="open" x-cloak
+     class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+         x-transition:enter="transition-opacity duration-200"
+         x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-150"
+         x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+         @click="open = false"></div>
+
+    <div class="relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl
+                overflow-y-auto max-h-[92dvh]"
+         x-transition:enter="transition ease-out duration-250"
+         x-transition:enter-start="translate-y-full sm:translate-y-4 opacity-0"
+         x-transition:enter-end="translate-y-0 opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="translate-y-0 opacity-100"
+         x-transition:leave-end="translate-y-full sm:translate-y-4 opacity-0">
+
+        <div class="flex justify-center pt-3 pb-1 sm:hidden">
+            <div class="w-10 h-1.5 bg-gray-200 rounded-full"></div>
+        </div>
+
+        <div class="px-5 pt-2 pb-6 sm:pt-5">
+            <div class="flex items-center justify-between mb-5">
+                <h2 class="text-lg font-bold">Nuevo setup de equipo</h2>
+                <button @click="open = false"
+                        class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <form method="POST" action="{{ url_for('archer.equipment_new') }}" novalidate
+                  x-ref="setupForm">
+
+                {# ── Sección: Arco ── #}
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Arco</p>
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">
+                            Nombre del setup <span class="text-red-500">*</span>
+                        </label>
+                        <input name="name" type="text" maxlength="100"
+                               value="{{ form_data.get('name', '') }}"
+                               placeholder="Ej. Arco Indoor 18m"
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                                      {% if field == 'name' %}border-red-400 bg-red-50{% endif %}
+                                      focus:outline-none focus:ring-2 focus:ring-green-500" required />
+                        {% if field == 'name' %}<p class="text-red-600 text-xs mt-1">{{ error }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Tipo de arco</label>
+                        <select name="bow_type"
+                                class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                                       focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="">— Tipo —</option>
+                            {% for opt in ['Recurvo', 'Compuesto', 'Barebow', 'Longbow', 'Tradicional'] %}
+                            <option value="{{ opt }}" {% if form_data.get('bow_type') == opt %}selected{% endif %}>{{ opt }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Libraje (lbs)</label>
+                        <input name="draw_weight" type="number" step="0.5" min="0" max="100"
+                               value="{{ form_data.get('draw_weight', '') }}"
+                               placeholder="Ej. 38"
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Apertura (pulgadas)</label>
+                        <input name="draw_length" type="number" step="0.25" min="0" max="40"
+                               value="{{ form_data.get('draw_length', '') }}"
+                               placeholder="Ej. 27.5"
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Material de cuerda</label>
+                        <input name="string_material" type="text" maxlength="60"
+                               value="{{ form_data.get('string_material', '') }}"
+                               placeholder="Ej. Dyneema 16h"
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                </div>
+
+                {# ── Sección: Flechas ── #}
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Flechas</p>
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Modelo</label>
+                        <input name="arrow_model" type="text" maxlength="100"
+                               value="{{ form_data.get('arrow_model', '') }}"
+                               placeholder="Ej. Easton X10 / Skylon Paragon"
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Spine</label>
+                        <input name="arrow_spine" type="text" maxlength="20"
+                               value="{{ form_data.get('arrow_spine', '') }}"
+                               placeholder="Ej. 500"
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Peso puntal (gr)</label>
+                        <input name="point_weight" type="number" min="0" max="200"
+                               value="{{ form_data.get('point_weight', '') }}"
+                               placeholder="Ej. 100"
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Vanes / Plumas</label>
+                        <input name="vanes" type="text" maxlength="60"
+                               value="{{ form_data.get('vanes', '') }}"
+                               placeholder="Ej. Flex-Fletch 2\""
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Nock</label>
+                        <input name="nock" type="text" maxlength="60"
+                               value="{{ form_data.get('nock', '') }}"
+                               placeholder="Ej. Beiter Nock M"
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                </div>
+
+                {# ── Tarjetero de marcas de mira ── #}
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Marcas de mira</p>
+                <div class="bg-gray-50 rounded-xl p-3 mb-4">
+                    {# Marcas existentes #}
+                    <div class="flex flex-wrap gap-2 mb-3 min-h-[2rem]" id="sight-marks-list">
+                        <template x-for="(mark, idx) in sightMarks" :key="idx">
+                            <div class="flex items-center gap-1 bg-white border border-gray-200
+                                        rounded-lg px-2 py-1 text-xs">
+                                <span class="text-gray-400" x-text="mark.distance"></span>
+                                <span class="font-bold text-gray-800" x-text="mark.value"></span>
+                                <button type="button" @click="sightMarks.splice(idx, 1)"
+                                        class="ml-1 text-gray-300 hover:text-red-500 transition-colors">✕</button>
+                            </div>
+                        </template>
+                        <span x-show="sightMarks.length === 0"
+                              class="text-xs text-gray-400 self-center">Sin marcas aún</span>
+                    </div>
+                    {# Agregar marca #}
+                    <div class="flex gap-2">
+                        <input x-model="newDist" type="text" placeholder="Dist. (ej. 18m)"
+                               class="flex-1 border border-gray-200 rounded-lg px-2.5 py-2 text-xs
+                                      focus:outline-none focus:ring-2 focus:ring-green-500"
+                               @keydown.enter.prevent="if(newDist && newVal){ sightMarks.push({distance:newDist, value:newVal}); newDist=''; newVal=''; }" />
+                        <input x-model="newVal" type="text" placeholder="Valor"
+                               class="flex-1 border border-gray-200 rounded-lg px-2.5 py-2 text-xs
+                                      focus:outline-none focus:ring-2 focus:ring-green-500"
+                               @keydown.enter.prevent="if(newDist && newVal){ sightMarks.push({distance:newDist, value:newVal}); newDist=''; newVal=''; }" />
+                        <button type="button"
+                                @click="if(newDist && newVal){ sightMarks.push({distance:newDist, value:newVal}); newDist=''; newVal=''; }"
+                                class="px-3 py-2 rounded-lg text-white text-xs font-semibold transition-colors"
+                                style="background-color: {{ club.color_from }}">
+                            +
+                        </button>
+                    </div>
+                </div>
+
+                {# Campo oculto con JSON de sight_marks #}
+                <input type="hidden" name="sight_marks_json" :value="JSON.stringify(sightMarks)" />
+
+                <button type="submit"
+                        class="w-full text-white font-semibold py-3 rounded-xl text-sm transition-colors"
+                        style="background-color: {{ club.color_from }}">
+                    Guardar setup
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# ── Modal de edición (reutiliza la misma estructura) ── #}
+{% if edit_setup %}
+<div x-data="{
+        open: true,
+        sightMarks: {{ edit_setup.sight_marks | tojson }},
+        newDist: '', newVal: ''
+     }"
+     x-show="open" x-cloak
+     class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+         @click="open = false; window.location='{{ url_for('archer.equipment') }}'"></div>
+
+    <div class="relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl
+                overflow-y-auto max-h-[92dvh]">
+
+        <div class="flex justify-center pt-3 pb-1 sm:hidden">
+            <div class="w-10 h-1.5 bg-gray-200 rounded-full"></div>
+        </div>
+
+        <div class="px-5 pt-2 pb-6 sm:pt-5">
+            <div class="flex items-center justify-between mb-5">
+                <h2 class="text-lg font-bold">Editar setup</h2>
+                <a href="{{ url_for('archer.equipment') }}"
+                   class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </a>
+            </div>
+
+            <form method="POST"
+                  action="{{ url_for('archer.equipment_edit', setup_id=edit_setup.id) }}"
+                  novalidate>
+
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Arco</p>
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Nombre <span class="text-red-500">*</span></label>
+                        <input name="name" type="text" maxlength="100"
+                               value="{{ edit_setup.name }}"
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-green-500" required />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Tipo</label>
+                        <select name="bow_type" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="">— Tipo —</option>
+                            {% for opt in ['Recurvo', 'Compuesto', 'Barebow', 'Longbow', 'Tradicional'] %}
+                            <option value="{{ opt }}" {% if edit_setup.bow_type == opt %}selected{% endif %}>{{ opt }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Libraje (lbs)</label>
+                        <input name="draw_weight" type="number" step="0.5"
+                               value="{{ edit_setup.draw_weight or '' }}"
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Apertura (″)</label>
+                        <input name="draw_length" type="number" step="0.25"
+                               value="{{ edit_setup.draw_length or '' }}"
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Cuerda</label>
+                        <input name="string_material" type="text"
+                               value="{{ edit_setup.string_material or '' }}"
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                </div>
+
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Flechas</p>
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Modelo</label>
+                        <input name="arrow_model" type="text"
+                               value="{{ edit_setup.arrow_model or '' }}"
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Spine</label>
+                        <input name="arrow_spine" type="text"
+                               value="{{ edit_setup.arrow_spine or '' }}"
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Puntal (gr)</label>
+                        <input name="point_weight" type="number"
+                               value="{{ edit_setup.point_weight or '' }}"
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Vanes</label>
+                        <input name="vanes" type="text"
+                               value="{{ edit_setup.vanes or '' }}"
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Nock</label>
+                        <input name="nock" type="text"
+                               value="{{ edit_setup.nock or '' }}"
+                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                </div>
+
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Marcas de mira</p>
+                <div class="bg-gray-50 rounded-xl p-3 mb-4">
+                    <div class="flex flex-wrap gap-2 mb-3 min-h-[2rem]">
+                        <template x-for="(mark, idx) in sightMarks" :key="idx">
+                            <div class="flex items-center gap-1 bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs">
+                                <span class="text-gray-400" x-text="mark.distance"></span>
+                                <span class="font-bold text-gray-800" x-text="mark.value"></span>
+                                <button type="button" @click="sightMarks.splice(idx, 1)"
+                                        class="ml-1 text-gray-300 hover:text-red-500">✕</button>
+                            </div>
+                        </template>
+                        <span x-show="sightMarks.length === 0" class="text-xs text-gray-400 self-center">Sin marcas</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <input x-model="newDist" type="text" placeholder="Dist."
+                               class="flex-1 border border-gray-200 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                               @keydown.enter.prevent="if(newDist&&newVal){sightMarks.push({distance:newDist,value:newVal});newDist='';newVal='';}" />
+                        <input x-model="newVal" type="text" placeholder="Valor"
+                               class="flex-1 border border-gray-200 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                               @keydown.enter.prevent="if(newDist&&newVal){sightMarks.push({distance:newDist,value:newVal});newDist='';newVal='';}" />
+                        <button type="button"
+                                @click="if(newDist&&newVal){sightMarks.push({distance:newDist,value:newVal});newDist='';newVal='';}"
+                                class="px-3 py-2 rounded-lg text-white text-xs font-semibold"
+                                style="background-color: {{ club.color_from }}">+</button>
+                    </div>
+                </div>
+                <input type="hidden" name="sight_marks_json" :value="JSON.stringify(sightMarks)" />
+
+                <button type="submit"
+                        class="w-full text-white font-semibold py-3 rounded-xl text-sm transition-colors"
+                        style="background-color: {{ club.color_from }}">
+                    Guardar cambios
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

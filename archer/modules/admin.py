@@ -332,7 +332,7 @@ def list_archers() -> list[dict]:
     """Retorna todos los arqueros ordenados alfabéticamente por nombre ASC (Req 3.9)."""
     conn = get_connection()
     cursor = conn.execute(
-        "SELECT id, pin, name, created_at FROM archers ORDER BY name ASC"
+        "SELECT id, pin, name, COALESCE(photo_url, '') AS photo_url, created_at FROM archers ORDER BY name ASC"
     )
     return [dict(row) for row in cursor.fetchall()]
 

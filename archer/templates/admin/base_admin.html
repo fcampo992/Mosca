@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}Admin — {{ club_settings().club_name }}{% endblock %}</title>
+    <title>{% block title %}{{ club_settings().club_name }}{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -28,9 +28,7 @@
             </svg>
         </button>
         <a href="/" class="font-bold text-lg tracking-wide text-white">🏹 {{ club.club_name }}</a>
-        <span class="hidden sm:inline text-white/50 text-xs font-semibold uppercase tracking-widest">Admin</span>
     </div>
-    <!-- Sin botón Salir aquí — está en el sidebar -->
     {% if session.get("admin_username") %}
     <span class="hidden sm:inline text-white/70 text-xs font-medium">{{ session.admin_username }}</span>
     {% endif %}
@@ -114,9 +112,6 @@
 
     <!-- Cerrar sesión al fondo del sidebar -->
     <div class="p-4 border-t border-gray-100">
-        {% if session.get("admin_username") %}
-        <p class="text-xs text-gray-400 px-3 mb-2">{{ session.admin_username }}</p>
-        {% endif %}
         <form method="POST" action="{{ url_for('admin.logout') }}">
             <button type="submit"
                     class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium

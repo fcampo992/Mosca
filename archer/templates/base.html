@@ -12,7 +12,8 @@
 </head>
 {% set club = club_settings() %}
 {% set archer_logged = session.get('archer_id') %}
-<body class="min-h-screen bg-gray-50 text-gray-900" style="min-width:360px">
+<body class="min-h-screen bg-gray-50 text-gray-900" style="min-width:360px"
+      x-data="{ drawerOpen: false }">
 
     <!-- ── Header ── -->
     <header class="text-white px-4 h-14 flex items-center justify-between shadow-sm sticky top-0 z-40"
@@ -24,7 +25,7 @@
         </a>
 
         {% block header_nav %}
-        <nav class="flex items-center gap-2 text-sm font-medium">
+        <nav class="flex items-center gap-2">
             {% if archer_logged %}
             {# Arquero autenticado: avatar con menú desplegable #}            <div x-data="{ open: false }" class="relative">
                 <button @click="open = !open" @click.outside="open = false"
@@ -45,7 +46,7 @@
                     </svg>
                 </button>
 
-                <!-- Dropdown -->
+                <!-- Dropdown arquero -->
                 <div x-show="open" x-cloak
                      x-transition:enter="transition ease-out duration-100"
                      x-transition:enter-start="opacity-0 scale-95"
@@ -53,7 +54,7 @@
                      x-transition:leave="transition ease-in duration-75"
                      x-transition:leave-start="opacity-100 scale-100"
                      x-transition:leave-end="opacity-0 scale-95"
-                     class="absolute right-0 top-10 w-44 bg-white rounded-2xl shadow-xl
+                     class="absolute right-0 top-10 w-48 bg-white rounded-2xl shadow-xl
                             border border-gray-100 py-1.5 z-50 origin-top-right">
 
                     <div class="px-3 py-2 border-b border-gray-100 mb-1">
@@ -64,23 +65,34 @@
                     </div>
 
                     <a href="{{ url_for('archer.dashboard') }}"
-                       class="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700
-                              hover:bg-gray-50 transition-colors">
+                       class="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M16 8v8m-4-5v5m-4-2v2M3 20h18"/>
                         </svg>
                         Mi Dashboard
                     </a>
-
                     <a href="{{ url_for('archer.score') }}"
-                       class="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700
-                              hover:bg-gray-50 transition-colors">
+                       class="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>
                         </svg>
                         Cargar flechas
                     </a>
-
+                    <a href="{{ url_for('archer.profile') }}"
+                       class="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                        Mi Perfil
+                    </a>
+                    <a href="{{ url_for('archer.equipment') }}"
+                       class="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        Mi Equipo
+                    </a>
                     <div class="border-t border-gray-100 mt-1 pt-1">
                         <form method="POST" action="{{ url_for('archer.logout') }}">
                             <button type="submit"
@@ -97,27 +109,77 @@
             </div>
 
             {% else %}
-            {# Usuario no autenticado #}
-            {% if session.get("admin_logged_in") %}
-            <a href="/admin/tournaments"
-               class="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-xs transition-colors">
-                Admin
-            </a>
-            {% else %}
-            <a href="/admin/login"
-               class="text-white/70 hover:text-white text-xs transition-colors">
-                Admin
-            </a>
-            {% endif %}
-            <a href="/archer/login"
-               class="bg-white font-semibold px-3 py-1.5 rounded-lg text-xs hover:bg-white/90 transition-colors"
-               style="color: {{ club.color_from }}">
-                Ingresar PIN
-            </a>
+            {# Visitante: hamburguesa con drawer (mismo estilo que home.html) #}
+            <button @click="drawerOpen = true"
+                    class="p-2 rounded-xl text-white hover:bg-white/20 active:bg-white/30 transition-colors"
+                    aria-label="Menú">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
             {% endif %}
         </nav>
         {% endblock %}{# /header_nav #}
     </header>
+
+    <!-- ── Overlay drawer (solo para visitantes) ── -->
+    {% if not archer_logged %}
+    <div x-show="drawerOpen" x-cloak
+         class="fixed inset-0 bg-black/50 z-40"
+         x-transition:enter="transition-opacity duration-200"
+         x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-150"
+         x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+         @click="drawerOpen = false"></div>
+
+    <!-- ── Drawer lateral visitantes ── -->
+    <aside x-show="drawerOpen" x-cloak
+           x-transition:enter="transition ease-out duration-200"
+           x-transition:enter-start="translate-x-full"
+           x-transition:enter-end="translate-x-0"
+           x-transition:leave="transition ease-in duration-150"
+           x-transition:leave-start="translate-x-0"
+           x-transition:leave-end="translate-x-full"
+           class="fixed top-0 right-0 bottom-0 w-72 shadow-2xl z-50 flex flex-col overflow-y-auto"
+           style="background-color: #16213e">
+
+        <div class="flex items-center justify-between px-5 py-4 border-b border-white/10"
+             style="background-color: {{ club.color_from }}">
+            <span class="font-bold text-white text-base">🏹 {{ club.club_name }}</span>
+            <button @click="drawerOpen = false"
+                    class="p-1.5 rounded-lg text-white hover:bg-white/20 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-1">
+            <a href="/"
+               class="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium
+                      text-white/80 hover:bg-white/10 hover:text-white transition-colors">
+                <span class="text-xl">🏠</span> Inicio
+            </a>
+            <a href="{{ url_for('stats.ranking_view') }}"
+               class="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium
+                      text-white/80 hover:bg-white/10 hover:text-white transition-colors">
+                <span class="text-xl">🏆</span> Ranking del Club
+            </a>
+            <div class="pt-3 mt-2 border-t border-white/10 space-y-2">
+                <a href="/archer/login"
+                   class="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold
+                          text-white transition-colors" style="background-color: #0d0d0d">
+                    <span class="text-xl">🎯</span> Ingresar como Arquero
+                </a>
+                <a href="/admin/login"
+                   class="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium
+                          text-white/50 hover:bg-white/10 hover:text-white/80 transition-colors">
+                    <span class="text-xl">🔒</span> Panel de Administración
+                </a>
+            </div>
+        </nav>
+    </aside>
+    {% endif %}
 
     <!-- ── Contenido principal ── -->
     <main class="px-4 py-6 max-w-3xl mx-auto {% block main_class %}{% endblock %}

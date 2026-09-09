@@ -241,4 +241,5 @@ club_settings  (id, club_name, hero_title, hero_subtitle, ticker_text, color_fro
 - Deploy en Vercel funcionando: `mosca-bice.vercel.app`
 - Turso conectado con `_DictRow` row_factory
 - UI completamente modernizada con design system consistente
-- Último commit: `c7295fe` — fix: quitar footer de base.html, block header_nav para login del arquero
+- Módulo de Perfil + Equipo del arquero implementado
+- Último commit: `4f480d2` — feat: módulo perfil + equipo

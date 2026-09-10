@@ -242,4 +242,4 @@ club_settings  (id, club_name, hero_title, hero_subtitle, ticker_text, color_fro
 - Turso conectado con `_DictRow` row_factory
 - UI completamente modernizada con design system consistente
 - Módulo de Perfil + Equipo del arquero implementado
-- Último commit: `4f480d2` — feat: módulo perfil + equipo
+- Último commit: `9e663af` — fix: nav consistente en toda la app

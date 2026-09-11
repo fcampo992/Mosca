@@ -245,11 +245,13 @@ def tournament_detail(tournament_id: str):
         return redirect(url_for("admin.tournaments"))
     categories_list = list_categories(tournament_id)
     archers_list = list_enrolled_archers(tournament_id)
+    all_archers = list_archers()   # todos los arqueros para el formulario de inscripción
     return render_template(
         "admin/tournament_detail.html",
         tournament=tournament,
         categories=categories_list,
         archers=archers_list,
+        all_archers=all_archers,
         error=None,
         field=None,
         form_data={},

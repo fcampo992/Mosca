@@ -168,6 +168,63 @@
 
     {# ── Tab: Arqueros ── #}
     <div x-show="tab === 'arqueros'" x-cloak>
+
+        {# ── Formulario de inscripción rápida ── #}
+        {% if categories %}
+        <form method="POST" action="{{ url_for('admin.enroll', archer_id='__archer_id__') }}"
+              id="enroll-form"
+              class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4">
+
+            <h3 class="text-sm font-semibold text-gray-700 mb-3">Inscribir arquero</h3>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Arquero</label>
+                    <select id="enroll-archer" name="_archer_select"
+                            onchange="updateEnrollAction(this.value)"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                                   focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                        <option value="">— Seleccionar —</option>
+                        {% for a in all_archers %}
+                        {# Mostrar solo arqueros NO inscritos ya en este torneo #}
+                        {% set enrolled_ids = archers | map(attribute='archer_id') | list %}
+                        {% if a.id not in enrolled_ids %}
+                        <option value="{{ a.id }}">{{ a.name }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Categoría</label>
+                    <select name="category_id"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                                   focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                        <option value="">— Seleccionar —</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}">{{ cat.bow_type }} · {{ cat.distance }} · {{ cat.gender }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <input type="hidden" name="tournament_id" value="{{ tournament.id }}" />
+                    <button type="submit"
+                            class="w-full bg-green-700 hover:bg-green-800 text-white text-sm font-semibold
+                                   px-5 py-2.5 rounded-xl transition-colors">
+                        Inscribir
+                    </button>
+                </div>
+            </div>
+        </form>
+        <script>
+        function updateEnrollAction(archerId) {
+            if (!archerId) return;
+            const form = document.getElementById('enroll-form');
+            form.action = '/admin/archers/' + archerId + '/enroll';
+        }
+        </script>
+        {% endif %}
+
+        {# Lista de inscritos #}
         {% if archers %}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <table class="w-full text-sm">
@@ -194,40 +251,12 @@
         <div class="text-center py-12 text-gray-400">
             <div class="text-4xl mb-2">🎯</div>
             <p class="text-sm">No hay arqueros inscritos aún.</p>
-            <p class="text-xs mt-1">Inscribílos desde la sección <a href="{{ url_for('admin.archers') }}" class="text-green-700 underline">Arqueros</a>.</p>
+            {% if not categories %}
+            <p class="text-xs mt-1 text-yellow-600">Primero creá al menos una categoría en el tab "Categorías".</p>
+            {% endif %}
         </div>
         {% endif %}
 
-        {# Corrección de flecha (solo torneos activos) #}
-        {% if tournament.status == 'active' %}
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mt-4">
-            <h3 class="text-sm font-semibold text-gray-700 mb-4">Corregir flecha</h3>
-            <form method="POST" action="{{ url_for('admin.correct_score') }}">
-                <input type="hidden" name="redirect_to"
-                       value="{{ url_for('admin.tournament_detail', tournament_id=tournament.id) }}" />
-                <div class="flex flex-wrap gap-3 items-end">
-                    <div class="flex-1 min-w-48">
-                        <label class="block text-xs font-medium text-gray-600 mb-1.5">ID de puntuación</label>
-                        <input type="text" name="score_id" required placeholder="UUID de la flecha"
-                               class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Valor</label>
-                        <select name="arrow_val"
-                                class="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                            {% for v in ['X','10','9','8','7','6','5','4','3','2','1','M'] %}
-                            <option value="{{ v }}">{{ v }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <button type="submit"
-                            class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors">
-                        Corregir
-                    </button>
-                </div>
-            </form>
-        </div>
-        {% endif %}
     </div>
 
     {# ── Tab: Acciones ── #}

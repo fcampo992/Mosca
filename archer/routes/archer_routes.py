@@ -441,37 +441,42 @@ def correct_arrow():
 @archer_bp.route("/profile/photo", methods=["POST"])
 @require_session
 def upload_photo():
-    """
-    POST — Sube o reemplaza la foto de perfil del arquero.
-    Usa Cloudinary si CLOUDINARY_URL está configurada, sino guarda en disco.
-    """
+    """POST — Sube o reemplaza la foto de perfil. Redirige a /archer/profile."""
     archer_id = session["archer_id"]
 
+    def _err(msg: str):
+        """Helper: vuelve al perfil con mensaje de error."""
+        profile_data = get_profile(archer_id)
+        return render_template(
+            "archer/profile.html",
+            profile=profile_data,
+            setups=list_setups(archer_id),
+            error=msg,
+            field="photo",
+            success=False,
+        ), 400
+
     if "photo" not in request.files:
-        return _render_score(error="No se recibió ningún archivo."), 400
+        return _err("No se recibió ningún archivo.")
 
     photo = request.files["photo"]
-
     if photo.filename == "":
-        return _render_score(error="Seleccioná una imagen antes de subir."), 400
-
+        return _err("Seleccioná una imagen antes de subir.")
     if not _allowed_photo(photo.filename):
-        return _render_score(error="Formato no permitido. Usá JPG, PNG, WEBP o GIF."), 400
+        return _err("Formato no permitido. Usá JPG, PNG, WEBP o GIF.")
 
     data = photo.read()
     if len(data) > _MAX_PHOTO_BYTES:
-        return _render_score(error="La imagen supera el límite de 5 MB."), 400
+        return _err("La imagen supera el límite de 5 MB.")
 
     photo_url = None
-
-    # ── Intentar Cloudinary primero ──
     cloudinary_url = os.environ.get("CLOUDINARY_URL")
+
     if cloudinary_url:
         try:
-            import cloudinary                          # type: ignore
-            import cloudinary.uploader                 # type: ignore
+            import cloudinary
+            import cloudinary.uploader
             import io
-            # Configurar explícitamente desde la URL de entorno
             cloudinary.config(cloudinary_url=cloudinary_url)
             result = cloudinary.uploader.upload(
                 io.BytesIO(data),
@@ -482,35 +487,34 @@ def upload_photo():
             )
             photo_url = result.get("secure_url")
         except Exception as exc:
-            return _render_score(error=f"Error al subir a Cloudinary: {exc}"), 500
+            return _err(f"Error al subir a Cloudinary: {exc}")
     else:
-        # ── Fallback: disco local ──
-        ext = photo.filename.rsplit(".", 1)[1].lower()
-        filename = f"{archer_id}.{ext}"
-        photos_dir = os.path.join(current_app.root_path, "static", "photos")
-        os.makedirs(photos_dir, exist_ok=True)
-        filepath = os.path.join(photos_dir, filename)
-        with open(filepath, "wb") as f:
-            f.write(data)
-        photo_url = f"/static/photos/{filename}"
+        # Fallback: disco local
+        try:
+            ext = photo.filename.rsplit(".", 1)[1].lower()
+            filename = f"{archer_id}.{ext}"
+            photos_dir = os.path.join(current_app.root_path, "static", "photos")
+            os.makedirs(photos_dir, exist_ok=True)
+            with open(os.path.join(photos_dir, filename), "wb") as f:
+                f.write(data)
+            photo_url = f"/static/photos/{filename}"
+        except Exception as exc:
+            return _err(f"Error al guardar la imagen: {exc}")
 
-    # ── Persistir URL en DB ──
+    # Persistir en DB
     try:
-        from archer.db import get_connection  # noqa: PLC0415
+        from archer.db import get_connection
         conn = get_connection()
-        conn.execute(
-            "UPDATE archers SET photo_url = ? WHERE id = ?",
-            (photo_url, archer_id),
-        )
+        conn.execute("UPDATE archers SET photo_url = ? WHERE id = ?", (photo_url, archer_id))
         try:
             conn.commit()
         except Exception:
             pass
         session["photo_url"] = photo_url
     except Exception as exc:
-        return _render_score(error=f"Error al guardar la foto: {exc}"), 500
+        return _err(f"Error al guardar la foto en la base de datos: {exc}")
 
-    return redirect(url_for("archer.score"))
+    return redirect(url_for("archer.profile"))
 
 
 # ---------------------------------------------------------------------------

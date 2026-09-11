@@ -118,25 +118,38 @@ def save_profile(
 
 
 def upload_banner(archer_id: str, file_data: bytes, filename: str) -> dict:
-    """Sube la imagen de banner a Cloudinary y guarda la URL. Retorna {"url": ...} o {"error": ...}."""
+    """Sube la imagen de banner a Cloudinary (o disco local como fallback). Retorna {"url": ...} o {"error": ...}."""
     cloudinary_url = os.environ.get("CLOUDINARY_URL")
-    if not cloudinary_url:
-        return {"error": "Cloudinary no está configurado en este entorno."}
 
-    try:
-        import cloudinary          # type: ignore
-        import cloudinary.uploader  # type: ignore
-        cloudinary.config(cloudinary_url=cloudinary_url)
-        result = cloudinary.uploader.upload(
-            io.BytesIO(file_data),
-            public_id=f"archer_banners/{archer_id}",
-            overwrite=True,
-            resource_type="image",
-            transformation=[{"width": 1200, "height": 400, "crop": "fill", "gravity": "center"}],
-        )
-        url = result.get("secure_url", "")
-    except Exception as exc:
-        return {"error": f"Error al subir el banner: {exc}"}
+    if cloudinary_url:
+        try:
+            import cloudinary          # type: ignore
+            import cloudinary.uploader  # type: ignore
+            cloudinary.config(cloudinary_url=cloudinary_url)
+            result = cloudinary.uploader.upload(
+                io.BytesIO(file_data),
+                public_id=f"archer_banners/{archer_id}",
+                overwrite=True,
+                resource_type="image",
+                transformation=[{"width": 1200, "height": 400, "crop": "fill", "gravity": "center"}],
+            )
+            url = result.get("secure_url", "")
+        except Exception as exc:
+            return {"error": f"Error al subir el banner a Cloudinary: {exc}"}
+    else:
+        # Fallback: disco local
+        try:
+            import os as _os
+            from flask import current_app
+            ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
+            fname = f"banner_{archer_id}.{ext}"
+            banners_dir = _os.path.join(current_app.root_path, "static", "banners")
+            _os.makedirs(banners_dir, exist_ok=True)
+            with open(_os.path.join(banners_dir, fname), "wb") as f:
+                f.write(file_data)
+            url = f"/static/banners/{fname}"
+        except Exception as exc:
+            return {"error": f"Error al guardar el banner: {exc}"}
 
     # Persistir URL
     conn = get_connection()

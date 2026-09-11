@@ -196,21 +196,37 @@
     <div class="bg-red-900/50 border border-red-700 text-red-300 text-sm rounded-xl px-4 py-3 text-center">⚠️ {{ error }}</div>
     {% endif %}
 
-    {# ── Tandas guardadas (historial de la sesión actual) ── #}
-    {% if end_summary and end_summary.arrows %}
-    <div>
-        <p class="text-[10px] text-gray-500 uppercase tracking-wide font-bold mb-2">Flechas guardadas en esta tanda</p>
-        <div class="flex flex-wrap gap-1.5">
-            {% for arrow in end_summary.arrows %}
-            <span class="inline-flex items-center justify-center rounded-lg font-bold text-xs px-2 py-0.5 min-w-[2rem]
-                {% if arrow.arrow_val == 'X' %}bg-yellow-400 text-gray-900
-                {% elif arrow.arrow_val == '10' %}bg-yellow-300 text-gray-900
-                {% elif arrow.arrow_val in ['9','8','7'] %}bg-red-500 text-white
-                {% elif arrow.arrow_val in ['6','5'] %}bg-blue-500 text-white
-                {% elif arrow.arrow_val in ['4','3'] %}bg-gray-600 text-white
-                {% else %}bg-gray-700 text-gray-400{% endif %}">
-                {{ arrow.arrow_val }}
-            </span>
+    {# ── Historial de tandas guardadas ── #}
+    {% if ends_history %}
+    <div class="mt-1">
+        <p class="text-[10px] text-gray-500 uppercase tracking-wide font-bold mb-2">
+            Tandas anteriores
+        </p>
+        <div class="space-y-1.5">
+            {% for e in ends_history | reverse %}
+            <div class="flex items-center gap-2 bg-gray-800 rounded-xl px-3 py-2">
+                <div class="text-center shrink-0 w-12">
+                    <p class="text-[9px] text-gray-500 uppercase leading-tight">R{{ e.round_number }}</p>
+                    <p class="text-xs font-bold text-gray-300">T{{ e.end_number }}</p>
+                </div>
+                <div class="flex flex-wrap gap-1 flex-1">
+                    {% for v in e.arrows %}
+                    {% if v %}
+                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded
+                        {% if v == 'X' %}bg-yellow-400 text-gray-900
+                        {% elif v == '10' %}bg-yellow-300 text-gray-900
+                        {% elif v in ['9','8','7'] %}bg-red-500 text-white
+                        {% elif v in ['6','5'] %}bg-blue-500 text-white
+                        {% elif v in ['4','3'] %}bg-gray-600 text-white
+                        {% elif v in ['2','1'] %}bg-gray-700 text-gray-300
+                        {% else %}bg-gray-800 text-gray-400 border border-gray-600{% endif %}">
+                        {{ v }}
+                    </span>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                <span class="text-xs font-black text-green-400 shrink-0">{{ e.pts }}</span>
+            </div>
             {% endfor %}
         </div>
     </div>

@@ -298,6 +298,34 @@ def _render_score(error=None):
     ends_per_round = tournament.get("rounds", ENDS_PER_ROUND)
     rounds_count   = tournament.get("rounds_count", 1)
 
+    # Historial de todas las tandas guardadas (para mostrar debajo del teclado)
+    try:
+        from archer.db import get_connection as _gc
+        _conn = _gc()
+        _rows = _conn.execute(
+            """
+            SELECT round_number, end_number,
+                   GROUP_CONCAT(arrow_val, ',') AS vals,
+                   SUM(points) AS pts
+            FROM scores
+            WHERE archer_id = ? AND tournament_id = ?
+            GROUP BY round_number, end_number
+            ORDER BY round_number ASC, end_number ASC
+            """,
+            (archer_id, tournament["id"]),
+        ).fetchall()
+        ends_history = [
+            {
+                "round_number": r["round_number"],
+                "end_number":   r["end_number"],
+                "arrows":       (r["vals"] or "").split(","),
+                "pts":          r["pts"] or 0,
+            }
+            for r in _rows
+        ]
+    except Exception:
+        ends_history = []
+
     # Verificar si el torneo está completado (sin depender solo de la sesión)
     if not tournament_done:
         tournament_done = (
@@ -313,6 +341,7 @@ def _render_score(error=None):
         tournament_done=tournament_done,
         accumulated=accumulated,
         end_summary=end_summary,
+        ends_history=ends_history,
         round_number=round_number,
         end_number=end_number,
         archer_name=archer_name,

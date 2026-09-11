@@ -76,7 +76,14 @@
                         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>
                         </svg>
-                        Cargar flechas
+                        Competencia
+                    </a>
+                    <a href="{{ url_for('archer.training') }}"
+                       class="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                        </svg>
+                        Entrenamientos
                     </a>
                     <a href="{{ url_for('archer.profile') }}"
                        class="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
@@ -196,7 +203,7 @@
 
         {# Inicio / Dashboard #}
         <a href="{{ url_for('archer.dashboard') }}"
-           class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors
+           class="flex flex-col items-center gap-0.5 px-3 py-1 transition-colors
                   {{ 'text-green-700' if current == 'archer.dashboard' else 'text-gray-400 hover:text-gray-600' }}">
             <svg class="w-6 h-6" fill="{{ 'currentColor' if current == 'archer.dashboard' else 'none' }}"
                  stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
@@ -205,9 +212,9 @@
             <span class="text-[10px] font-medium">Inicio</span>
         </a>
 
-        {# Competencia / Score #}
+        {# Competencia — torneos del club #}
         <a href="{{ url_for('archer.score') }}"
-           class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors
+           class="flex flex-col items-center gap-0.5 px-3 py-1 transition-colors
                   {{ 'text-green-700' if current in ('archer.score', 'archer.score_post') else 'text-gray-400 hover:text-gray-600' }}">
             <svg class="w-6 h-6" fill="{{ 'currentColor' if current in ('archer.score', 'archer.score_post') else 'none' }}"
                  stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
@@ -216,23 +223,28 @@
             <span class="text-[10px] font-medium">Competencia</span>
         </a>
 
-        {# Historial #}
-        <a href="{{ url_for('stats.trend_view', archer_id=session.archer_id) }}"
-           class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors
-                  {{ 'text-green-700' if current == 'stats.trend_view' else 'text-gray-400 hover:text-gray-600' }}">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        {# Entrenamiento #}
+        {% set training_active = current in ('archer.training', 'archer.training_score', 'archer.training_summary', 'archer.training_new') %}
+        <a href="{{ url_for('archer.training') }}"
+           class="flex flex-col items-center gap-0.5 px-3 py-1 transition-colors
+                  {{ 'text-green-700' if training_active else 'text-gray-400 hover:text-gray-600' }}">
+            <svg class="w-6 h-6" fill="{{ 'currentColor' if training_active else 'none' }}"
+                 stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
             </svg>
-            <span class="text-[10px] font-medium">Historial</span>
+            <span class="text-[10px] font-medium">Entreno</span>
         </a>
 
-        {# Perfil #}
+        {# Perfil — incluye equipo e historial #}
+        {% set profile_active = current in ('archer.profile', 'archer.equipment', 'archer.equipment_edit', 'stats.trend_view') %}
         <a href="{{ url_for('archer.profile') }}"
-           class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors
-                  {{ 'text-green-700' if current in ('archer.profile', 'archer.equipment', 'archer.equipment_edit') else 'text-gray-400 hover:text-gray-600' }}">
-            <svg class="w-6 h-6" fill="{{ 'currentColor' if current in ('archer.profile', 'archer.equipment', 'archer.equipment_edit') else 'none' }}"
+           class="flex flex-col items-center gap-0.5 px-3 py-1 transition-colors
+                  {{ 'text-green-700' if profile_active else 'text-gray-400 hover:text-gray-600' }}">
+            <svg class="w-6 h-6" fill="{{ 'currentColor' if profile_active else 'none' }}"
                  stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
             </svg>
             <span class="text-[10px] font-medium">Perfil</span>
         </a>

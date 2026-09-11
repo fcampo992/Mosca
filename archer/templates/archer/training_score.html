@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    {% set club = club_settings() %}
+    <title>Entrenamiento — {{ sess.distance }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak]{display:none!important}
+        @keyframes pop { 0%{transform:scale(.6);opacity:0} 70%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+        .chip-pop { animation: pop .18s ease-out forwards; }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-900 text-white" style="min-width:360px">
+
+{% set is_free    = sess.mode == 'free' %}
+{% set is_summary = summary_mode is defined and summary_mode %}
+
+{# ── Header compacto ── #}
+<header class="h-14 flex items-center justify-between px-4 shadow"
+        style="background-color: {{ club.color_from }}">
+    <a href="{{ url_for('archer.training') }}"
+       class="p-2 rounded-xl hover:bg-white/20 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+    </a>
+    <div class="text-center">
+        <p class="font-bold text-sm leading-tight">{{ sess.distance }}
+            {% if is_free %}<span class="opacity-70 font-normal">· Libre</span>{% endif %}
+        </p>
+        <p class="text-[10px] opacity-60">{{ sess.session_date }}</p>
+    </div>
+    {% if not is_summary and not is_free %}
+    <form method="POST" action="{{ url_for('archer.training_finish', session_id=sess.id) }}">
+        <button type="submit"
+                class="text-xs font-bold bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-xl transition-colors">
+            Terminar
+        </button>
+    </form>
+    {% else %}
+    <div class="w-14"></div>
+    {% endif %}
+</header>
+
+{% if is_summary %}
+{# ════════════════════════════════════
+   VISTA RESUMEN (sesión finalizada)
+   ════════════════════════════════════ #}
+<div class="max-w-lg mx-auto px-4 py-6">
+
+    <div class="text-center mb-6">
+        <div class="text-5xl mb-2">🏆</div>
+        <h1 class="text-2xl font-extrabold">Sesión finalizada</h1>
+        <p class="text-gray-400 text-sm mt-1">{{ sess.distance }} · {{ ends_done }} tandas</p>
+    </div>
+
+    {# KPIs #}
+    <div class="grid grid-cols-2 gap-3 mb-6">
+        <div class="bg-gray-800 rounded-2xl p-4 text-center">
+            <p class="text-3xl font-black text-green-400">{{ stats.total_points }}</p>
+            <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-wide">Total puntos</p>
+        </div>
+        <div class="bg-gray-800 rounded-2xl p-4 text-center">
+            <p class="text-3xl font-black text-yellow-400">{{ stats.avg_per_arrow }}</p>
+            <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-wide">Prom/flecha</p>
+        </div>
+        <div class="bg-gray-800 rounded-2xl p-4 text-center">
+            <p class="text-3xl font-black text-blue-400">{{ stats.total_arrows }}</p>
+            <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-wide">Flechas</p>
+        </div>
+        <div class="bg-gray-800 rounded-2xl p-4 text-center">
+            <p class="text-3xl font-black text-indigo-400">{{ stats.best_end }}</p>
+            <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-wide">Mejor tanda</p>
+        </div>
+    </div>
+
+    {# Detalle por tanda #}
+    {% if ends %}
+    <div class="bg-gray-800 rounded-2xl overflow-hidden mb-6">
+        <table class="w-full text-sm">
+            <thead class="border-b border-gray-700">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Tanda</th>
+                    <th class="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase">Flechas</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Pts</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-700">
+                {% for end in ends %}
+                <tr>
+                    <td class="px-4 py-3 font-semibold">{{ end.end_number }}</td>
+                    <td class="px-4 py-3 text-center">
+                        <div class="flex justify-center gap-1 flex-wrap">
+                            {% for s in end.scores %}
+                            <span class="text-xs font-bold px-1.5 py-0.5 rounded
+                                {% if s.val == 'X' %}bg-yellow-400 text-gray-900
+                                {% elif s.val == '10' %}bg-yellow-300 text-gray-900
+                                {% elif s.val in ['9','8','7'] %}bg-red-500 text-white
+                                {% elif s.val in ['6','5'] %}bg-blue-500 text-white
+                                {% elif s.val in ['4','3'] %}bg-gray-500 text-white
+                                {% else %}bg-gray-700 text-gray-300{% endif %}">
+                                {{ s.val }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-right font-bold text-green-400">{{ end.total_points }}</td>
+                </tr>
+                {% if end.note %}
+                <tr class="bg-gray-750">
+                    <td colspan="3" class="px-4 py-2 text-xs text-gray-400 italic">💬 {{ end.note }}</td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <a href="{{ url_for('archer.training') }}"
+       class="block w-full text-center text-white font-semibold py-3 rounded-2xl text-sm transition-colors"
+       style="background-color: {{ club.color_from }}">
+        Volver a Entrenamientos
+    </a>
+</div>
+
+{% elif is_free %}
+{# ════════════════════════════════════
+   MODO LIBRE — contador de volumen
+   ════════════════════════════════════ #}
+<div class="max-w-sm mx-auto px-4 py-6 flex flex-col items-center gap-6"
+     x-data="{ count: 0, note: '', showNote: false }">
+
+    {# Contador grande #}
+    <div class="text-center">
+        <p class="text-7xl font-black text-white" x-text="count"></p>
+        <p class="text-gray-400 text-sm mt-2">flechas tiradas</p>
+    </div>
+
+    {# Botones de incremento #}
+    <div class="flex gap-4 w-full">
+        <button type="button" @click="if(count>0) count--"
+                class="flex-1 bg-gray-700 hover:bg-gray-600 active:bg-gray-500
+                       text-white text-3xl font-light rounded-2xl py-6 transition-colors select-none">
+            −
+        </button>
+        <button type="button" @click="count += {{ sess.arrows_per_end }}"
+                class="flex-[2] text-white text-2xl font-black rounded-2xl py-6 transition-colors select-none shadow-lg"
+                style="background-color: {{ club.color_from }}">
+            +{{ sess.arrows_per_end }}
+        </button>
+        <button type="button" @click="count++"
+                class="flex-1 bg-gray-700 hover:bg-gray-600 active:bg-gray-500
+                       text-white text-3xl font-light rounded-2xl py-6 transition-colors select-none">
+            +
+        </button>
+    </div>
+
+    {# Nota #}
+    <button type="button" @click="showNote = !showNote"
+            class="text-xs text-gray-400 hover:text-gray-200 flex items-center gap-1 transition-colors">
+        💬 <span x-text="showNote ? 'Ocultar nota' : 'Agregar nota'"></span>
+    </button>
+    <textarea x-show="showNote" x-cloak x-model="note"
+              rows="2" maxlength="200" placeholder="Ej: Técnica de suelta…"
+              class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5
+                     text-sm text-white placeholder-gray-500 resize-none
+                     focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
+
+    {# Guardar tanda #}
+    <form method="POST" action="{{ url_for('archer.training_save_end', session_id=sess.id) }}"
+          class="w-full" @submit.prevent="
+              document.getElementById('free-count').value = count;
+              document.getElementById('free-note').value  = note;
+              document.getElementById('free-end-num').value = {{ ends_done + 1 }};
+              $el.submit();
+          ">
+        <input type="hidden" id="free-count"   name="arrow_count" />
+        <input type="hidden" id="free-note"    name="note" />
+        <input type="hidden" id="free-end-num" name="end_number" />
+        <button type="submit"
+                class="w-full text-white font-bold py-4 rounded-2xl text-base transition-colors"
+                style="background-color: {{ club.color_from }}">
+            Guardar tanda {{ ends_done + 1 }}
+        </button>
+    </form>
+
+    {# Resumen de tandas anteriores #}
+    {% if ends %}
+    <div class="w-full text-center text-sm text-gray-400">
+        {{ ends|length }} tanda{{ 's' if ends|length != 1 else '' }} guardadas ·
+        {{ ends | sum(attribute='total_points') if sess.mode == 'scored' else (ends | map(attribute='scores') | map('length') | sum) }} flechas totales
+    </div>
+    {% endif %}
+</div>
+
+{% else %}
+{# ════════════════════════════════════
+   MODO PUNTUADO — teclado táctil
+   ════════════════════════════════════ #}
+<div class="max-w-sm mx-auto px-3 py-3 flex flex-col gap-3"
+     x-data="{
+         arrows: [],
+         note: '',
+         showNote: false,
+         maxArrows: {{ sess.arrows_per_end }},
+         endNum: {{ current_end }},
+         points: { 'X':10,'10':10,'9':9,'8':8,'7':7,'6':6,'5':5,'4':4,'3':3,'2':2,'1':1,'M':0 },
+         get subtotal() { return this.arrows.reduce((s,a) => s + (this.points[a]||0), 0); },
+         get isFull()   { return this.arrows.length >= this.maxArrows; },
+         add(v) { if(!this.isFull) this.arrows.push(v); },
+         del()  { this.arrows.pop(); },
+     }">
+
+    {# ── Stats en vivo ── #}
+    <div class="flex items-center justify-between">
+        <div class="text-center">
+            <p class="text-2xl font-black text-green-400">{{ stats.total_points }}</p>
+            <p class="text-[10px] text-gray-400 uppercase tracking-wide">Total</p>
+        </div>
+        <div class="text-center">
+            <p class="text-xl font-black text-white" x-text="subtotal"></p>
+            <p class="text-[10px] text-gray-400 uppercase tracking-wide">Esta tanda</p>
+        </div>
+        <div class="text-center">
+            <p class="text-2xl font-black text-yellow-400">{{ stats.avg_per_arrow }}</p>
+            <p class="text-[10px] text-gray-400 uppercase tracking-wide">Prom</p>
+        </div>
+        <div class="text-center">
+            <p class="text-sm font-bold text-gray-300">T.{{ current_end }}</p>
+            {% if sess.total_ends %}
+            <p class="text-[10px] text-gray-500">/ {{ sess.total_ends }}</p>
+            {% else %}
+            <p class="text-[10px] text-gray-500">libre</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {# ── Chips de flechas de la tanda actual ── #}
+    <div class="flex flex-wrap gap-2 bg-gray-800 rounded-2xl px-3 py-3 min-h-[3rem]"
+         aria-label="Flechas de la tanda">
+        <template x-for="(v, i) in arrows" :key="i">
+            <span class="chip-pop inline-flex items-center justify-center rounded-xl font-black text-sm
+                         px-2.5 py-1 min-w-[2.5rem]"
+                  :class="{
+                      'bg-yellow-400 text-gray-900': v==='X',
+                      'bg-yellow-300 text-gray-900': v==='10',
+                      'bg-red-500 text-white':  ['9','8','7'].includes(v),
+                      'bg-blue-500 text-white':  ['6','5'].includes(v),
+                      'bg-gray-600 text-white':  ['4','3'].includes(v),
+                      'bg-gray-700 text-gray-300': ['2','1'].includes(v),
+                      'bg-gray-800 border border-gray-600 text-gray-400': v==='M',
+                  }"
+                  x-text="v"></span>
+        </template>
+        <span x-show="arrows.length === 0" class="text-gray-500 text-sm self-center">
+            Tocá los botones para anotar →
+        </span>
+    </div>
+
+    {# ── Teclado ── #}
+    {% set arrow_buttons = [
+        ('X',  'bg-yellow-400 text-gray-900 hover:bg-yellow-500 active:bg-yellow-600'),
+        ('10', 'bg-yellow-300 text-gray-900 hover:bg-yellow-400 active:bg-yellow-500'),
+        ('9',  'bg-red-500 text-white hover:bg-red-600 active:bg-red-700'),
+        ('8',  'bg-red-400 text-white hover:bg-red-500 active:bg-red-600'),
+        ('7',  'bg-red-300 text-gray-900 hover:bg-red-400 active:bg-red-500'),
+        ('6',  'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700'),
+        ('5',  'bg-blue-400 text-white hover:bg-blue-500 active:bg-blue-600'),
+        ('4',  'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400'),
+        ('3',  'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400'),
+        ('2',  'bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500'),
+        ('1',  'bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500'),
+        ('M',  'bg-gray-800 text-gray-400 border border-gray-600 hover:bg-gray-700 active:bg-gray-600'),
+    ] %}
+    <div class="grid grid-cols-4 gap-2" role="group" aria-label="Teclado de flechas">
+        {% for val, cls in arrow_buttons %}
+        <button type="button" @click="add('{{ val }}')"
+                :disabled="isFull"
+                :class="isFull ? 'opacity-30 cursor-not-allowed' : ''"
+                class="flex items-center justify-center rounded-2xl font-black text-xl
+                       select-none transition-colors {{ cls }}"
+                style="min-height:56px" aria-label="{{ val }}">
+            {{ val }}
+        </button>
+        {% endfor %}
+    </div>
+
+    {# ── Acciones de tanda ── #}
+    <div class="flex items-center gap-2">
+
+        {# Borrar última flecha #}
+        <button type="button" @click="del()"
+                :disabled="arrows.length === 0"
+                class="p-3.5 rounded-2xl bg-gray-700 hover:bg-gray-600 active:bg-gray-500
+                       transition-colors flex items-center justify-center"
+                :class="arrows.length === 0 ? 'opacity-30 cursor-not-allowed' : ''">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z"/>
+            </svg>
+        </button>
+
+        {# Nota (ícono discreto) #}
+        <button type="button" @click="showNote = !showNote"
+                :class="note ? 'bg-yellow-500/20 border-yellow-500/50' : 'bg-gray-700 border-transparent'"
+                class="p-3.5 rounded-2xl border transition-colors flex items-center justify-center">
+            <span class="text-lg">💬</span>
+        </button>
+
+        {# Confirmar tanda #}
+        <form method="POST" action="{{ url_for('archer.training_save_end', session_id=sess.id) }}"
+              class="flex-1"
+              @submit.prevent="
+                  if(arrows.length === 0) return;
+                  document.getElementById('arrows-json').value  = JSON.stringify(arrows);
+                  document.getElementById('end-note').value     = note;
+                  document.getElementById('end-number').value   = endNum;
+                  $el.submit();
+              ">
+            <input type="hidden" id="arrows-json" name="arrows_json" />
+            <input type="hidden" id="end-note"    name="note" />
+            <input type="hidden" id="end-number"  name="end_number" />
+            <button type="submit"
+                    :disabled="arrows.length === 0"
+                    :class="arrows.length === 0 ? 'opacity-40 cursor-not-allowed' : 'hover:opacity-90 active:opacity-80'"
+                    class="w-full text-white font-bold py-3.5 rounded-2xl text-sm transition-all"
+                    style="background-color: {{ club.color_from }}">
+                <span x-text="isFull ? 'Confirmar tanda ✓' : `Registrar (${arrows.length}/${maxArrows})`"></span>
+            </button>
+        </form>
+    </div>
+
+    {# Campo de nota (colapsable) #}
+    <div x-show="showNote" x-cloak>
+        <textarea x-model="note" rows="2" maxlength="200"
+                  placeholder="Ej: Viento de costado, probar nuevo punto de ancla…"
+                  class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5
+                         text-sm text-white placeholder-gray-500 resize-none
+                         focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
+    </div>
+
+    {# ── Historial de tandas anteriores ── #}
+    {% if ends %}
+    <div class="mt-1">
+        <p class="text-[10px] text-gray-500 uppercase tracking-wide font-bold mb-2">Tandas anteriores</p>
+        <div class="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+            {% for e in ends | reverse %}
+            <div class="flex items-center gap-2 bg-gray-800 rounded-xl px-3 py-2">
+                <span class="text-xs text-gray-400 font-bold w-6">{{ e.end_number }}</span>
+                <div class="flex flex-wrap gap-1 flex-1">
+                    {% for s in e.scores %}
+                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded
+                        {% if s.val == 'X' %}bg-yellow-400 text-gray-900
+                        {% elif s.val == '10' %}bg-yellow-300 text-gray-900
+                        {% elif s.val in ['9','8','7'] %}bg-red-500 text-white
+                        {% elif s.val in ['6','5'] %}bg-blue-500 text-white
+                        {% else %}bg-gray-600 text-white{% endif %}">
+                        {{ s.val }}
+                    </span>
+                    {% endfor %}
+                </div>
+                <span class="text-xs font-black text-green-400">{{ e.total_points }}</span>
+            </div>
+            {% if e.note %}
+            <p class="text-xs text-gray-500 italic px-3">💬 {{ e.note }}</p>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endif %}
+
+</body>
+</html>

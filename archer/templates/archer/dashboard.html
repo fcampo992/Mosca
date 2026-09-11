@@ -142,8 +142,8 @@
     <div class="flex items-center justify-between mb-3">
         <h2 class="text-sm font-semibold text-gray-700">Mis torneos</h2>
         {% if history | length > 0 %}
-        <a href="{{ url_for('stats.trend_view', archer_id=session.archer_id) }}"
-           class="text-xs text-green-700 hover:underline font-medium">Ver todo →</a>
+        <a href="{{ url_for('archer.profile') }}"
+           class="text-xs text-green-700 hover:underline font-medium">Ver perfil →</a>
         {% endif %}
     </div>
 

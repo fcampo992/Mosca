@@ -1,0 +1,399 @@
+{% extends "base.html" %}
+{% block title %}Entrenamientos — {{ club_settings().club_name }}{% endblock %}
+
+{% block content %}
+{% set club = club_settings() %}
+{% set meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'] %}
+
+{# ── Encabezado ── #}
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold">Entrenamientos</h1>
+    <button @click="$dispatch('open-training-modal')"
+            class="inline-flex items-center gap-2 text-white text-sm font-semibold
+                   px-4 py-2 rounded-xl shadow transition-colors"
+            style="background-color: {{ club.color_from }}">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+        </svg>
+        Nuevo
+    </button>
+</div>
+
+{# ── KPIs históricos ── #}
+{% if kpis.sessions_done > 0 %}
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
+        <p class="text-2xl font-black text-green-700">{{ kpis.sessions_done }}</p>
+        <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-wide">Sesiones</p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
+        <p class="text-2xl font-black text-blue-600">{{ kpis.total_arrows }}</p>
+        <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-wide">Flechas</p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
+        <p class="text-2xl font-black text-yellow-600">{{ kpis.avg_per_arrow }}</p>
+        <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-wide">Prom/flecha</p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
+        <p class="text-2xl font-black text-indigo-600">{{ kpis.top_zone_pct }}%</p>
+        <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-wide">Zona X/10</p>
+    </div>
+</div>
+{% endif %}
+
+{# ── Gráfico de evolución ── #}
+{% if trend and trend|length > 1 %}
+<section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
+    <h2 class="text-sm font-semibold text-gray-700 mb-4">Evolución del promedio</h2>
+    <canvas id="trendChart" height="150"></canvas>
+</section>
+<script>
+(function(){
+    const trend = {{ trend | tojson }};
+    if (!trend || trend.length < 2) return;
+    const labels = trend.map(t => t.distance + ' · ' + t.session_date.slice(5));
+    const data   = trend.map(t => t.avg_per_arrow);
+    const pointColors = data.map((v,i) => i===0 ? '#16a34a' : v >= data[i-1] ? '#16a34a' : '#dc2626');
+    new Chart(document.getElementById('trendChart'), {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                data, borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.07)',
+                borderWidth: 2.5, pointRadius: 5, fill: true, tension: 0.35,
+                pointBackgroundColor: pointColors, pointBorderColor: '#fff', pointBorderWidth: 2,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { min: Math.max(0, Math.min(...data)-1), max: Math.min(10, Math.max(...data)+1), grid: { color: '#f3f4f6' } },
+                x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 30 } }
+            }
+        }
+    });
+})();
+</script>
+{% endif %}
+
+{# ── Lista de sesiones ── #}
+<section>
+    <h2 class="text-sm font-semibold text-gray-700 mb-3">Historial</h2>
+    {% if sessions %}
+    <div class="space-y-3">
+        {% for s in sessions %}
+        {% set partes = s.session_date.split('-') if s.session_date else [] %}
+        {% set fecha = (partes[2]|int)|string + ' ' + meses[(partes[1]|int)-1] + ', ' + partes[0] if partes|length==3 else s.session_date %}
+
+        {% if s.status == 'active' %}
+        {# Sesión activa — botón para retomar #}
+        <a href="{{ url_for('archer.training_score', session_id=s.id) }}"
+           class="flex items-center gap-4 bg-white rounded-2xl shadow-sm border-2 border-green-300 p-4
+                  hover:shadow-md transition-all">
+            <div class="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center text-xl shrink-0">🎯</div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-0.5">
+                    <p class="font-bold text-sm text-gray-900">{{ s.distance }}
+                        {% if s.mode == 'free' %}<span class="text-gray-400 font-normal">· Libre</span>{% endif %}
+                    </p>
+                    <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5
+                                 rounded-full bg-green-100 text-green-700 shrink-0">
+                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse inline-block"></span>
+                        Activa
+                    </span>
+                </div>
+                <p class="text-xs text-gray-400">{{ fecha }} · {{ s.ends_done or 0 }} tandas</p>
+            </div>
+            <svg class="w-4 h-4 text-green-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+            </svg>
+        </a>
+
+        {% else %}
+        {# Sesión finalizada — ver resumen #}
+        <div class="flex items-center gap-4 bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+            <div class="w-11 h-11 rounded-xl bg-gray-50 flex items-center justify-center text-xl shrink-0">
+                {% if s.mode == 'free' %}🏃{% else %}🏹{% endif %}
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="font-semibold text-sm text-gray-900">{{ s.distance }}
+                    {% if s.mode == 'free' %}<span class="text-gray-400 font-normal text-xs">· Libre</span>{% endif %}
+                    {% if s.setup_name %}<span class="text-gray-400 font-normal text-xs">· {{ s.setup_name }}</span>{% endif %}
+                </p>
+                <p class="text-xs text-gray-400 mt-0.5">{{ fecha }} · {{ s.ends_done or 0 }} tandas</p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <a href="{{ url_for('archer.training_summary', session_id=s.id) }}"
+                   class="text-xs text-green-700 font-medium hover:underline">Ver</a>
+                <form method="POST"
+                      action="{{ url_for('archer.training_delete', session_id=s.id) }}"
+                      onsubmit="return confirm('¿Eliminar esta sesión?')">
+                    <button type="submit"
+                            class="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-12 text-gray-400">
+        <div class="text-5xl mb-3">🏹</div>
+        <p class="font-medium text-gray-600">Todavía no tenés sesiones</p>
+        <p class="text-sm mt-1">Tocá "Nuevo" para arrancar tu primera práctica</p>
+    </div>
+    {% endif %}
+</section>
+
+{# ── FAB móvil ── #}
+<button @click="$dispatch('open-training-modal')"
+        class="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full text-white shadow-lg
+               flex items-center justify-center transition-colors lg:hidden"
+        style="background-color: {{ club.color_from }}" aria-label="Nuevo entrenamiento">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+    </svg>
+</button>
+
+{# ════════════════════════════════════════════════════════════════
+   MODAL: Nuevo entrenamiento — 2 pasos
+   ════════════════════════════════════════════════════════════════ #}
+<div x-data="{
+        open: false,
+        step: 1,
+        mode: 'scored',
+        distance: '18m',
+        customDist: '',
+        arrowsPerEnd: 6,
+        totalEnds: 10,
+        unlimited: false,
+        setupId: '',
+        environment: 'indoor'
+     }"
+     @open-training-modal.window="open = true; step = 1"
+     x-show="open" x-cloak
+     class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+
+    {# Backdrop #}
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+         x-transition:enter="transition-opacity duration-200"
+         x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-150"
+         x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+         @click="open = false"></div>
+
+    {# Panel #}
+    <div class="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden"
+         x-transition:enter="transition ease-out duration-250"
+         x-transition:enter-start="translate-y-full sm:translate-y-4 opacity-0"
+         x-transition:enter-end="translate-y-0 opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="translate-y-0 opacity-100"
+         x-transition:leave-end="translate-y-full sm:translate-y-4 opacity-0">
+
+        {# Handle móvil #}
+        <div class="flex justify-center pt-3 pb-1 sm:hidden">
+            <div class="w-10 h-1.5 bg-gray-200 rounded-full"></div>
+        </div>
+
+        <form method="POST" action="{{ url_for('archer.training_new') }}" novalidate>
+
+            {# ── Indicador de pasos ── #}
+            <div class="flex items-center justify-between px-5 pt-3 pb-4">
+                <h2 class="text-base font-bold text-gray-900">Nuevo entrenamiento</h2>
+                <div class="flex items-center gap-1.5">
+                    <div class="w-2 h-2 rounded-full transition-colors"
+                         :class="step >= 1 ? 'bg-green-600' : 'bg-gray-200'"></div>
+                    <div class="w-6 h-0.5 bg-gray-200 rounded"></div>
+                    <div class="w-2 h-2 rounded-full transition-colors"
+                         :class="step >= 2 ? 'bg-green-600' : 'bg-gray-200'"></div>
+                </div>
+            </div>
+
+            {# ══════════ PASO 1: Modo + Distancia ══════════ #}
+            <div x-show="step === 1" class="px-5 pb-5 space-y-5">
+
+                {# Modo #}
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Modo</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" @click="mode = 'scored'"
+                                :class="mode === 'scored'
+                                    ? 'border-2 border-green-600 bg-green-50 text-green-800'
+                                    : 'border border-gray-200 text-gray-600'"
+                                class="flex flex-col items-center gap-1.5 px-4 py-3.5 rounded-2xl
+                                       font-semibold text-sm transition-all">
+                            <span class="text-2xl">🎯</span>
+                            <span>Puntuado</span>
+                        </button>
+                        <button type="button" @click="mode = 'free'"
+                                :class="mode === 'free'
+                                    ? 'border-2 border-blue-600 bg-blue-50 text-blue-800'
+                                    : 'border border-gray-200 text-gray-600'"
+                                class="flex flex-col items-center gap-1.5 px-4 py-3.5 rounded-2xl
+                                       font-semibold text-sm transition-all">
+                            <span class="text-2xl">🏃</span>
+                            <span>Libre</span>
+                        </button>
+                    </div>
+                    <input type="hidden" name="mode" :value="mode" />
+                </div>
+
+                {# Distancia #}
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Distancia</p>
+                    <div class="flex flex-wrap gap-2">
+                        {% for d in ['18m', '25m', '30m', '50m', '60m', '70m'] %}
+                        <button type="button" @click="distance = '{{ d }}'; customDist = ''"
+                                :class="distance === '{{ d }}' && customDist === ''
+                                    ? 'bg-gray-900 text-white border-gray-900'
+                                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'"
+                                class="px-4 py-2 rounded-xl border text-sm font-semibold transition-all">
+                            {{ d }}
+                        </button>
+                        {% endfor %}
+                        <input type="text" x-model="customDist"
+                               @focus="distance = 'custom'"
+                               @input="if(customDist) distance = 'custom'"
+                               placeholder="Otra"
+                               class="w-20 px-3 py-2 rounded-xl border border-gray-200 text-sm text-center
+                                      focus:outline-none focus:ring-2 focus:ring-green-500"
+                               :class="distance === 'custom' && customDist
+                                   ? 'border-gray-900 bg-gray-50' : ''" />
+                    </div>
+                    <input type="hidden" name="distance"
+                           :value="distance === 'custom' ? customDist : distance" />
+                </div>
+
+                {# Ambiente (colapsado bajo "Más opciones") #}
+                <div x-data="{ extra: false }">
+                    <button type="button" @click="extra = !extra"
+                            class="text-xs text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 transition-transform" :class="extra ? 'rotate-90' : ''"
+                             fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                        </svg>
+                        Más opciones
+                    </button>
+                    <div x-show="extra" x-cloak class="mt-3 space-y-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" @click="environment = 'indoor'"
+                                    :class="environment === 'indoor' ? 'border-2 border-gray-700 bg-gray-50' : 'border border-gray-200'"
+                                    class="py-2 rounded-xl text-xs font-medium text-gray-700 transition-all">
+                                🏛 Indoor
+                            </button>
+                            <button type="button" @click="environment = 'outdoor'"
+                                    :class="environment === 'outdoor' ? 'border-2 border-blue-500 bg-blue-50' : 'border border-gray-200'"
+                                    class="py-2 rounded-xl text-xs font-medium text-gray-700 transition-all">
+                                ☀️ Outdoor
+                            </button>
+                        </div>
+                        {% if setups %}
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1.5">Arco (opcional)</label>
+                            <select name="bow_setup_id" x-model="setupId"
+                                    class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                                           focus:outline-none focus:ring-2 focus:ring-green-500">
+                                <option value="">Sin especificar</option>
+                                {% for s in setups %}
+                                <option value="{{ s.id }}">{{ s.name }}{% if s.bow_type %} · {{ s.bow_type }}{% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <input type="hidden" name="environment" :value="environment" />
+                </div>
+
+                <button type="button" @click="step = 2"
+                        class="w-full text-white font-semibold py-3 rounded-xl text-sm transition-colors"
+                        style="background-color: {{ club.color_from }}">
+                    Siguiente →
+                </button>
+            </div>
+
+            {# ══════════ PASO 2: Configuración de tandas ══════════ #}
+            <div x-show="step === 2" x-cloak class="px-5 pb-5 space-y-5">
+
+                {# Flechas por tanda #}
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Flechas por tanda</p>
+                    <div class="flex gap-2">
+                        {% for n in [3, 6] %}
+                        <button type="button" @click="arrowsPerEnd = {{ n }}"
+                                :class="arrowsPerEnd === {{ n }}
+                                    ? 'bg-gray-900 text-white border-gray-900'
+                                    : 'bg-white text-gray-700 border-gray-200'"
+                                class="flex-1 py-3 rounded-xl border text-lg font-black transition-all">
+                            {{ n }}
+                        </button>
+                        {% endfor %}
+                        <div x-data="stepper(6, 1, 12)"
+                             class="flex-1 flex items-center border border-gray-200 rounded-xl overflow-hidden">
+                            <button type="button" @click="dec(); arrowsPerEnd = val"
+                                    class="w-10 h-12 text-lg font-light text-gray-500
+                                           hover:bg-gray-100 active:bg-gray-200 select-none">−</button>
+                            <input type="number" :value="arrowsPerEnd"
+                                   @change="arrowsPerEnd = parseInt($event.target.value) || 6; val = arrowsPerEnd"
+                                   class="flex-1 text-center text-sm font-semibold border-0
+                                          focus:outline-none h-12 w-0" min="1" max="12" />
+                            <button type="button" @click="inc(); arrowsPerEnd = val"
+                                    class="w-10 h-12 text-lg font-light text-gray-500
+                                           hover:bg-gray-100 active:bg-gray-200 select-none">+</button>
+                        </div>
+                    </div>
+                    <input type="hidden" name="arrows_per_end" :value="arrowsPerEnd" />
+                </div>
+
+                {# Cantidad de tandas #}
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Tandas totales</p>
+                    <div class="flex gap-2 mb-3">
+                        {% for n in [6, 10, 12, 20] %}
+                        <button type="button" @click="unlimited = false; totalEnds = {{ n }}"
+                                :class="!unlimited && totalEnds === {{ n }}
+                                    ? 'bg-gray-900 text-white border-gray-900'
+                                    : 'bg-white text-gray-700 border-gray-200'"
+                                class="flex-1 py-2.5 rounded-xl border text-sm font-bold transition-all">
+                            {{ n }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                    <button type="button" @click="unlimited = !unlimited"
+                            :class="unlimited ? 'border-2 border-green-600 bg-green-50 text-green-800' : 'border border-gray-200 text-gray-600'"
+                            class="w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2">
+                        <span>∞</span> Sin límite
+                    </button>
+                    <input type="hidden" name="total_ends" :value="unlimited ? '' : totalEnds" />
+                </div>
+
+                <div class="flex gap-3">
+                    <button type="button" @click="step = 1"
+                            class="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold
+                                   text-gray-600 hover:bg-gray-50 transition-colors">
+                        ← Atrás
+                    </button>
+                    <button type="submit"
+                            class="flex-2 flex-1 text-white font-bold py-3 px-6 rounded-xl text-sm transition-colors"
+                            style="background-color: {{ club.color_from }}">
+                        ¡Arrancar! 🏹
+                    </button>
+                </div>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<script>
+function stepper(initial, min, max) {
+    return { val: parseInt(initial)||min, inc(){if(this.val<max)this.val++;}, dec(){if(this.val>min)this.val--;} };
+}
+</script>
+
+{% endblock %}

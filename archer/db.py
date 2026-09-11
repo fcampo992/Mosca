@@ -288,4 +288,46 @@ def init_db(conn) -> None:
     except Exception:
         pass
 
+    # -----------------------------------------------------------------------
+    # Entrenamientos independientes
+    # -----------------------------------------------------------------------
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS training_sessions (
+            id              TEXT PRIMARY KEY,
+            archer_id       TEXT NOT NULL,
+            bow_setup_id    TEXT,
+            mode            TEXT NOT NULL DEFAULT 'scored',
+            distance        TEXT NOT NULL DEFAULT '18m',
+            target_face     TEXT,
+            environment     TEXT CHECK(environment IN ('indoor', 'outdoor')) DEFAULT 'indoor',
+            arrows_per_end  INTEGER NOT NULL DEFAULT 6,
+            total_ends      INTEGER,
+            session_date    TEXT NOT NULL,
+            notes           TEXT,
+            status          TEXT CHECK(status IN ('active', 'finished')) DEFAULT 'active',
+            created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (archer_id)    REFERENCES archers(id),
+            FOREIGN KEY (bow_setup_id) REFERENCES bow_setups(id)
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS training_ends (
+            id          TEXT PRIMARY KEY,
+            session_id  TEXT NOT NULL,
+            end_number  INTEGER NOT NULL,
+            scores_json TEXT NOT NULL DEFAULT '[]',
+            note        TEXT,
+            created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (session_id) REFERENCES training_sessions(id)
+        )
+        """
+    )
+    try:
+        conn.commit()
+    except Exception:
+        pass
+
     logger.info("Esquema de base de datos inicializado correctamente.")

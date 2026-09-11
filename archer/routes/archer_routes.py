@@ -394,7 +394,81 @@ def score_post():
     return redirect(url_for("archer.score"))
 
 
-@archer_bp.route("/score/correct", methods=["POST"])
+@archer_bp.route("/score/end", methods=["POST"])
+@require_session
+def score_end():
+    """
+    POST — Guarda una tanda completa de flechas de una sola vez.
+    Recibe 'arrows' como lista JSON, elimina las flechas previas de la tanda
+    y las reinserta, luego avanza el estado de sesión.
+    """
+    import json as _json
+
+    archer_id    = session["archer_id"]
+    round_number = session.get("round_number", 1)
+    end_number   = session.get("end_number",   1)
+
+    tournament = get_active_tournament(archer_id)
+    if tournament is None:
+        return _render_score(error="No hay torneos activos asignados."), 403
+
+    try:
+        arrows = _json.loads(request.form.get("arrows_json", "[]"))
+        if not isinstance(arrows, list):
+            arrows = []
+    except Exception:
+        arrows = []
+
+    arrows_per_end = tournament.get("arrows_per_end", ARROWS_PER_END)
+    if len(arrows) != arrows_per_end:
+        return _render_score(error=f"Faltan flechas: se esperan {arrows_per_end}."), 400
+
+    # Validar valores
+    for v in arrows:
+        if v not in ("X","10","9","8","7","6","5","4","3","2","1","M"):
+            return _render_score(error=f"Valor inválido: {v}"), 400
+
+    # Borrar flechas previas de esta tanda (si el arquero reintentó)
+    try:
+        from archer.db import get_connection as _gc
+        conn = _gc()
+        conn.execute(
+            "DELETE FROM scores WHERE archer_id=? AND tournament_id=? AND round_number=? AND end_number=?",
+            (archer_id, tournament["id"], round_number, end_number),
+        )
+        conn.commit()
+    except Exception:
+        pass
+
+    # Guardar cada flecha
+    for arrow_val in arrows:
+        result = save_arrow(
+            archer_id=archer_id,
+            tournament_id=tournament["id"],
+            round_number=round_number,
+            end_number=end_number,
+            arrow_val=arrow_val,
+        )
+        if "error" in result:
+            return _render_score(error=result["error"]), 500
+
+    # Avanzar sesión
+    ends_per_round = tournament.get("rounds", ENDS_PER_ROUND)
+    rounds_count   = tournament.get("rounds_count", 1)
+
+    is_last_end   = (end_number >= ends_per_round)
+    is_last_round = (round_number >= rounds_count)
+
+    if is_last_end and is_last_round:
+        session["tournament_done"] = True
+    elif is_last_end:
+        session["end_number"]   = 1
+        session["round_number"] = round_number + 1
+    else:
+        session["end_number"] = end_number + 1
+
+    session["last_active"] = datetime.now().isoformat()
+    return redirect(url_for("archer.score"))
 @require_session
 def correct_arrow():
     """

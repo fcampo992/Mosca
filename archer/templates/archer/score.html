@@ -53,15 +53,45 @@
 
 {# ══ Teclado de tiro ══ #}
 {% else %}
-<div class="max-w-sm mx-auto px-3 py-3 flex flex-col gap-3">
+<div class="max-w-sm mx-auto px-3 py-3 flex flex-col gap-3"
+     x-data="{
+         arrows: [],
+         maxArrows: {{ arrows_per_end }},
+         submitting: false,
+         showModal: false,
+         POINTS: {'X':10,'10':10,'9':9,'8':8,'7':7,'6':6,'5':5,'4':4,'3':3,'2':2,'1':1,'M':0},
+         get subtotal(){ return this.arrows.reduce((s,v)=>s+(this.POINTS[v]||0), 0); },
+         get isFull(){ return this.arrows.length >= this.maxArrows; },
+         add(v){
+             if(this.isFull || this.submitting) return;
+             this.arrows.push(v);
+         },
+         del(){ if(!this.submitting) this.arrows.pop(); },
+         openModal(){
+             if(!this.isFull || this.submitting) return;
+             this.showModal = true;
+         },
+         confirm(){
+             if(this.submitting) return;
+             this.submitting = true;
+             this.showModal = false;
+             const fd = new FormData();
+             fd.append('arrows_json', JSON.stringify(this.arrows));
+             fetch('{{ url_for('archer.score_end') }}', {method:'POST', body:fd, credentials:'same-origin'})
+                 .then(()=>window.location.reload())
+                 .catch(()=>{ this.submitting=false; alert('Error al guardar. Intentá de nuevo.'); });
+         }
+     }">
 
-    {# Header #}
+    {# ── Header ── #}
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
             {% if photo_url %}
             <img src="{{ photo_url }}" class="w-9 h-9 rounded-full object-cover border-2 shrink-0" style="border-color:{{ club.color_from }}" />
             {% else %}
-            <div class="w-9 h-9 rounded-full flex items-center justify-center font-black text-sm shrink-0" style="background-color:{{ club.color_from }}">{{ archer_name[0]|upper if archer_name else '?' }}</div>
+            <div class="w-9 h-9 rounded-full flex items-center justify-center font-black text-sm shrink-0" style="background-color:{{ club.color_from }}">
+                {{ archer_name[0]|upper if archer_name else '?' }}
+            </div>
             {% endif %}
             <div>
                 <p class="font-bold text-sm leading-tight">{{ archer_name }}</p>
@@ -76,24 +106,14 @@
         </div>
     </div>
 
-    {# Stats en vivo #}
-    <div class="flex items-center justify-between bg-gray-800 rounded-2xl px-4 py-3"
-         x-data="{
-             arrows: [],
-             maxArrows: {{ arrows_per_end }},
-             accumulated: {{ accumulated }},
-             get subtotal(){ return this.arrows.reduce((s,v)=>s+({'X':10,'10':10,'9':9,'8':8,'7':7,'6':6,'5':5,'4':4,'3':3,'2':2,'1':1,'M':0}[v]||0),0); },
-             get isFull(){ return this.arrows.length >= this.maxArrows; },
-             add(v){ if(!this.isFull){ this.arrows.push(v); if(this.isFull) this.$nextTick(()=>window.showModal(this.arrows, this.subtotal)); } },
-             del(){ this.arrows.pop(); },
-         }" id="score-root">
-
+    {# ── Stats en vivo ── #}
+    <div class="flex items-center justify-between bg-gray-800 rounded-2xl px-4 py-3">
         <div class="text-center">
-            <p class="text-3xl font-black text-white" x-text="accumulated + subtotal"></p>
+            <p class="text-3xl font-black text-white">{{ accumulated }}</p>
             <p class="text-[10px] text-gray-400 uppercase tracking-wide">Total</p>
         </div>
         <div class="text-center">
-            <p class="text-2xl font-black text-green-400" x-text="subtotal"></p>
+            <p class="text-2xl font-black text-green-400" x-text="subtotal">0</p>
             <p class="text-[10px] text-gray-400 uppercase tracking-wide">Esta tanda</p>
         </div>
         <div class="text-center">
@@ -102,49 +122,7 @@
         </div>
     </div>
 
-    {# Chips #}
-    <div class="flex flex-wrap gap-2 bg-gray-800 rounded-2xl px-3 py-3 min-h-[3rem]"
-         x-data="" x-bind="$root.scoreRoot">
-    </div>
-
-    {# --- Contenido Alpine en el scope del padre --- #}
-    <div x-data="" x-ref="keypad">
-    </div>
-
-    {# Usamos un bloque Alpine unificado para chips + teclado + confirmar #}
-    <div x-data="{}" x-init="$el.remove()"></div>{# placeholder vacío #}
-
-</div>
-
-{# ════ Bloque principal Alpine unificado ════ #}
-<div id="app" class="max-w-sm mx-auto px-3 flex flex-col gap-3"
-     x-data="{
-         arrows: [],
-         maxArrows: {{ arrows_per_end }},
-         accumulated: {{ accumulated }},
-         POINTS: {'X':10,'10':10,'9':9,'8':8,'7':7,'6':6,'5':5,'4':4,'3':3,'2':2,'1':1,'M':0},
-         get subtotal(){ return this.arrows.reduce((s,v)=>s+(this.POINTS[v]||0),0); },
-         get isFull(){ return this.arrows.length >= this.maxArrows; },
-         add(v){
-             if(this.isFull) return;
-             this.arrows.push(v);
-             if(!this.isFull){
-                 this.submitArrow(v);
-             } else {
-                 this.$nextTick(()=>{ window.openConfirmModal(this.arrows, this.subtotal); });
-             }
-         },
-         del(){ this.arrows.pop(); },
-         submitArrow(val){
-             const fd = new FormData();
-             fd.append('arrow_val', val);
-             fetch('{{ url_for("archer.score") }}', {method:'POST',body:fd,credentials:'same-origin'})
-                 .then(()=>window.location.reload())
-                 .catch(()=>window.location.reload());
-         }
-     }">
-
-    {# Chips de la tanda actual #}
+    {# ── Chips de la tanda actual ── #}
     <div class="flex flex-wrap gap-2 bg-gray-800 rounded-2xl px-3 py-3 min-h-[3rem]">
         <template x-for="(v,i) in arrows" :key="i">
             <span class="chip-pop inline-flex items-center justify-center rounded-xl font-black text-sm px-2.5 py-1 min-w-[2.5rem]"
@@ -161,65 +139,67 @@
         <span x-show="arrows.length===0" class="text-gray-500 text-sm self-center">Anotá tus flechas →</span>
     </div>
 
-    {# Teclado #}
+    {# ── Teclado ── #}
     {% set btns = [
         ('X','bg-yellow-400 text-gray-900 hover:bg-yellow-500 active:bg-yellow-600'),
-        ('10','bg-yellow-300 text-gray-900 hover:bg-yellow-400'),
-        ('9','bg-red-500 text-white hover:bg-red-600'),
-        ('8','bg-red-400 text-white hover:bg-red-500'),
-        ('7','bg-red-300 text-gray-900 hover:bg-red-400'),
-        ('6','bg-blue-500 text-white hover:bg-blue-600'),
-        ('5','bg-blue-400 text-white hover:bg-blue-500'),
-        ('4','bg-gray-600 text-white hover:bg-gray-500'),
-        ('3','bg-gray-600 text-white hover:bg-gray-500'),
-        ('2','bg-gray-700 text-gray-300 hover:bg-gray-600'),
-        ('1','bg-gray-700 text-gray-300 hover:bg-gray-600'),
-        ('M','bg-gray-800 text-gray-400 border border-gray-600 hover:bg-gray-700'),
+        ('10','bg-yellow-300 text-gray-900 hover:bg-yellow-400 active:bg-yellow-500'),
+        ('9','bg-red-500 text-white hover:bg-red-600 active:bg-red-700'),
+        ('8','bg-red-400 text-white hover:bg-red-500 active:bg-red-600'),
+        ('7','bg-red-300 text-gray-900 hover:bg-red-400 active:bg-red-500'),
+        ('6','bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700'),
+        ('5','bg-blue-400 text-white hover:bg-blue-500 active:bg-blue-600'),
+        ('4','bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400'),
+        ('3','bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400'),
+        ('2','bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500'),
+        ('1','bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500'),
+        ('M','bg-gray-800 text-gray-400 border border-gray-600 hover:bg-gray-700 active:bg-gray-600'),
     ] %}
     <div class="grid grid-cols-4 gap-2">
         {% for val, cls in btns %}
-        <button type="button" @click="add('{{ val }}')"
-                :disabled="isFull"
-                :class="isFull?'opacity-30 cursor-not-allowed':''"
+        <button type="button"
+                @click="add('{{ val }}')"
+                :disabled="isFull || submitting"
+                :class="(isFull||submitting)?'opacity-30 cursor-not-allowed':''"
                 class="flex items-center justify-center rounded-2xl font-black text-xl select-none transition-colors {{ cls }}"
-                style="min-height:56px">{{ val }}</button>
+                style="min-height:56px">
+            {{ val }}
+        </button>
         {% endfor %}
     </div>
 
-    {# Borrar + Confirmar #}
+    {# ── Borrar + Confirmar ── #}
     <div class="flex items-center gap-2">
-        <button type="button" @click="del()"
-                :disabled="arrows.length===0"
-                :class="arrows.length===0?'opacity-30 cursor-not-allowed':''"
+        {# ⌫ Borrar última flecha #}
+        <button type="button"
+                @click="del()"
+                :disabled="arrows.length===0 || submitting"
+                :class="(arrows.length===0||submitting)?'opacity-30 cursor-not-allowed':''"
                 class="p-3.5 rounded-2xl bg-gray-700 hover:bg-gray-600 active:bg-gray-500 transition-colors">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z"/>
             </svg>
         </button>
-        <div class="flex-1">
-            <button type="button"
-                    :disabled="arrows.length===0"
-                    :class="arrows.length===0?'opacity-40 cursor-not-allowed':'hover:opacity-90 active:opacity-80'"
-                    class="w-full text-white font-bold py-3.5 rounded-2xl text-sm transition-all"
-                    style="background-color:{{ club.color_from }}"
-                    @click="
-                        if(arrows.length===0) return;
-                        if(isFull){ window.openConfirmModal(arrows, subtotal); }
-                        else { submitArrow(arrows[arrows.length-1]); }
-                    ">
-                <span x-text="isFull?'Confirmar tanda ✓':`Registrar (${arrows.length}/${maxArrows})`"></span>
-            </button>
-        </div>
+
+        {# Confirmar tanda #}
+        <button type="button"
+                @click="openModal()"
+                :disabled="!isFull || submitting"
+                :class="(!isFull||submitting)?'opacity-40 cursor-not-allowed':'hover:opacity-90 active:opacity-80'"
+                class="flex-1 text-white font-bold py-3.5 rounded-2xl text-sm transition-all"
+                style="background-color:{{ club.color_from }}">
+            <span x-show="!submitting" x-text="isFull ? 'Confirmar tanda ✓' : `Registrar (${arrows.length}/${maxArrows})`"></span>
+            <span x-show="submitting" x-cloak>Guardando...</span>
+        </button>
     </div>
 
     {% if error %}
     <div class="bg-red-900/50 border border-red-700 text-red-300 text-sm rounded-xl px-4 py-3 text-center">⚠️ {{ error }}</div>
     {% endif %}
 
-    {# Flechas ya guardadas de esta tanda (cargadas del servidor) #}
+    {# ── Tandas guardadas (historial de la sesión actual) ── #}
     {% if end_summary and end_summary.arrows %}
     <div>
-        <p class="text-[10px] text-gray-500 uppercase tracking-wide font-bold mb-2">R.{{ round_number }} · T.{{ end_number }} — guardadas</p>
+        <p class="text-[10px] text-gray-500 uppercase tracking-wide font-bold mb-2">Flechas guardadas en esta tanda</p>
         <div class="flex flex-wrap gap-1.5">
             {% for arrow in end_summary.arrows %}
             <span class="inline-flex items-center justify-center rounded-lg font-bold text-xs px-2 py-0.5 min-w-[2rem]
@@ -228,26 +208,54 @@
                 {% elif arrow.arrow_val in ['9','8','7'] %}bg-red-500 text-white
                 {% elif arrow.arrow_val in ['6','5'] %}bg-blue-500 text-white
                 {% elif arrow.arrow_val in ['4','3'] %}bg-gray-600 text-white
-                {% else %}bg-gray-700 text-gray-400{% endif %}">{{ arrow.arrow_val }}</span>
+                {% else %}bg-gray-700 text-gray-400{% endif %}">
+                {{ arrow.arrow_val }}
+            </span>
             {% endfor %}
         </div>
     </div>
     {% endif %}
 
-</div>
-
-{# ══ Modal de confirmación ══ #}
-<div id="confirm-modal" class="hidden fixed inset-0 z-50 flex items-end justify-center p-4" style="background:rgba(0,0,0,.75)">
-    <div class="w-full max-w-sm bg-gray-800 border border-gray-700 rounded-3xl p-6 text-center">
-        <div class="text-4xl mb-3">✅</div>
-        <h3 class="text-xl font-extrabold mb-1">¿Confirmás la tanda?</h3>
-        <div id="confirm-chips" class="flex flex-wrap justify-center gap-1.5 my-4 min-h-[2rem]"></div>
-        <p class="text-sm text-gray-300 mb-5">Subtotal: <strong id="confirm-pts" class="text-green-400">0</strong> pts</p>
-        <div class="flex gap-3">
-            <button id="btn-cancel" class="flex-1 py-3 rounded-xl border border-gray-600 text-sm font-semibold text-gray-300 hover:bg-gray-700">← Corregir</button>
-            <button id="btn-confirm" class="flex-1 py-3 rounded-xl text-white text-sm font-bold hover:opacity-90" style="background-color:{{ club.color_from }}">Confirmar ›</button>
+    {# ══ Modal de confirmación ══ #}
+    <div x-show="showModal" x-cloak
+         class="fixed inset-0 z-50 flex items-end justify-center p-4"
+         style="background:rgba(0,0,0,.75)">
+        <div class="w-full max-w-sm bg-gray-800 border border-gray-700 rounded-3xl p-6 text-center"
+             @click.stop>
+            <div class="text-4xl mb-3">✅</div>
+            <h3 class="text-xl font-extrabold mb-1">¿Confirmás la tanda?</h3>
+            <p class="text-sm text-gray-400 mb-1">Revisá antes de avanzar. No podrás corregir después.</p>
+            <div class="flex flex-wrap justify-center gap-1.5 my-4 min-h-[2rem]">
+                <template x-for="(v,i) in arrows" :key="i">
+                    <span class="inline-flex items-center justify-center rounded-lg font-bold text-xs px-2 py-0.5 min-w-8"
+                          :class="{
+                              'bg-yellow-400 text-gray-900':v==='X',
+                              'bg-yellow-300 text-gray-900':v==='10',
+                              'bg-red-500 text-white':['9','8','7'].includes(v),
+                              'bg-blue-500 text-white':['6','5'].includes(v),
+                              'bg-gray-600 text-white':['4','3'].includes(v),
+                              'bg-gray-700 text-gray-300':['2','1'].includes(v),
+                              'bg-gray-800 border border-gray-600 text-gray-400':v==='M'
+                          }" x-text="v"></span>
+                </template>
+            </div>
+            <p class="text-sm text-gray-300 mb-5">
+                Subtotal: <strong class="text-green-400" x-text="subtotal"></strong> pts
+            </p>
+            <div class="flex gap-3">
+                <button type="button" @click="showModal=false"
+                        class="flex-1 py-3 rounded-xl border border-gray-600 text-sm font-semibold text-gray-300 hover:bg-gray-700">
+                    ← Corregir
+                </button>
+                <button type="button" @click="confirm()"
+                        class="flex-1 py-3 rounded-xl text-white text-sm font-bold hover:opacity-90"
+                        style="background-color:{{ club.color_from }}">
+                    Confirmar ›
+                </button>
+            </div>
         </div>
     </div>
+
 </div>
 
 {# ══ Banner de ronda ══ #}
@@ -259,87 +267,6 @@
     </div>
 </div>
 
-<script>
-(function(){
-    const SCORE_URL  = '{{ url_for("archer.score") }}';
-    const POINTS     = {'X':10,'10':10,'9':9,'8':8,'7':7,'6':6,'5':5,'4':4,'3':3,'2':2,'1':1,'M':0};
-    const COLOR      = {'X':'bg-yellow-400 text-gray-900','10':'bg-yellow-300 text-gray-900','9':'bg-red-500 text-white','8':'bg-red-500 text-white','7':'bg-red-500 text-white','6':'bg-blue-500 text-white','5':'bg-blue-500 text-white','4':'bg-gray-600 text-white','3':'bg-gray-600 text-white','2':'bg-gray-700 text-gray-300','1':'bg-gray-700 text-gray-300','M':'bg-gray-800 border border-gray-600 text-gray-400'};
-
-    const arrowsPerEnd = {{ arrows_per_end }};
-    const endsPerRound = {{ ends_per_round }};
-    const totalRounds  = {{ rounds_count if rounds_count is defined else 1 }};
-    const currentRound = {{ round_number }};
-    const currentEnd   = {{ end_number }};
-
-    let pendingArrows = [];
-
-    function chip(val){
-        const s = document.createElement('span');
-        s.className = 'inline-flex items-center justify-center rounded-lg font-bold text-xs px-2 py-0.5 min-w-8 '+(COLOR[val]||'');
-        s.textContent = val;
-        return s;
-    }
-
-    function doSubmit(val, onDone){
-        const fd = new FormData();
-        fd.append('arrow_val', val);
-        fetch(SCORE_URL, {method:'POST', body:fd, credentials:'same-origin'})
-            .then(()=>{ if(onDone) onDone(); else location.reload(); })
-            .catch(()=>location.reload());
-    }
-
-    function showRoundBanner(nextRound){
-        document.getElementById('round-number').textContent = 'Ronda '+nextRound;
-        const banner = document.getElementById('round-banner');
-        const card   = document.getElementById('round-card');
-        banner.classList.remove('hidden');
-        card.className = card.className.replace('round-exit','') + ' round-enter';
-        setTimeout(()=>{
-            card.className = card.className.replace('round-enter','') + ' round-exit';
-            setTimeout(()=>{ banner.classList.add('hidden'); location.reload(); }, 400);
-        }, 1600);
-    }
-
-    // Abre el modal de confirmación
-    window.openConfirmModal = function(arrows, subtotal){
-        pendingArrows = [...arrows];
-        const chips = document.getElementById('confirm-chips');
-        chips.innerHTML = '';
-        arrows.forEach(v => chips.appendChild(chip(v)));
-        document.getElementById('confirm-pts').textContent = subtotal;
-        document.getElementById('confirm-modal').classList.remove('hidden');
-    };
-
-    // Cancelar — cierra modal, no hace nada (el archer corrige en Alpine)
-    document.getElementById('btn-cancel').addEventListener('click', ()=>{
-        document.getElementById('confirm-modal').classList.add('hidden');
-        pendingArrows = [];
-    });
-
-    // Confirmar — envía la última flecha (las demás ya fueron enviadas una a una)
-    document.getElementById('btn-confirm').addEventListener('click', ()=>{
-        document.getElementById('confirm-modal').classList.add('hidden');
-        if(!pendingArrows.length){ location.reload(); return; }
-
-        const lastVal = pendingArrows[pendingArrows.length - 1];
-        const willAdvance = (currentEnd >= endsPerRound);
-        const nextRound   = currentRound + (willAdvance ? 1 : 0);
-        const done        = willAdvance && (nextRound > totalRounds);
-
-        doSubmit(lastVal, ()=>{
-            if(done)           location.reload();
-            else if(willAdvance) showRoundBanner(nextRound);
-            else               location.reload();
-        });
-    });
-
-    // Cerrar modal al click afuera
-    document.getElementById('confirm-modal').addEventListener('click', e=>{
-        if(e.target === document.getElementById('confirm-modal'))
-            document.getElementById('confirm-modal').classList.add('hidden');
-    });
-})();
-</script>
 {% endif %}
 
 {# ══ Bottom nav ══ #}
@@ -350,7 +277,9 @@
         <span class="text-[10px] font-medium">Inicio</span>
     </a>
     <a href="{{ url_for('archer.score') }}" class="flex flex-col items-center gap-0.5 px-3 py-1 text-white transition-colors">
-        <svg class="w-6 h-6" fill="currentColor" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" fill="rgb(17,24,39)"/></svg>
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9" fill="{{ club.color_from }}"/><circle cx="12" cy="12" r="4" fill="white"/>
+        </svg>
         <span class="text-[10px] font-medium">Competencia</span>
     </a>
     <a href="{{ url_for('archer.training') }}" class="flex flex-col items-center gap-0.5 px-3 py-1 text-gray-400 hover:text-white transition-colors">

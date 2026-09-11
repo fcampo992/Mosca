@@ -1,160 +1,116 @@
 {% extends "base.html" %}
 {% block title %}Ingresar PIN — {{ club_settings().club_name }}{% endblock %}
 
-{# En la pantalla de login no se necesita nav en el header #}
+{# Suprimir el nav del header en la pantalla de login #}
 {% block header_nav %}{% endblock %}
 
 {% block content %}
 <div class="flex flex-col items-center justify-center min-h-[70vh] px-2">
 
-    <div class="w-full max-w-sm bg-white rounded-2xl shadow-lg p-6">
+    <div class="w-full max-w-sm bg-white rounded-2xl shadow-lg p-6"
+         x-data="pinForm()">
 
+        {# Logo y título #}
         <div class="flex flex-col items-center mb-6">
             <span class="text-5xl mb-2">🏹</span>
             <h1 class="text-2xl font-bold text-gray-800">{{ club_settings().club_name }}</h1>
             <p class="text-sm text-gray-500 mt-1">Ingresá tu PIN para continuar</p>
         </div>
-        {# ── Mensaje de bloqueo (Req 4.7) ──────────────────────────────── #}
+
+        {# Mensaje de bloqueo #}
         {% if locked %}
         <div class="mb-4 p-3 bg-red-50 border border-red-300 rounded-xl text-red-700 text-sm text-center font-medium">
             🔒 {{ error }}
         </div>
         {% endif %}
 
-        {# ── Error de autenticación (Req 4.2, 4.6) ────────────────────── #}
+        {# Error de autenticación del servidor #}
         {% if error and not locked %}
         <div class="mb-4 p-3 bg-yellow-50 border border-yellow-300 rounded-xl text-yellow-800 text-sm text-center">
             {{ error }}
         </div>
         {% endif %}
 
-        <form
-            method="POST"
-            action="{{ url_for('archer.login') }}"
-            novalidate
-            x-data="pinForm()"
-            @submit="validate"
-        >
-            <div class="mb-5">
-                {# Display visual del PIN — círculos que se llenan #}
-                <div class="flex justify-center gap-4 py-5">
-                    <template x-for="i in [0,1,2,3]" :key="i">
-                        <div class="w-5 h-5 rounded-full border-2 transition-all duration-150"
-                             :class="pin.length > i
-                                 ? 'border-green-600 bg-green-600 scale-110'
-                                 : 'border-gray-300 bg-transparent'">
-                        </div>
-                    </template>
-                </div>
-                {# Input oculto que viaja con el form #}
-                <input type="hidden" name="pin" :value="pin" />
-                {# Input visible solo para errores de formato #}
-                {% if field == 'pin' and error and not locked %}
-                <p class="text-red-600 text-xs mt-1 text-center">{{ error }}</p>
-                {% endif %}
-                {# Error de formato de PIN #}
-                {% if field == 'pin' and error and not locked %}
-                <p class="text-red-600 text-xs mt-1 text-center">{{ error }}</p>
-                {% endif %}
+        <form method="POST" action="{{ url_for('archer.login') }}" novalidate
+              @submit="validate">
 
-                {# Mensaje de error Alpine si el usuario intenta enviar con formato incorrecto #}
-                <p
-                    class="text-red-600 text-xs mt-1 text-center"
-                    x-show="formError"
-                    x-text="formError"
-                    x-cloak
-                ></p>
+            {# ── Display visual: 4 círculos que se llenan ── #}
+            <div class="flex justify-center gap-5 py-6">
+                <div class="w-5 h-5 rounded-full border-2 transition-all duration-150"
+                     :class="pin.length >= 1 ? 'border-green-600 bg-green-600' : 'border-gray-300'"></div>
+                <div class="w-5 h-5 rounded-full border-2 transition-all duration-150"
+                     :class="pin.length >= 2 ? 'border-green-600 bg-green-600' : 'border-gray-300'"></div>
+                <div class="w-5 h-5 rounded-full border-2 transition-all duration-150"
+                     :class="pin.length >= 3 ? 'border-green-600 bg-green-600' : 'border-gray-300'"></div>
+                <div class="w-5 h-5 rounded-full border-2 transition-all duration-150"
+                     :class="pin.length >= 4 ? 'border-green-600 bg-green-600' : 'border-gray-300'"></div>
             </div>
 
-            {# ── Teclado numérico táctil para ingreso de PIN ─────────────── #}
-            <div class="grid grid-cols-3 gap-2 mb-5" role="group" aria-label="Teclado numérico">
+            {# Campo oculto que envía el valor al servidor #}
+            <input type="hidden" name="pin" :value="pin" />
+
+            {# Error de validación Alpine #}
+            <p class="text-red-600 text-xs mb-3 text-center"
+               x-show="formError" x-text="formError" x-cloak></p>
+
+            {# ── Teclado numérico ── #}
+            <div class="grid grid-cols-3 gap-2 mb-2" role="group" aria-label="Teclado numérico">
                 {% for digit in ['1','2','3','4','5','6','7','8','9'] %}
-                <button
-                    type="button"
-                    @click="addDigit('{{ digit }}')"
-                    class="flex items-center justify-center rounded-xl bg-gray-100
-                           text-2xl font-bold text-gray-800 h-16
-                           hover:bg-gray-200 active:bg-gray-300 select-none"
-                    aria-label="{{ digit }}"
-                >
-                    {{ digit }}
-                </button>
+                <button type="button" @click="addDigit('{{ digit }}')"
+                        class="flex items-center justify-center rounded-xl bg-gray-100
+                               text-2xl font-bold text-gray-800 h-16
+                               hover:bg-gray-200 active:bg-gray-300 select-none"
+                        aria-label="{{ digit }}">{{ digit }}</button>
                 {% endfor %}
-                {# Fila inferior: borrar — 0 — aceptar #}
-                <button
-                    type="button"
-                    @click="deleteDigit()"
-                    class="flex items-center justify-center rounded-xl bg-red-50
-                           text-xl font-bold text-red-600 h-16
-                           hover:bg-red-100 active:bg-red-200 select-none"
-                    aria-label="Borrar"
-                >
-                    ⌫
-                </button>
-                <button
-                    type="button"
-                    @click="addDigit('0')"
-                    class="flex items-center justify-center rounded-xl bg-gray-100
-                           text-2xl font-bold text-gray-800 h-16
-                           hover:bg-gray-200 active:bg-gray-300 select-none"
-                    aria-label="0"
-                >
-                    0
-                </button>
-                <button
-                    type="submit"
-                    class="flex items-center justify-center rounded-xl bg-green-600
-                           text-white text-xl font-bold h-16
-                           hover:bg-green-700 active:bg-green-800 select-none"
-                    aria-label="Ingresar"
-                >
-                    ✓
-                </button>
-            </div>
 
-            {# Botón de submit estático como fallback sin Alpine.js (Req 10.5) #}
-            <noscript>
-                <button
-                    type="submit"
-                    class="w-full bg-green-600 text-white font-bold py-3 rounded-xl
-                           hover:bg-green-700 active:bg-green-800"
-                >
-                    Ingresar
-                </button>
-            </noscript>
+                {# Borrar #}
+                <button type="button" @click="deleteDigit()"
+                        class="flex items-center justify-center rounded-xl bg-red-50
+                               text-xl font-bold text-red-600 h-16
+                               hover:bg-red-100 active:bg-red-200 select-none"
+                        aria-label="Borrar">⌫</button>
+
+                {# 0 #}
+                <button type="button" @click="addDigit('0')"
+                        class="flex items-center justify-center rounded-xl bg-gray-100
+                               text-2xl font-bold text-gray-800 h-16
+                               hover:bg-gray-200 active:bg-gray-300 select-none"
+                        aria-label="0">0</button>
+
+                {# Confirmar #}
+                <button type="submit"
+                        class="flex items-center justify-center rounded-xl bg-green-600
+                               text-white text-xl font-bold h-16
+                               hover:bg-green-700 active:bg-green-800 select-none"
+                        aria-label="Ingresar">✓</button>
+            </div>
 
         </form>
     </div>
 </div>
 
-{# Botón volver al inicio #}
+{# Volver al inicio #}
 <div class="text-center mt-4">
     <a href="/" class="text-sm text-gray-400 hover:text-gray-600 transition-colors">
         ← Volver al inicio
     </a>
 </div>
-/**
- * Alpine.js component for the PIN login form.
- * Handles virtual keypad interaction and client-side format validation
- * before the form is submitted (Req 4.6).
- */
+
+<script>
 function pinForm() {
     return {
         pin: '',
         formError: '',
-
         addDigit(digit) {
             if (this.pin.length < 4) {
                 this.pin += digit;
                 this.formError = '';
             }
         },
-
         deleteDigit() {
             this.pin = this.pin.slice(0, -1);
             this.formError = '';
         },
-
         validate(event) {
             if (!/^\d{4}$/.test(this.pin)) {
                 event.preventDefault();

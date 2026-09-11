@@ -36,23 +36,22 @@
             @submit="validate"
         >
             <div class="mb-5">
-                {# Input readonly — solo recibe valor del teclado táctil #}
-                <input
-                    id="pin"
-                    name="pin"
-                    type="text"
-                    inputmode="none"
-                    maxlength="4"
-                    autocomplete="off"
-                    x-model="pin"
-                    readonly
-                    class="w-full text-center text-4xl font-bold tracking-[0.6em] border-2 rounded-xl
-                           px-3 py-4 focus:outline-none cursor-default select-none
-                           {% if field == 'pin' %}border-red-400 bg-red-50{% else %}border-gray-200 bg-gray-50{% endif %}"
-                    placeholder="· · · ·"
-                    required
-                />
-
+                {# Display visual del PIN — círculos que se llenan #}
+                <div class="flex justify-center gap-4 py-5">
+                    <template x-for="i in [0,1,2,3]" :key="i">
+                        <div class="w-5 h-5 rounded-full border-2 transition-all duration-150"
+                             :class="pin.length > i
+                                 ? 'border-green-600 bg-green-600 scale-110'
+                                 : 'border-gray-300 bg-transparent'">
+                        </div>
+                    </template>
+                </div>
+                {# Input oculto que viaja con el form #}
+                <input type="hidden" name="pin" :value="pin" />
+                {# Input visible solo para errores de formato #}
+                {% if field == 'pin' and error and not locked %}
+                <p class="text-red-600 text-xs mt-1 text-center">{{ error }}</p>
+                {% endif %}
                 {# Error de formato de PIN #}
                 {% if field == 'pin' and error and not locked %}
                 <p class="text-red-600 text-xs mt-1 text-center">{{ error }}</p>

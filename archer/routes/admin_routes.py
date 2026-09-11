@@ -532,7 +532,8 @@ def club_settings():
         color_to     = request.form.get("color_to",     "#16a34a").strip()
 
         result = save_club_settings(
-            club_name, hero_title, hero_subtitle, ticker_text, color_from, color_to
+            club_name, hero_title, hero_subtitle, ticker_text, color_from, color_to,
+            ticker_enabled=1 if request.form.get("ticker_enabled") else 0,
         )
 
         if "error" in result:

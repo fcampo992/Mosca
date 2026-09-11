@@ -69,9 +69,24 @@
             </div>
 
             <div>
-                <label for="ticker_text" class="block text-sm font-medium text-gray-700 mb-1.5">
-                    Texto de anuncio
-                </label>
+                <div class="flex items-center justify-between mb-1.5">
+                    <label for="ticker_text" class="block text-sm font-medium text-gray-700">
+                        Texto de anuncio
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <span class="text-xs text-gray-500">Mostrar banner</span>
+                        <div class="relative">
+                            <input type="checkbox" name="ticker_enabled" id="ticker_enabled"
+                                   value="1" class="sr-only peer"
+                                   {% if settings.get('ticker_enabled', 1) %}checked{% endif %}
+                                   @change="preview.ticker_enabled = $event.target.checked" />
+                            <div class="w-9 h-5 bg-gray-200 rounded-full peer
+                                        peer-checked:bg-green-600 transition-colors"></div>
+                            <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow
+                                        transition-transform peer-checked:translate-x-4"></div>
+                        </div>
+                    </label>
+                </div>
                 <input id="ticker_text" name="ticker_text" type="text" maxlength="500"
                        value="{{ settings.ticker_text }}"
                        @input="preview.ticker_text = $event.target.value"
@@ -105,7 +120,7 @@
 
             {# Inputs hex custom #}
             <p class="text-xs font-medium text-gray-600 mb-3">Personalizado</p>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-3">
                 <div>
                     <label class="block text-xs text-gray-500 mb-1.5">Color inicial</label>
                     <div class="flex items-center gap-2">
@@ -116,11 +131,10 @@
                                :value="preview.color_from"
                                @input="if (/^#[0-9a-fA-F]{6}$/.test($event.target.value)) preview.color_from = $event.target.value"
                                maxlength="7"
-                               class="flex-1 border border-gray-200 rounded-xl px-2 py-2 text-xs font-mono
+                               class="w-28 border border-gray-200 rounded-xl px-2 py-2 text-xs font-mono
                                       focus:outline-none focus:ring-2 focus:ring-green-500"
                                placeholder="#166534" />
                     </div>
-                    {# input hidden sincronizado para el submit #}
                     <input type="hidden" name="color_from" :value="preview.color_from" />
                     {% if field == 'color_from' %}<p class="text-red-600 text-xs mt-1">{{ error }}</p>{% endif %}
                 </div>
@@ -134,7 +148,7 @@
                                :value="preview.color_to"
                                @input="if (/^#[0-9a-fA-F]{6}$/.test($event.target.value)) preview.color_to = $event.target.value"
                                maxlength="7"
-                               class="flex-1 border border-gray-200 rounded-xl px-2 py-2 text-xs font-mono
+                               class="w-28 border border-gray-200 rounded-xl px-2 py-2 text-xs font-mono
                                       focus:outline-none focus:ring-2 focus:ring-green-500"
                                placeholder="#16a34a" />
                     </div>

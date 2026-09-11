@@ -226,6 +226,7 @@ def init_db(conn) -> None:
         "ALTER TABLE tournaments ADD COLUMN rounds INTEGER NOT NULL DEFAULT 10",
         "ALTER TABLE tournaments ADD COLUMN arrows_per_end INTEGER NOT NULL DEFAULT 6",
         "ALTER TABLE tournaments ADD COLUMN rounds_count INTEGER NOT NULL DEFAULT 1",
+        "ALTER TABLE club_settings ADD COLUMN ticker_enabled INTEGER NOT NULL DEFAULT 1",
     ]
     for migration in migrations:
         try:

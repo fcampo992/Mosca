@@ -208,25 +208,43 @@
             </svg>
         </button>
 
-        {# Confirmar tanda #}
-        <form method="POST" action="{{ url_for('archer.score') }}"
-              id="score-form" class="flex-1"
-              @submit.prevent="
-                  if(arrows.length === 0) return;
-                  pendingSubmit();
-              ">
-            <input type="hidden" name="arrow_val" id="arrow-val-input" />
-            <button type="submit"
-                    :disabled="arrows.length === 0"
-                    :class="arrows.length === 0 ? 'opacity-40 cursor-not-allowed' : 'hover:opacity-90 active:opacity-80'"
-                    class="w-full text-white font-bold py-3.5 rounded-2xl text-sm transition-all"
-                    style="background-color: {{ club.color_from }}">
-                <span x-text="isFull
-                    ? 'Confirmar tanda ✓'
-                    : `Registrar (${arrows.length}/${maxArrows})`">
-                </span>
-            </button>
-        </form>
+        {# Confirmar tanda — Alpine gestiona el estado, JS puro envía el form #}
+        <button type="button"
+                :disabled="arrows.length === 0"
+                :class="arrows.length === 0 ? 'opacity-40 cursor-not-allowed' : 'hover:opacity-90 active:opacity-80'"
+                class="flex-1 text-white font-bold py-3.5 rounded-2xl text-sm transition-all"
+                style="background-color: {{ club.color_from }}"
+                @click="
+                    if(arrows.length === 0) return;
+                    const isLast = arrows.length >= maxArrows;
+                    if(isLast) {
+                        // mostrar modal de confirmación
+                        document.getElementById('modal-arrows-preview').innerHTML = '';
+                        arrows.forEach(v => {
+                            const s = document.createElement('span');
+                            const colorMap = {'X':'bg-yellow-400 text-gray-900','10':'bg-yellow-300 text-gray-900','9':'bg-red-500 text-white','8':'bg-red-500 text-white','7':'bg-red-500 text-white','6':'bg-blue-500 text-white','5':'bg-blue-500 text-white','4':'bg-gray-600 text-white','3':'bg-gray-600 text-white','2':'bg-gray-700 text-gray-300','1':'bg-gray-700 text-gray-300','M':'bg-gray-800 border border-gray-600 text-gray-400'};
+                            s.className = 'inline-flex items-center justify-center rounded-lg font-bold text-xs px-2 py-0.5 min-w-8 ' + (colorMap[v] || '');
+                            s.textContent = v;
+                            document.getElementById('modal-arrows-preview').appendChild(s);
+                        });
+                        document.getElementById('modal-subtotal').textContent = subtotal;
+                        document.getElementById('end-confirm-modal').classList.remove('hidden');
+                        window.__pendingArrows = arrows;
+                        window.__pendingSubtotal = subtotal;
+                        // deshabilitar teclado
+                        document.querySelectorAll('.arrow-btn').forEach(b => { b.disabled=true; b.classList.add('opacity-30','pointer-events-none'); });
+                    } else {
+                        // enviar directamente la última flecha
+                        const last = arrows[arrows.length-1];
+                        const fd = new FormData();
+                        fd.append('arrow_val', last);
+                        fetch('{{ url_for('archer.score') }}', {method:'POST',body:fd,credentials:'same-origin'})
+                            .then(() => window.location.reload())
+                            .catch(() => window.location.reload());
+                    }
+                ">
+            <span x-text="isFull ? 'Confirmar tanda ✓' : `Registrar (${arrows.length}/${maxArrows})`"></span>
+        </button>
     </div>
 
     {# ── Error ── #}
@@ -400,18 +418,23 @@
     // Modal — Cancelar
     document.getElementById('modal-cancel').addEventListener('click', () => {
         modal.classList.add('hidden');
+        // Re-habilitar teclado
+        document.querySelectorAll('.arrow-btn').forEach(b => {
+            b.disabled = false;
+            b.classList.remove('opacity-30', 'pointer-events-none');
+        });
         // Revertir la última flecha en Alpine
         const el = document.querySelector('[x-data]');
-        if (el) {
-            const data = Alpine.$data ? Alpine.$data(el) : el._x_dataStack?.[0];
-            if (data) { data.del(); }
-        }
+        if (el && el.__x) { el.__x.$data.del(); }
+        else if (el && el._x_dataStack) { el._x_dataStack[0].del(); }
+        window.__pendingArrows = null;
     });
 
     // Modal — Confirmar
     document.getElementById('modal-confirm').addEventListener('click', () => {
         modal.classList.add('hidden');
-        const val = sessionArrows[sessionArrows.length - 1];
+        const arrows = window.__pendingArrows || [];
+        const val = arrows[arrows.length - 1];
         if (!val) { window.location.reload(); return; }
 
         const willAdvanceRound = (currentEnd >= endsPerRound);

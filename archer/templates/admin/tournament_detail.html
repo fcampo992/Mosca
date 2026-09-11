@@ -45,10 +45,6 @@
        class="text-xs font-medium text-green-700 border border-green-200 bg-green-50 px-3 py-1.5 rounded-full hover:bg-green-100 transition-colors">
         Leaderboard →
     </a>
-    <a href="{{ url_for('leaderboard.podium', tournament_id=tournament.id) }}" target="_blank"
-       class="text-xs font-medium text-yellow-700 border border-yellow-200 bg-yellow-50 px-3 py-1.5 rounded-full hover:bg-yellow-100 transition-colors">
-        🏆 Podio
-    </a>
     {% elif tournament.status == 'finished' %}
     <a href="{{ url_for('stats.tournament_view', tournament_id=tournament.id) }}"
        class="text-xs font-medium text-indigo-700 border border-indigo-200 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition-colors">

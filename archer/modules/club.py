@@ -9,12 +9,13 @@ Expone:
 from archer.db import get_connection
 
 _DEFAULTS = {
-    "club_name":    "KiroArchery",
-    "hero_title":   "Tu torneo de arquería, en tiempo real",
-    "hero_subtitle": "Cargá flechas, seguí el leaderboard en vivo y consultá el ranking histórico.",
-    "ticker_text":  "🏹 Bienvenido · Registrá tu puntaje · ¡Buena puntería!",
-    "color_from":   "#166534",
-    "color_to":     "#16a34a",
+    "club_name":       "KiroArchery",
+    "hero_title":      "Tu torneo de arquería, en tiempo real",
+    "hero_subtitle":   "Cargá flechas, seguí el leaderboard en vivo y consultá el ranking histórico.",
+    "ticker_text":     "🏹 Bienvenido · Registrá tu puntaje · ¡Buena puntería!",
+    "ticker_enabled":  1,
+    "color_from":      "#166534",
+    "color_to":        "#16a34a",
 }
 
 
@@ -38,6 +39,7 @@ def save_club_settings(
     ticker_text: str,
     color_from: str,
     color_to: str,
+    ticker_enabled: int = 1,
 ) -> dict:
     """Persiste la configuración del club. Retorna {} en éxito o {"error": ...}."""
     # Validaciones básicas
@@ -63,12 +65,13 @@ def save_club_settings(
                 hero_title    = ?,
                 hero_subtitle = ?,
                 ticker_text   = ?,
+                ticker_enabled = ?,
                 color_from    = ?,
                 color_to      = ?,
                 updated_at    = CURRENT_TIMESTAMP
             WHERE id = 'default'
             """,
-            (club_name, hero_title, hero_subtitle, ticker_text, color_from, color_to),
+            (club_name, hero_title, hero_subtitle, ticker_text, ticker_enabled, color_from, color_to),
         )
         try:
             conn.commit()

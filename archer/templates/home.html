@@ -12,7 +12,7 @@
       x-data="{ drawerOpen: false, bannerVisible: true }">
 
 {# ── Banner de anuncio estático (descartable) ── #}
-{% if ticker %}
+{% if ticker and club.get('ticker_enabled', 1) %}
 <div x-show="bannerVisible" x-cloak
      class="flex items-center justify-between gap-3 px-4 py-2.5 text-sm font-medium text-white"
      style="background-color: {{ club.color_to }}">

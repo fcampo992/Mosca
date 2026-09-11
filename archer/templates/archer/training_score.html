@@ -347,7 +347,7 @@
     {% if ends %}
     <div class="mt-1">
         <p class="text-[10px] text-gray-500 uppercase tracking-wide font-bold mb-2">Tandas anteriores</p>
-        <div class="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+        <div class="space-y-1.5">
             {% for e in ends | reverse %}
             <div class="flex items-center gap-2 bg-gray-800 rounded-xl px-3 py-2">
                 <span class="text-xs text-gray-400 font-bold w-6">{{ e.end_number }}</span>

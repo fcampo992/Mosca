@@ -574,6 +574,9 @@ def upload_photo():
 
     photo_url = None
     cloudinary_url = os.environ.get("CLOUDINARY_URL")
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
+    _log.info("upload_photo: CLOUDINARY_URL presente=%s, archer=%s", bool(cloudinary_url), archer_id)
 
     if cloudinary_url:
         try:
@@ -581,6 +584,7 @@ def upload_photo():
             import cloudinary.uploader
             import io
             cloudinary.config(cloudinary_url=cloudinary_url)
+            _log.info("upload_photo: llamando cloudinary upload")
             result = cloudinary.uploader.upload(
                 io.BytesIO(data),
                 public_id=f"archer_photos/{archer_id}",
@@ -589,20 +593,13 @@ def upload_photo():
                 transformation=[{"width": 400, "height": 400, "crop": "fill", "gravity": "face"}],
             )
             photo_url = result.get("secure_url")
+            _log.info("upload_photo: cloudinary OK url=%s", (photo_url or "")[:60])
         except Exception as exc:
+            _log.error("upload_photo: Cloudinary falló: %s", exc, exc_info=True)
             return _err(f"Error al subir a Cloudinary: {exc}")
     else:
-        # Fallback: disco local
-        try:
-            ext = photo.filename.rsplit(".", 1)[1].lower()
-            filename = f"{archer_id}.{ext}"
-            photos_dir = os.path.join(current_app.root_path, "static", "photos")
-            os.makedirs(photos_dir, exist_ok=True)
-            with open(os.path.join(photos_dir, filename), "wb") as f:
-                f.write(data)
-            photo_url = f"/static/photos/{filename}"
-        except Exception as exc:
-            return _err(f"Error al guardar la imagen: {exc}")
+        _log.warning("upload_photo: CLOUDINARY_URL no configurada")
+        return _err("Cloudinary no está configurado. Configurá CLOUDINARY_URL en las variables de entorno.")
 
     # Persistir en DB
     try:

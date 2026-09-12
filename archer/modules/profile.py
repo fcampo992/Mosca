@@ -118,14 +118,19 @@ def save_profile(
 
 
 def upload_banner(archer_id: str, file_data: bytes, filename: str) -> dict:
-    """Sube la imagen de banner a Cloudinary (o disco local como fallback). Retorna {"url": ...} o {"error": ...}."""
+    """Sube la imagen de banner a Cloudinary. Retorna {"url": ...} o {"error": ...}."""
+    import logging
+    _logger = logging.getLogger(__name__)
+
     cloudinary_url = os.environ.get("CLOUDINARY_URL")
+    _logger.info("upload_banner: CLOUDINARY_URL presente=%s", bool(cloudinary_url))
 
     if cloudinary_url:
         try:
             import cloudinary          # type: ignore
             import cloudinary.uploader  # type: ignore
             cloudinary.config(cloudinary_url=cloudinary_url)
+            _logger.info("upload_banner: llamando cloudinary.uploader.upload para archer=%s", archer_id)
             result = cloudinary.uploader.upload(
                 io.BytesIO(file_data),
                 public_id=f"archer_banners/{archer_id}",
@@ -134,22 +139,13 @@ def upload_banner(archer_id: str, file_data: bytes, filename: str) -> dict:
                 transformation=[{"width": 1200, "height": 400, "crop": "fill", "gravity": "center"}],
             )
             url = result.get("secure_url", "")
+            _logger.info("upload_banner: OK url=%s", url[:60])
         except Exception as exc:
-            return {"error": f"Error al subir el banner a Cloudinary: {exc}"}
+            _logger.error("upload_banner: Cloudinary falló: %s", exc, exc_info=True)
+            return {"error": f"Error al subir el banner: {exc}"}
     else:
-        # Fallback: disco local
-        try:
-            import os as _os
-            from flask import current_app
-            ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
-            fname = f"banner_{archer_id}.{ext}"
-            banners_dir = _os.path.join(current_app.root_path, "static", "banners")
-            _os.makedirs(banners_dir, exist_ok=True)
-            with open(_os.path.join(banners_dir, fname), "wb") as f:
-                f.write(file_data)
-            url = f"/static/banners/{fname}"
-        except Exception as exc:
-            return {"error": f"Error al guardar el banner: {exc}"}
+        _logger.warning("upload_banner: CLOUDINARY_URL no configurada, no se puede subir banner en Vercel")
+        return {"error": "Cloudinary no está configurado. Configurá CLOUDINARY_URL en las variables de entorno."}
 
     # Persistir URL
     conn = get_connection()

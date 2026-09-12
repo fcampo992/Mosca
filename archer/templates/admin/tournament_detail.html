@@ -203,6 +203,8 @@
                 </div>
                 <div class="flex items-end">
                     <input type="hidden" name="tournament_id" value="{{ tournament.id }}" />
+                    <input type="hidden" name="redirect_to"
+                           value="{{ url_for('admin.tournament_detail', tournament_id=tournament.id) }}" />
                     <button type="submit"
                             class="w-full bg-green-700 hover:bg-green-800 text-white text-sm font-semibold
                                    px-5 py-2.5 rounded-xl transition-colors">

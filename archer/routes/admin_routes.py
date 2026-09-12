@@ -385,6 +385,7 @@ def enroll(archer_id: str):
     """
     tournament_id = request.form.get("tournament_id", "").strip()
     category_id = request.form.get("category_id", "").strip()
+    redirect_to = request.form.get("redirect_to", "").strip() or url_for("admin.archers")
 
     result = enroll_archer(archer_id, tournament_id, category_id)
 
@@ -404,7 +405,7 @@ def enroll(archer_id: str):
             status_code,
         )
 
-    return redirect(url_for("admin.archers"))
+    return redirect(redirect_to)
 
 
 @admin_bp.route("/archers/<archer_id>/delete", methods=["POST"])

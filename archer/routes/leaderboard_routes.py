@@ -24,8 +24,10 @@ leaderboard_bp = Blueprint("leaderboard", __name__, url_prefix="/leaderboard")
 def live(tournament_id: str):
     """GET — Renderiza la vista HTML del leaderboard con estado inicial."""
     from archer.modules.club import get_club_settings  # noqa: PLC0415
-    leaderboard = compute_leaderboard(tournament_id)
-    # Nombre del torneo
+    try:
+        leaderboard = compute_leaderboard(tournament_id)
+    except Exception:
+        leaderboard = []
     tournament_name = tournament_id
     try:
         conn = get_connection()

@@ -175,7 +175,7 @@
     </a>
     {% endif %}
 
-    {# ── Torneo activo (Leaderboard) o acceso a Organizador ── #}
+    {# ── Torneo activo (Leaderboard) ── #}
     {% if active_tournaments %}
     <div class="space-y-3">
         <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest px-1">En vivo ahora</p>
@@ -204,8 +204,9 @@
         </a>
         {% endfor %}
     </div>
-    {% else %}
-    {# Sin torneo activo: acceso a Organizador como acción secundaria #}
+    {% endif %}
+
+    {# ── Acceso a Organizador — siempre visible ── #}
     <a href="/admin/tournaments"
        class="flex items-center gap-4 bg-white rounded-2xl shadow-sm border border-gray-100
               p-5 hover:border-gray-300 hover:shadow-md transition-all">
@@ -219,7 +220,6 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
         </svg>
     </a>
-    {% endif %}
 
     {# ── Acceso a Ranking del Club ── #}
     <a href="{{ url_for('stats.ranking_view') }}"

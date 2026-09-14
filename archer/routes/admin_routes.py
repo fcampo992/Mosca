@@ -528,24 +528,28 @@ def club_settings():
         club_name    = request.form.get("club_name",    "").strip()
         hero_title   = request.form.get("hero_title",   "").strip()
         hero_subtitle= request.form.get("hero_subtitle","").strip()
-        ticker_text  = request.form.get("ticker_text",  "").strip()
         color_from   = request.form.get("color_from",   "#166534").strip()
         color_to     = request.form.get("color_to",     "#16a34a").strip()
 
+        # ticker_text y ticker_enabled ya no se editan desde aquí — viven en Gestor de Noticias
+        existing_ticker = settings.get("ticker_text", "")
+        existing_ticker_enabled = int(settings.get("ticker_enabled", 1))
+
         result = save_club_settings(
-            club_name, hero_title, hero_subtitle, ticker_text, color_from, color_to,
-            ticker_enabled=1 if request.form.get("ticker_enabled") else 0,
+            club_name, hero_title, hero_subtitle,
+            ticker_text=existing_ticker,
+            color_from=color_from,
+            color_to=color_to,
+            ticker_enabled=existing_ticker_enabled,
         )
 
         if "error" in result:
             error = result["error"]
             field = result.get("field")
-            # Mantener los valores que el usuario escribió
             settings = {
                 "club_name":    club_name,
                 "hero_title":   hero_title,
                 "hero_subtitle":hero_subtitle,
-                "ticker_text":  ticker_text,
                 "color_from":   color_from,
                 "color_to":     color_to,
             }

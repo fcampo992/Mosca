@@ -137,16 +137,14 @@ def create_app(config_object: object = Config) -> Flask:
             top_archers = []
         club = get_club_settings()
         active_news = get_active_news()
-        # Respetar ticker_enabled: si está deshabilitado, no pasar ticker al template
+        # El banner solo usa el Gestor de Noticias — ticker_text de club_settings ya no se usa
         ticker_enabled = int(club.get("ticker_enabled", 1))
         if ticker_enabled and active_news:
             ticker = " · ".join(
                 f"📢 {n['title']}: {n['content']}" for n in active_news
             )
-        elif ticker_enabled:
-            ticker = club.get("ticker_text", "")
         else:
-            ticker = ""  # deshabilitado — el template no mostrará el banner
+            ticker = ""  # sin noticias activas o banner deshabilitado → sin banner
         return render_template("home.html",
                                active_tournaments=active_tournaments,
                                top_archers=top_archers,

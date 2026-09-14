@@ -68,33 +68,6 @@
                           placeholder="Descripción breve...">{{ settings.hero_subtitle }}</textarea>
             </div>
 
-            <div>
-                <div class="flex items-center justify-between mb-1.5">
-                    <label for="ticker_text" class="block text-sm font-medium text-gray-700">
-                        Texto de anuncio
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer select-none">
-                        <span class="text-xs text-gray-500">Mostrar banner</span>
-                        <div class="relative">
-                            <input type="checkbox" name="ticker_enabled" id="ticker_enabled"
-                                   value="1" class="sr-only peer"
-                                   {% if settings.get('ticker_enabled', 1) %}checked{% endif %}
-                                   @change="preview.ticker_enabled = $event.target.checked" />
-                            <div class="w-9 h-5 bg-gray-200 rounded-full peer
-                                        peer-checked:bg-green-600 transition-colors"></div>
-                            <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow
-                                        transition-transform peer-checked:translate-x-4"></div>
-                        </div>
-                    </label>
-                </div>
-                <input id="ticker_text" name="ticker_text" type="text" maxlength="500"
-                       value="{{ settings.ticker_text }}"
-                       @input="preview.ticker_text = $event.target.value"
-                       class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                       placeholder="Ej. 🏹 Próximo torneo el 15 de marzo" />
-                <p class="text-xs text-gray-400 mt-1">Se muestra en el banner superior de la Home.</p>
-            </div>
         </div>
 
         {# Colores #}
@@ -180,14 +153,6 @@
                 <p class="text-xs opacity-90 max-w-xs mx-auto" x-text="preview.hero_subtitle"></p>
             </div>
 
-            {# Preview banner anuncio #}
-            <div class="rounded-xl text-white px-4 py-2.5 flex items-center gap-2 text-xs font-medium"
-                 :style="`background-color: ${preview.color_to}`">
-                <span class="shrink-0">📢</span>
-                <p class="flex-1 truncate" x-text="preview.ticker_text || '(sin anuncio)'"></p>
-                <span class="shrink-0 opacity-50">✕</span>
-            </div>
-
             {# Preview navbar #}
             <div class="rounded-xl text-white px-4 h-10 flex items-center gap-2 text-sm font-bold shadow-sm"
                  :style="`background-color: ${preview.color_from}`">
@@ -223,7 +188,6 @@ function clubSettings() {
             club_name:    '{{ settings.club_name | e }}',
             hero_title:   '{{ settings.hero_title | e }}',
             hero_subtitle:'{{ settings.hero_subtitle | e }}',
-            ticker_text:  '{{ settings.ticker_text | e }}',
             color_from:   '{{ settings.color_from }}',
             color_to:     '{{ settings.color_to }}',
         },

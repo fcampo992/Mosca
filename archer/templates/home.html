@@ -72,7 +72,7 @@
     {# Cabecera del drawer #}
     <div class="flex items-center justify-between px-5 py-4 border-b border-white/10"
          style="background-color: {{ club.color_from }}">
-        <span class="font-bold text-white text-base">🏹 {{ club.club_name }}</span>
+        <span class="font-bold text-white text-base"> Hola {{ session.get('archer_name', 'Arquero') }}</span>
         <button @click="drawerOpen = false"
                 class="p-1.5 rounded-lg text-white hover:bg-white/20 transition-colors"
                 aria-label="Cerrar menú">
@@ -104,6 +104,20 @@
         {% endif %}
 
         <div class="pt-3 mt-2 border-t border-white/10 space-y-2">
+            {% if session.get('archer_id') %}
+            {# Cerrar sesión — solo si hay sesión #}
+            <form method="POST" action="{{ url_for('archer.logout') }}">
+                <button type="submit"
+                        class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium
+                               text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                    Cerrar sesión
+                </button>
+            </form>
+            {% else %}
             {# CTA principal — fondo negro sólido #}
             <a href="/archer/login"
                class="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold
@@ -111,6 +125,7 @@
                style="background-color: #0d0d0d">
                 <span class="text-xl">🎯</span> Ingresar como Arquero
             </a>
+            {% endif %}
             <a href="/admin/login"
                class="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium
                       text-white/50 hover:bg-white/10 hover:text-white/80 transition-colors">
@@ -155,6 +170,19 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
         </svg>
     </a>
+    {# Cerrar sesión — solo visible cuando hay sesión activa #}
+    <form method="POST" action="{{ url_for('archer.logout') }}">
+        <button type="submit"
+                class="w-full flex items-center gap-4 rounded-2xl p-4 bg-white border border-gray-200
+                       shadow-sm text-gray-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50
+                       transition-all active:opacity-80 text-sm font-medium">
+            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+            Cerrar sesión
+        </button>
+    </form>
     {% else %}
     {# Sin sesión: tarjeta de ingreso PIN #}
     <a href="/archer/login"

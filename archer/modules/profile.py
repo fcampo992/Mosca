@@ -129,8 +129,14 @@ def upload_banner(archer_id: str, file_data: bytes, filename: str) -> dict:
         try:
             import cloudinary          # type: ignore
             import cloudinary.uploader  # type: ignore
+            url_preview = cloudinary_url[:25] + "..." if len(cloudinary_url) > 25 else cloudinary_url
+            _logger.info("upload_banner: CLOUDINARY_URL formato=%s", url_preview)
             cloudinary.config(cloudinary_url=cloudinary_url)
-            _logger.info("upload_banner: llamando cloudinary.uploader.upload para archer=%s", archer_id)
+            cfg = cloudinary.config()
+            _logger.info("upload_banner: config cloud_name=%s api_key_set=%s", cfg.cloud_name, bool(cfg.api_key))
+            if not cfg.cloud_name or not cfg.api_key:
+                raise ValueError(f"Cloudinary mal configurado: cloud_name={cfg.cloud_name!r}, api_key={'SET' if cfg.api_key else 'EMPTY'}")
+            _logger.info("upload_banner: llamando cloudinary.uploader.upload para archer=%s, size=%d", archer_id, len(file_data))
             result = cloudinary.uploader.upload(
                 io.BytesIO(file_data),
                 public_id=f"archer_banners/{archer_id}",
@@ -141,7 +147,8 @@ def upload_banner(archer_id: str, file_data: bytes, filename: str) -> dict:
             url = result.get("secure_url", "")
             _logger.info("upload_banner: OK url=%s", url[:60])
         except Exception as exc:
-            _logger.error("upload_banner: Cloudinary falló: %s", exc, exc_info=True)
+            import traceback
+            _logger.error("upload_banner: Cloudinary falló: %s\n%s", exc, traceback.format_exc())
             return {"error": f"Error al subir el banner: {exc}"}
     else:
         _logger.warning("upload_banner: CLOUDINARY_URL no configurada, no se puede subir banner en Vercel")

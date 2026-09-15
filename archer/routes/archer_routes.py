@@ -583,8 +583,15 @@ def upload_photo():
             import cloudinary
             import cloudinary.uploader
             import io
+            # Loguear primeros chars de la URL para verificar formato (sin exponer credenciales completas)
+            url_preview = cloudinary_url[:25] + "..." if len(cloudinary_url) > 25 else cloudinary_url
+            _log.info("upload_photo: CLOUDINARY_URL formato=%s", url_preview)
             cloudinary.config(cloudinary_url=cloudinary_url)
-            _log.info("upload_photo: llamando cloudinary upload")
+            cfg = cloudinary.config()
+            _log.info("upload_photo: config cloud_name=%s api_key_set=%s", cfg.cloud_name, bool(cfg.api_key))
+            if not cfg.cloud_name or not cfg.api_key:
+                raise ValueError(f"Cloudinary mal configurado: cloud_name={cfg.cloud_name!r}, api_key={'SET' if cfg.api_key else 'EMPTY'}")
+            _log.info("upload_photo: llamando cloudinary upload, size=%d bytes", len(data))
             result = cloudinary.uploader.upload(
                 io.BytesIO(data),
                 public_id=f"archer_photos/{archer_id}",
@@ -595,11 +602,20 @@ def upload_photo():
             photo_url = result.get("secure_url")
             _log.info("upload_photo: cloudinary OK url=%s", (photo_url or "")[:60])
         except Exception as exc:
-            _log.error("upload_photo: Cloudinary falló: %s", exc, exc_info=True)
+            import traceback
+            _log.error("upload_photo: Cloudinary falló: %s\n%s", exc, traceback.format_exc())
             return _err(f"Error al subir a Cloudinary: {exc}")
     else:
-        _log.warning("upload_photo: CLOUDINARY_URL no configurada")
-        return _err("Cloudinary no está configurado. Configurá CLOUDINARY_URL en las variables de entorno.")
+        # Fallback local: guardar en static/photos/ cuando no hay Cloudinary configurado
+        import pathlib
+        photos_dir = pathlib.Path(__file__).resolve().parent.parent / "static" / "photos"
+        photos_dir.mkdir(parents=True, exist_ok=True)
+        ext = photo.filename.rsplit(".", 1)[1].lower()
+        filename = f"{archer_id}.{ext}"
+        dest = photos_dir / filename
+        dest.write_bytes(data)
+        photo_url = f"/static/photos/{filename}"
+        _log.info("upload_photo: guardado localmente en %s", dest)
 
     # Persistir en DB
     try:

@@ -77,12 +77,20 @@ def _connect_sqlite() -> sqlite3.Connection:
 # ---------------------------------------------------------------------------
 
 def get_connection():
-    """Retorna la conexión activa (Turso o SQLite). Patrón singleton."""
+    """Retorna la conexión activa (Turso o SQLite). Patrón singleton con validación."""
     logger.info("get_connection() llamada")
+
+    # Verificar si la conexión cacheada sigue viva con un ping liviano
     conn = current_app.config.get("DB_CONN")
     if conn is not None:
-        logger.info("Reutilizando conexión existente: %s", type(conn).__name__)
-        return conn
+        try:
+            conn.execute("SELECT 1")
+            logger.info("Reutilizando conexión existente: %s", type(conn).__name__)
+            return conn
+        except Exception as exc:
+            logger.warning("Conexión cacheada inválida (%s), reconectando...", exc)
+            current_app.config["DB_CONN"] = None
+            conn = None
 
     turso_url = os.environ.get("TURSO_DATABASE_URL")
     turso_token = os.environ.get("TURSO_AUTH_TOKEN")

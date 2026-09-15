@@ -107,7 +107,17 @@ def login():
 
     # POST — intentar autenticación
     pin = request.form.get("pin", "").strip()
-    result = authenticate_pin(pin)
+    try:
+        result = authenticate_pin(pin)
+    except Exception as exc:
+        import logging as _logging
+        _logging.getLogger(__name__).error("login: error inesperado en authenticate_pin: %s", exc, exc_info=True)
+        return render_template(
+            "archer/login.html",
+            error="Error de conexión. Por favor intentá de nuevo.",
+            field=None,
+            locked=False,
+        ), 503
 
     if "error" not in result:
         archer_id   = result["archer_id"]

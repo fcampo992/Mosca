@@ -149,7 +149,8 @@ def create_app(config_object: object = Config) -> Flask:
                                active_tournaments=active_tournaments,
                                top_archers=top_archers,
                                club=club,
-                               ticker=ticker)
+                               ticker=ticker,
+                               active_news=active_news)
 
     # ── Health / debug endpoint ───────────────────────────────────────────────
     @app.route("/health")

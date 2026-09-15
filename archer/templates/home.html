@@ -11,17 +11,16 @@
 <body class="min-h-screen bg-gray-50 text-gray-900" style="min-width:360px"
       x-data="{ drawerOpen: false, bannerVisible: true }">
 
-{# ── Banner de anuncio estático (descartable) ── #}
+{# ── Banner de anuncio (descartable) ── #}
 {% if ticker and club.get('ticker_enabled', 1) %}
 <div x-show="bannerVisible" x-cloak
-     class="flex items-center justify-between gap-3 px-4 py-2.5 text-sm font-medium text-white"
+     class="flex items-start justify-between gap-3 px-4 py-2.5 text-sm font-medium text-white"
      style="background-color: {{ club.color_to }}">
-    <div class="flex items-center gap-2 min-w-0">
-        <span class="shrink-0">📢</span>
-        <p class="truncate text-xs">{{ ticker }}</p>
+    <div class="flex items-start gap-2">
+        <p class="text-xs leading-relaxed">{{ ticker }}</p>
     </div>
     <button @click="bannerVisible = false"
-            class="shrink-0 p-1 rounded hover:bg-white/20 transition-colors"
+            class="shrink-0 p-1 rounded hover:bg-white/20 transition-colors mt-0.5"
             aria-label="Cerrar anuncio">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -136,7 +135,7 @@
         {% if club.hero_subtitle %}
         <p class="text-sm max-w-xs mx-auto opacity-90">{{ club.hero_subtitle }}</p>
         {% endif %}
-    </section>
+    </section> 
 
     {# ── Acceso principal: Soy Arquero (CTA primario) ── #}
     {% if session.get('archer_id') %}
@@ -207,19 +206,19 @@
     {% endif %}
 
     {# ── Acceso a Organizador — siempre visible ── #}
-    <a href="/admin/tournaments"
+   <!-- <a href="/admin/tournaments"
        class="flex items-center gap-4 bg-white rounded-2xl shadow-sm border border-gray-100
               p-5 hover:border-gray-300 hover:shadow-md transition-all">
         <div class="w-14 h-14 rounded-xl bg-gray-50 flex items-center justify-center text-3xl shrink-0">📋</div>
         <div class="flex-1 min-w-0">
             <p class="font-bold text-base text-gray-900">Soy Organizador</p>
             <p class="text-sm text-gray-500">Gestioná torneos, categorías y arqueros</p>
-        </div>
+        </div> 
         <svg class="w-5 h-5 text-gray-300 shrink-0" fill="none" stroke="currentColor"
              stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
         </svg>
-    </a>
+    </a>-->
 
     {# ── Acceso a Ranking del Club ── #}
     <a href="{{ url_for('stats.ranking_view') }}"
@@ -267,6 +266,27 @@
     </section>
     {% endif %}
 
+    {# ── Noticias del club ── #}
+    {% if active_news %}
+    <section class="space-y-3">
+        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest px-1">Noticias del club</p>
+        {% for item in active_news %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+            <div class="flex items-start gap-3">
+                <div class="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center text-xl"
+                     style="background-color: {{ club.color_from }}1a">
+                    📰
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-semibold text-sm text-gray-900 leading-snug">{{ item.title }}</p>
+                    <p class="text-xs text-gray-500 mt-1 leading-relaxed">{{ item.content }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </section>
+    {% endif %}
+
     {# ── Widget meteorológico (condicional: solo si geolocalización disponible) ── #}
     <section x-data="weatherWidget()" x-init="load()" x-show="ready" x-cloak>
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
@@ -288,9 +308,9 @@
 
 </div>{# /max-w-lg #}
 
-<footer class="text-center text-xs text-gray-400 py-6 border-t border-gray-100 mt-4">
+<!--  <footer class="text-center text-xs text-gray-400 py-6 border-t border-gray-100 mt-4">
     {{ club.club_name }} &copy; 2025
-</footer>
+</footer>-->
 
 <script>
 function weatherWidget() {

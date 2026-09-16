@@ -167,10 +167,10 @@
         open: false,
         step: 1,
         mode: 'scored',
-        distance: '18m',
+        distance: '20m',
         customDist: '',
-        arrowsPerEnd: 6,
-        totalEnds: 10,
+        arrowsPerEnd: 5,
+        totalEnds: 5,
         unlimited: false,
         setupId: '',
         environment: 'indoor'
@@ -248,7 +248,7 @@
                 <div>
                     <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Distancia</p>
                     <div class="flex flex-wrap gap-2">
-                        {% for d in ['18m', '25m', '30m', '50m', '60m', '70m'] %}
+                        {% for d in ['18m','20m', '25m', '30m', '50m', '60m', '70m'] %}
                         <button type="button" @click="distance = '{{ d }}'; customDist = ''"
                                 :class="distance === '{{ d }}' && customDist === ''
                                     ? 'bg-gray-900 text-white border-gray-900'
@@ -324,7 +324,7 @@
                 <div>
                     <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Flechas por tanda</p>
                     <div class="flex gap-2">
-                        {% for n in [3, 6] %}
+                        {% for n in [3, 5] %}
                         <button type="button" @click="arrowsPerEnd = {{ n }}"
                                 :class="arrowsPerEnd === {{ n }}
                                     ? 'bg-gray-900 text-white border-gray-900'
@@ -354,7 +354,7 @@
                 <div>
                     <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Tandas totales</p>
                     <div class="flex gap-2 mb-3">
-                        {% for n in [6, 10, 12, 20] %}
+                        {% for n in [3, 5, 10, 12, 20] %}
                         <button type="button" @click="unlimited = false; totalEnds = {{ n }}"
                                 :class="!unlimited && totalEnds === {{ n }}
                                     ? 'bg-gray-900 text-white border-gray-900'

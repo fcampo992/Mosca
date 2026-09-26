@@ -38,6 +38,7 @@ from archer.modules.admin import (
     list_enrolled_archers,
     list_tournaments,
     update_archer,
+    unenroll_archer,
 )
 from archer.modules.club import get_club_settings, save_club_settings
 from archer.modules.news import create_news, delete_news, list_news, toggle_news
@@ -406,6 +407,30 @@ def enroll(archer_id: str):
         )
 
     return redirect(redirect_to)
+
+
+@admin_bp.route("/tournaments/<tournament_id>/archers/<archer_id>/unenroll", methods=["POST"])
+@require_admin
+def unenroll(tournament_id: str, archer_id: str):
+    """POST — Desinscribe un arquero de un torneo (elimina todas sus inscripciones en ese torneo)."""
+    result = unenroll_archer(tournament_id, archer_id)
+    if "error" in result:
+        # Volver al detalle del torneo con mensaje de error
+        tournament = get_tournament(tournament_id)
+        archers = list_enrolled_archers(tournament_id)
+        categories = list_categories(tournament_id)
+        enrolled_ids = {a["archer_id"] for a in archers}
+        all_archers = list_archers()
+        return render_template(
+            "admin/tournament_detail.html",
+            tournament=tournament,
+            archers=archers,
+            categories=categories,
+            enrolled_ids=enrolled_ids,
+            all_archers=all_archers,
+            unenroll_error=result["error"],
+        ), 400
+    return redirect(url_for("admin.tournament_detail", tournament_id=tournament_id))
 
 
 @admin_bp.route("/archers/<archer_id>/delete", methods=["POST"])

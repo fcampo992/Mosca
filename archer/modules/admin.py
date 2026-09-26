@@ -489,6 +489,55 @@ def enroll_archer(archer_id: str, tournament_id: str, category_id: str) -> dict:
     }
 
 
+def unenroll_archer(tournament_id: str, archer_id: str) -> dict:
+    """Elimina todas las inscripciones de un arquero en un torneo.
+
+    Reglas:
+    - Solo se puede desinscribir si el torneo NO está finalizado.
+    - Si el torneo está activo, también elimina los scores del arquero en ese torneo.
+    - Retorna {"deleted": n} con la cantidad de registros eliminados.
+    """
+    conn = get_connection()
+
+    cursor = conn.execute(
+        "SELECT id, status FROM tournaments WHERE id = ?",
+        (tournament_id,),
+    )
+    tournament_row = cursor.fetchone()
+    if tournament_row is None:
+        return {"error": "Torneo no encontrado."}
+    if tournament_row["status"] == "finished":
+        return {"error": "No se puede desinscribir de un torneo finalizado."}
+
+    # Verificar que el arquero tiene al menos una inscripción en este torneo
+    cursor = conn.execute(
+        "SELECT COUNT(*) as cnt FROM registrations WHERE tournament_id = ? AND archer_id = ?",
+        (tournament_id, archer_id),
+    )
+    row = cursor.fetchone()
+    if not row or row["cnt"] == 0:
+        return {"error": "El arquero no está inscrito en este torneo."}
+
+    # Si el torneo está activo, también borrar los scores del arquero
+    if tournament_row["status"] == "active":
+        conn.execute(
+            "DELETE FROM scores WHERE tournament_id = ? AND archer_id = ?",
+            (tournament_id, archer_id),
+        )
+
+    # Eliminar la/s inscripción/es
+    conn.execute(
+        "DELETE FROM registrations WHERE tournament_id = ? AND archer_id = ?",
+        (tournament_id, archer_id),
+    )
+    try:
+        conn.commit()
+    except Exception:
+        pass
+
+    return {"deleted": row["cnt"]}
+
+
 # ---------------------------------------------------------------------------
 # Corrección de flechas por el administrador (Requerimientos 4.1, 4.2, 4.3, 4.4, 6.1, 6.2)
 # ---------------------------------------------------------------------------

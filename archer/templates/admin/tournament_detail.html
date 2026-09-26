@@ -230,6 +230,9 @@
                     <tr class="bg-gray-50 border-b border-gray-100">
                         <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Arquero</th>
                         <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Categoría</th>
+                        {% if tournament.status != 'finished' %}
+                        <th class="px-4 py-3 w-20"></th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-50">
@@ -237,6 +240,20 @@
                     <tr class="hover:bg-gray-50 transition-colors">
                         <td class="px-4 py-3 font-medium text-gray-900">{{ a.archer_name }}</td>
                         <td class="px-4 py-3 text-gray-500 text-xs">{{ a.category }}</td>
+                        {% if tournament.status != 'finished' %}
+                        <td class="px-4 py-3 text-right">
+                            <form method="POST"
+                                  action="{{ url_for('admin.unenroll', tournament_id=tournament.id, archer_id=a.archer_id) }}"
+                                  onsubmit="return confirm('¿Quitar a {{ a.archer_name }} del torneo?')">
+                                <button type="submit"
+                                        class="text-xs font-semibold text-red-500 hover:text-red-700
+                                               border border-red-200 hover:border-red-400 hover:bg-red-50
+                                               px-2.5 py-1 rounded-lg transition-colors">
+                                    Quitar
+                                </button>
+                            </form>
+                        </td>
+                        {% endif %}
                     </tr>
                     {% endfor %}
                 </tbody>

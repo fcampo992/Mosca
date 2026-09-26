@@ -1,0 +1,101 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Nuevo Torneo por Equipos — {{ club_settings().club_name }}{% endblock %}
+
+{% block content %}
+
+<div class="flex items-center gap-3 mb-6">
+    <a href="{{ url_for('team_admin.index') }}"
+       class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+    </a>
+    <h1 class="text-xl font-bold">Nuevo Torneo por Equipos</h1>
+</div>
+
+{% if error %}
+<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{{ error }}</div>
+{% endif %}
+
+<form method="POST" action="{{ url_for('team_admin.new') }}" class="space-y-5 max-w-lg">
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
+        <h2 class="font-semibold text-gray-800 text-sm uppercase tracking-wide">Información del torneo</h2>
+
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1.5">Nombre del torneo</label>
+            <input type="text" name="name" required
+                   value="{{ form_data.get('name', '') }}"
+                   placeholder="Ej: Copa Primavera por Equipos"
+                   class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                          focus:outline-none focus:ring-2 focus:ring-green-500"/>
+        </div>
+
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1.5">Fecha</label>
+            <input type="date" name="date" required
+                   value="{{ form_data.get('date', '') }}"
+                   class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                          focus:outline-none focus:ring-2 focus:ring-green-500"/>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
+        <h2 class="font-semibold text-gray-800 text-sm uppercase tracking-wide">Configuración de tiro</h2>
+
+        <div class="grid grid-cols-3 gap-3">
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1.5">Flechas/tanda</label>
+                <input type="number" name="arrows_per_end" min="1" max="12"
+                       value="{{ form_data.get('arrows_per_end', 6) }}"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-green-500"/>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1.5">Tandas/ronda</label>
+                <input type="number" name="ends_per_round" min="1" max="30"
+                       value="{{ form_data.get('ends_per_round', 10) }}"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-green-500"/>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1.5">Rondas</label>
+                <input type="number" name="rounds_count" min="1" max="10"
+                       value="{{ form_data.get('rounds_count', 1) }}"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-green-500"/>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
+        <h2 class="font-semibold text-gray-800 text-sm uppercase tracking-wide">Configuración de equipos</h2>
+
+        <div class="max-w-xs">
+            <label class="block text-xs font-medium text-gray-600 mb-1.5">Arqueros por equipo</label>
+            <input type="number" name="archers_per_team" min="2" max="10"
+                   value="{{ form_data.get('archers_per_team', 3) }}"
+                   class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                          focus:outline-none focus:ring-2 focus:ring-green-500"/>
+            <p class="text-xs text-gray-400 mt-1">
+                Usado para el sorteo aleatorio de equipos. Mínimo 2.
+            </p>
+        </div>
+    </div>
+
+    <div class="flex gap-3">
+        <a href="{{ url_for('team_admin.index') }}"
+           class="flex-1 text-center py-3 rounded-xl border border-gray-200 text-sm font-semibold
+                  text-gray-600 hover:bg-gray-50 transition-colors">
+            Cancelar
+        </a>
+        <button type="submit"
+                class="flex-1 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold
+                       py-3 rounded-xl transition-colors">
+            Crear torneo
+        </button>
+    </div>
+
+</form>
+
+{% endblock %}

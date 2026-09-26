@@ -106,6 +106,13 @@ def create_app(config_object: object = Config) -> Flask:
     except ImportError:
         logger.debug("stats_routes blueprint not available yet.")
 
+    try:
+        from archer.routes.team_routes import team_admin_bp, team_archer_bp  # noqa: PLC0415
+        app.register_blueprint(team_admin_bp)
+        app.register_blueprint(team_archer_bp)
+    except ImportError:
+        logger.debug("team_routes blueprint not available yet.")
+
     # ── Home route ───────────────────────────────────────────────────────────
     @app.route("/")
     def home():

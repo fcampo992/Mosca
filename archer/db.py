@@ -247,6 +247,65 @@ def init_db(conn) -> None:
     except Exception:
         pass
 
+    # ── Torneo por equipos ──────────────────────────────────────────────────
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS team_tournaments (
+            id               TEXT PRIMARY KEY,
+            name             TEXT NOT NULL,
+            date             TEXT NOT NULL,
+            status           TEXT CHECK(status IN ('created', 'active', 'finished'))
+                             DEFAULT 'created',
+            arrows_per_end   INTEGER NOT NULL DEFAULT 6,
+            ends_per_round   INTEGER NOT NULL DEFAULT 10,
+            rounds_count     INTEGER NOT NULL DEFAULT 1,
+            archers_per_team INTEGER NOT NULL DEFAULT 3,
+            created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS teams (
+            id                  TEXT PRIMARY KEY,
+            team_tournament_id  TEXT NOT NULL,
+            number              INTEGER NOT NULL,
+            FOREIGN KEY (team_tournament_id) REFERENCES team_tournaments(id)
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS team_members (
+            id         TEXT PRIMARY KEY,
+            team_id    TEXT NOT NULL,
+            archer_id  TEXT NOT NULL,
+            FOREIGN KEY (team_id)   REFERENCES teams(id),
+            FOREIGN KEY (archer_id) REFERENCES archers(id)
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS team_scores (
+            id                  TEXT PRIMARY KEY,
+            team_tournament_id  TEXT NOT NULL,
+            archer_id           TEXT NOT NULL,
+            round_number        INTEGER NOT NULL,
+            end_number          INTEGER NOT NULL,
+            arrow_val           TEXT NOT NULL,
+            points              INTEGER NOT NULL,
+            created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (team_tournament_id) REFERENCES team_tournaments(id),
+            FOREIGN KEY (archer_id)          REFERENCES archers(id)
+        )
+        """
+    )
+    try:
+        conn.commit()
+    except Exception:
+        pass
+
     # -----------------------------------------------------------------------
     # Perfil extendido del arquero (datos personales editables)
     # -----------------------------------------------------------------------

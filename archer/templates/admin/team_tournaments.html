@@ -1,0 +1,72 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Torneos por Equipos — {{ club_settings().club_name }}{% endblock %}
+
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h1 class="text-2xl font-bold">Torneos por Equipos</h1>
+        <p class="text-sm text-gray-400 mt-0.5">Competencias donde los arqueros compiten en equipo</p>
+    </div>
+    <a href="{{ url_for('team_admin.new') }}"
+       class="inline-flex items-center gap-2 bg-green-700 hover:bg-green-800
+              text-white text-sm font-semibold px-4 py-2 rounded-xl shadow transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+        </svg>
+        Nuevo torneo por equipos
+    </a>
+</div>
+
+{% if tournaments %}
+<div class="space-y-3">
+    {% for t in tournaments %}
+    {% set meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'] %}
+    {% set partes = t.date.split('-') if t.date else [] %}
+    {% set fecha = (partes[2]|int)|string + ' ' + meses[(partes[1]|int)-1] + ', ' + partes[0] if partes|length == 3 else t.date %}
+
+    <a href="{{ url_for('team_admin.detail', tournament_id=t.id) }}"
+       class="block bg-white rounded-2xl shadow-sm border border-gray-100
+              hover:border-green-300 hover:shadow-md transition-all p-4">
+        <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+                <div class="flex items-center gap-2 mb-0.5">
+                    <span class="text-base">👥</span>
+                    <p class="font-semibold text-gray-900 truncate">{{ t.name }}</p>
+                </div>
+                <p class="text-sm text-gray-400">{{ fecha }}</p>
+                <p class="text-xs text-gray-400 mt-1">
+                    {{ t.archers_per_team }} arqueros/equipo
+                    · {{ t.rounds_count }} ronda{{ 's' if t.rounds_count != 1 else '' }}
+                    · {{ t.ends_per_round }} tandas
+                    · {{ t.arrows_per_end }} flechas/tanda
+                </p>
+            </div>
+            <div class="shrink-0 flex items-center gap-2">
+                {% if t.status == 'active' %}
+                <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-700">
+                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse inline-block"></span>
+                    En curso
+                </span>
+                {% elif t.status == 'created' %}
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600">Próximo</span>
+                {% else %}
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Finalizado</span>
+                {% endif %}
+                <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                </svg>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-16 text-gray-400">
+    <div class="text-5xl mb-3">👥</div>
+    <p class="font-medium">No hay torneos por equipos</p>
+    <p class="text-sm mt-1">Creá el primero con el botón de arriba</p>
+</div>
+{% endif %}
+
+{% endblock %}

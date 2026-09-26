@@ -79,9 +79,19 @@
              this.showModal = false;
              const fd = new FormData();
              fd.append('arrows_json', JSON.stringify(this.arrows));
-             fetch('{{ url_for('archer.score_end') }}', {method:'POST', body:fd, credentials:'same-origin'})
-                 .then(()=>window.location.reload())
-                 .catch(()=>{ this.submitting=false; alert('Error al guardar. Intentá de nuevo.'); });
+             // AbortController para timeout de 15s — evita quedar bloqueado si hay mala conexión
+             const controller = new AbortController();
+             const timeout = setTimeout(() => controller.abort(), 15000);
+             fetch('{{ url_for('archer.score_end') }}', {
+                 method:'POST', body:fd, credentials:'same-origin',
+                 signal: controller.signal
+             })
+                 .then(() => { clearTimeout(timeout); window.location.reload(); })
+                 .catch(() => {
+                     clearTimeout(timeout);
+                     this.submitting = false;
+                     alert('Error al guardar. Revisá tu conexión e intentá de nuevo.');
+                 });
          }
      }">
 
@@ -343,3 +353,68 @@
 
 </body>
 </html>
+
+<script>
+// ── Manejo de BFCache y bloqueo de pantalla (Safari/iOS) ──────────────────
+// Problema: cuando el teléfono se bloquea, Safari congela la pestaña en BFCache.
+// Al desbloquear, Alpine.js se "descongela" con estado desincronizado del servidor.
+// Solución: detectar el retorno del BFCache y forzar reload para resincronizar.
+
+(function () {
+    const STORAGE_KEY = 'score_submitting_at';
+
+    // 1. pageshow con persisted=true → la página viene del BFCache (teléfono desbloqueado).
+    //    Recargar siempre para que el estado de Alpine refleje lo real del servidor.
+    window.addEventListener('pageshow', function (e) {
+        if (e.persisted) {
+            window.location.reload();
+        }
+    });
+
+    // 2. visibilitychange → pantalla desbloqueada o pestaña activa de nuevo.
+    //    Solo recargar si no había un fetch en curso (para no perder datos en vuelo).
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') {
+            var submittingAt = sessionStorage.getItem(STORAGE_KEY);
+            if (!submittingAt) {
+                // No había submit en curso → reload seguro
+                window.location.reload();
+            } else {
+                // Había submit en curso → esperar un momento y verificar
+                // Si el reload de confirm() no ocurrió, el fetch se perdió → reload igual
+                setTimeout(function () {
+                    if (sessionStorage.getItem(STORAGE_KEY)) {
+                        // Todavía está marcado → el fetch se perdió, recargar
+                        sessionStorage.removeItem(STORAGE_KEY);
+                        window.location.reload();
+                    }
+                }, 2000);
+            }
+        }
+    });
+
+    // 3. pagehide → teléfono se bloquea o pestaña se oculta.
+    //    Marcar en sessionStorage si Alpine tenía un submit en curso.
+    window.addEventListener('pagehide', function () {
+        // Alpine guarda submitting en el elemento x-data
+        var el = document.querySelector('[x-data]');
+        if (el && el._x_dataStack) {
+            try {
+                var data = el._x_dataStack[0];
+                if (data && data.submitting) {
+                    sessionStorage.setItem(STORAGE_KEY, Date.now().toString());
+                } else {
+                    sessionStorage.removeItem(STORAGE_KEY);
+                }
+            } catch (err) {
+                sessionStorage.removeItem(STORAGE_KEY);
+            }
+        }
+    });
+
+    // 4. Limpiar el flag cuando el confirm() termina exitosamente.
+    //    Alpine llama window.location.reload() después del fetch — eso limpia todo.
+    //    Pero por si acaso, limpiar al cargar la página también.
+    sessionStorage.removeItem(STORAGE_KEY);
+})();
+</script>

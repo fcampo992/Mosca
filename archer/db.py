@@ -287,6 +287,18 @@ def init_db(conn) -> None:
     )
     conn.execute(
         """
+        CREATE TABLE IF NOT EXISTS team_registrations (
+            id                  TEXT PRIMARY KEY,
+            team_tournament_id  TEXT NOT NULL,
+            archer_id           TEXT NOT NULL,
+            UNIQUE (team_tournament_id, archer_id),
+            FOREIGN KEY (team_tournament_id) REFERENCES team_tournaments(id),
+            FOREIGN KEY (archer_id)          REFERENCES archers(id)
+        )
+        """
+    )
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS team_scores (
             id                  TEXT PRIMARY KEY,
             team_tournament_id  TEXT NOT NULL,

@@ -246,11 +246,19 @@ def dashboard():
     history     = archer_history(archer_id)
     trend       = archer_trend(archer_id)
 
+    # Torneo por equipos activo
+    try:
+        from archer.modules.team_tournament import get_active_team_tournament_for_archer  # noqa: PLC0415
+        team_tournament = get_active_team_tournament_for_archer(archer_id)
+    except Exception:
+        team_tournament = None
+
     return render_template(
         "archer/dashboard.html",
         archer_name=archer_name,
         photo_url=photo_url,
         tournament=tournament,
+        team_tournament=team_tournament,
         kpis=kpis,
         history=history,
         trend=trend,

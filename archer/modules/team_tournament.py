@@ -107,6 +107,7 @@ def delete_team_tournament(tournament_id: str) -> dict:
         conn.execute("DELETE FROM team_members WHERE team_id = ?", (team["id"],))
     conn.execute("DELETE FROM teams WHERE team_tournament_id = ?", (tournament_id,))
     conn.execute("DELETE FROM team_scores WHERE team_tournament_id = ?", (tournament_id,))
+    conn.execute("DELETE FROM team_registrations WHERE team_tournament_id = ?", (tournament_id,))
     conn.execute("DELETE FROM team_tournaments WHERE id = ?", (tournament_id,))
     try:
         conn.commit()
@@ -153,10 +154,7 @@ def list_teams(tournament_id: str) -> list[dict]:
 
 def list_unassigned_archers(tournament_id: str) -> list[dict]:
     """
-    Retorna los arqueros que están en el torneo (vía registrations o
-    simplemente todos los cargados) pero aún no asignados a ningún equipo.
-    Para torneo por equipos no usamos categorías, así que tomamos todos los
-    arqueros del sistema y filtramos los ya asignados.
+    Retorna los arqueros inscritos en el torneo pero aún no asignados a ningún equipo.
     """
     conn = get_connection()
     # Arqueros ya asignados a algún equipo de este torneo
@@ -171,15 +169,121 @@ def list_unassigned_archers(tournament_id: str) -> list[dict]:
     ).fetchall()
     assigned_ids = {r["archer_id"] for r in assigned}
 
-    all_archers = conn.execute(
-        "SELECT id, name FROM archers ORDER BY name ASC"
+    # Solo los inscritos en este torneo
+    registered = conn.execute(
+        """
+        SELECT tr.archer_id, a.name AS archer_name
+        FROM team_registrations tr
+        JOIN archers a ON a.id = tr.archer_id
+        WHERE tr.team_tournament_id = ?
+        ORDER BY a.name ASC
+        """,
+        (tournament_id,),
     ).fetchall()
 
     return [
-        {"archer_id": a["id"], "archer_name": a["name"]}
-        for a in all_archers
-        if a["id"] not in assigned_ids
+        {"archer_id": r["archer_id"], "archer_name": r["archer_name"]}
+        for r in registered
+        if r["archer_id"] not in assigned_ids
     ]
+
+
+def list_registered_archers(tournament_id: str) -> list[dict]:
+    """Retorna los arqueros inscritos en el torneo por equipos."""
+    conn = get_connection()
+    rows = conn.execute(
+        """
+        SELECT tr.archer_id, a.name AS archer_name
+        FROM team_registrations tr
+        JOIN archers a ON a.id = tr.archer_id
+        WHERE tr.team_tournament_id = ?
+        ORDER BY a.name ASC
+        """,
+        (tournament_id,),
+    ).fetchall()
+    return [{"archer_id": r["archer_id"], "archer_name": r["archer_name"]} for r in rows]
+
+
+def enroll_archer_team(tournament_id: str, archer_id: str) -> dict:
+    """Inscribe un arquero en el torneo por equipos (solo si está en 'created')."""
+    t = get_team_tournament(tournament_id)
+    if not t:
+        return {"error": "Torneo no encontrado."}
+    if t["status"] != "created":
+        return {"error": "Solo se puede inscribir en torneos en estado 'creado'."}
+
+    conn = get_connection()
+    archer_row = conn.execute("SELECT id FROM archers WHERE id = ?", (archer_id,)).fetchone()
+    if not archer_row:
+        return {"error": "Arquero no encontrado."}
+
+    # Verificar si ya está inscrito
+    existing = conn.execute(
+        "SELECT id FROM team_registrations WHERE team_tournament_id = ? AND archer_id = ?",
+        (tournament_id, archer_id),
+    ).fetchone()
+    if existing:
+        return {"error": "El arquero ya está inscrito en este torneo."}
+
+    conn.execute(
+        "INSERT INTO team_registrations (id, team_tournament_id, archer_id) VALUES (?, ?, ?)",
+        (str(uuid.uuid4()), tournament_id, archer_id),
+    )
+    try:
+        conn.commit()
+    except Exception:
+        pass
+    return {"ok": True}
+
+
+def unenroll_archer_team(tournament_id: str, archer_id: str) -> dict:
+    """Desinscribe un arquero del torneo por equipos y lo quita de su equipo."""
+    t = get_team_tournament(tournament_id)
+    if not t:
+        return {"error": "Torneo no encontrado."}
+    if t["status"] != "created":
+        return {"error": "No se puede desinscribir de un torneo ya iniciado."}
+
+    conn = get_connection()
+    # Quitar de equipo si estaba asignado
+    conn.execute(
+        """
+        DELETE FROM team_members
+        WHERE archer_id = ?
+          AND team_id IN (SELECT id FROM teams WHERE team_tournament_id = ?)
+        """,
+        (archer_id, tournament_id),
+    )
+    # Quitar de inscriptos
+    conn.execute(
+        "DELETE FROM team_registrations WHERE team_tournament_id = ? AND archer_id = ?",
+        (tournament_id, archer_id),
+    )
+    try:
+        conn.commit()
+    except Exception:
+        pass
+    return {"ok": True}
+
+
+def get_active_team_tournament_for_archer(archer_id: str) -> dict | None:
+    """
+    Retorna el torneo por equipos activo donde el arquero está inscrito,
+    o None si no hay ninguno.
+    """
+    conn = get_connection()
+    row = conn.execute(
+        """
+        SELECT tt.*
+        FROM team_tournaments tt
+        JOIN team_registrations tr ON tr.team_tournament_id = tt.id
+        WHERE tr.archer_id = ?
+          AND tt.status = 'active'
+        LIMIT 1
+        """,
+        (archer_id,),
+    ).fetchone()
+    return dict(row) if row else None
 
 
 def _ensure_teams_exist(tournament_id: str, count: int) -> list[dict]:
@@ -298,12 +402,20 @@ def random_assign_teams(tournament_id: str) -> dict:
     conn = get_connection()
     n_per_team = t["archers_per_team"]
 
-    # Obtener todos los arqueros
-    all_archers = conn.execute("SELECT id FROM archers ORDER BY id").fetchall()
-    archer_ids = [a["id"] for a in all_archers]
+    # Obtener solo los arqueros INSCRITOS en este torneo
+    registered = conn.execute(
+        """
+        SELECT tr.archer_id
+        FROM team_registrations tr
+        WHERE tr.team_tournament_id = ?
+        ORDER BY tr.archer_id
+        """,
+        (tournament_id,),
+    ).fetchall()
+    archer_ids = [a["archer_id"] for a in registered]
 
     if len(archer_ids) < 2:
-        return {"error": "Se necesitan al menos 2 arqueros para armar equipos."}
+        return {"error": "Se necesitan al menos 2 arqueros inscritos para armar equipos."}
 
     # Mezclar aleatoriamente
     random.shuffle(archer_ids)

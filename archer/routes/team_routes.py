@@ -21,11 +21,14 @@ from archer.modules.team_tournament import (
     change_team_tournament_status,
     create_team_tournament,
     delete_team_tournament,
+    enroll_archer_team,
+    unenroll_archer_team,
     get_archer_team,
     get_archer_team_score_summary,
     get_team_ends_history,
     get_team_leaderboard,
     get_team_tournament,
+    list_registered_archers,
     list_team_tournaments,
     list_teams,
     list_unassigned_archers,
@@ -118,18 +121,43 @@ def detail(tournament_id: str):
     if not tournament:
         return redirect(url_for("team_admin.index"))
 
-    teams      = list_teams(tournament_id)
-    unassigned = list_unassigned_archers(tournament_id)
-    all_archers = list_archers()
+    teams           = list_teams(tournament_id)
+    registered      = list_registered_archers(tournament_id)
+    unassigned      = list_unassigned_archers(tournament_id)
+    all_archers     = list_archers()
+    registered_ids  = {a["archer_id"] for a in registered}
 
     return render_template(
         "admin/team_tournament_detail.html",
         tournament=tournament,
         teams=teams,
+        registered=registered,
+        registered_ids=registered_ids,
         unassigned=unassigned,
         all_archers=all_archers,
         unenroll_error=request.args.get("error"),
     )
+
+
+@team_admin_bp.route("/<tournament_id>/enroll", methods=["POST"])
+@_require_admin
+def enroll(tournament_id: str):
+    """Inscribe un arquero en el torneo por equipos."""
+    archer_id = request.form.get("archer_id", "").strip()
+    result = enroll_archer_team(tournament_id, archer_id)
+    if "error" in result:
+        return redirect(url_for("team_admin.detail", tournament_id=tournament_id,
+                                error=result["error"]))
+    return redirect(url_for("team_admin.detail", tournament_id=tournament_id))
+
+
+@team_admin_bp.route("/<tournament_id>/unenroll", methods=["POST"])
+@_require_admin
+def unenroll(tournament_id: str):
+    """Desinscribe un arquero del torneo por equipos."""
+    archer_id = request.form.get("archer_id", "").strip()
+    unenroll_archer_team(tournament_id, archer_id)
+    return redirect(url_for("team_admin.detail", tournament_id=tournament_id))
 
 
 @team_admin_bp.route("/<tournament_id>/status", methods=["POST"])

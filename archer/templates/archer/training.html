@@ -41,40 +41,81 @@
 </div>
 {% endif %}
 
-{# ── Gráfico de evolución ── #}
-{% if trend and trend|length > 1 %}
-<section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
-    <h2 class="text-sm font-semibold text-gray-700 mb-4">Evolución del promedio</h2>
-    <canvas id="trendChart" height="150"></canvas>
+{# ── Gráfico de evolución por distancia ── #}
+{% if trend_by_dist and trend_by_dist|length > 0 %}
+{% set distances = trend_by_dist.keys()|list %}
+<section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6"
+         x-data="{
+             activeDist: {{ (default_dist or distances[0]) | tojson }},
+             trendData:  {{ trend_by_dist | tojson }},
+             chart: null,
+             get series() { return this.trendData[this.activeDist] || []; },
+             get hasEnough() { return this.series.length >= 2; },
+             initChart() {
+                 if (this.chart) { this.chart.destroy(); this.chart = null; }
+                 if (!this.hasEnough) return;
+                 const data   = this.series.map(t => t.avg_per_arrow);
+                 const labels = this.series.map(t => t.session_date.slice(5));
+                 const colors = data.map((v,i) => i===0 ? '#16a34a' : v >= data[i-1] ? '#16a34a' : '#dc2626');
+                 this.chart = new Chart(document.getElementById('trendChart'), {
+                     type: 'line',
+                     data: {
+                         labels,
+                         datasets: [{
+                             data, borderColor: '#16a34a',
+                             backgroundColor: 'rgba(22,163,74,0.07)',
+                             borderWidth: 2.5, pointRadius: 5, fill: true, tension: 0.35,
+                             pointBackgroundColor: colors,
+                             pointBorderColor: '#fff', pointBorderWidth: 2,
+                         }]
+                     },
+                     options: {
+                         responsive: true,
+                         plugins: { legend: { display: false } },
+                         scales: {
+                             y: { min: Math.max(0, Math.min(...data)-1),
+                                  max: Math.min(10, Math.max(...data)+1),
+                                  grid: { color: '#f3f4f6' } },
+                             x: { grid: { display: false },
+                                  ticks: { font: { size: 10 }, maxRotation: 30 } }
+                         }
+                     }
+                 });
+             },
+             selectDist(d) {
+                 this.activeDist = d;
+                 this.$nextTick(() => this.initChart());
+             }
+         }"
+         x-init="$nextTick(() => initChart())">
+
+    <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-gray-700">Evolución del promedio</h2>
+        {# Chips de distancia — solo si hay 2 o más distancias #}
+        {% if distances|length >= 2 %}
+        <div class="flex gap-1.5 flex-wrap justify-end">
+            {% for d in distances %}
+            <button type="button" @click="selectDist({{ d | tojson }})"
+                    :class="activeDist === {{ d | tojson }}
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                    class="px-2.5 py-1 rounded-full text-xs font-semibold transition-colors">
+                {{ d }}
+            </button>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    {# Canvas — siempre presente, Alpine lo gestiona #}
+    <div x-show="hasEnough">
+        <canvas id="trendChart" height="150"></canvas>
+    </div>
+    <p x-show="!hasEnough" class="text-xs text-gray-400 text-center py-6">
+        Necesitás al menos 2 sesiones en <span x-text="activeDist"></span> para ver el gráfico.
+    </p>
+
 </section>
-<script>
-(function(){
-    const trend = {{ trend | tojson }};
-    if (!trend || trend.length < 2) return;
-    const labels = trend.map(t => t.distance + ' · ' + t.session_date.slice(5));
-    const data   = trend.map(t => t.avg_per_arrow);
-    const pointColors = data.map((v,i) => i===0 ? '#16a34a' : v >= data[i-1] ? '#16a34a' : '#dc2626');
-    new Chart(document.getElementById('trendChart'), {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [{
-                data, borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.07)',
-                borderWidth: 2.5, pointRadius: 5, fill: true, tension: 0.35,
-                pointBackgroundColor: pointColors, pointBorderColor: '#fff', pointBorderWidth: 2,
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { min: Math.max(0, Math.min(...data)-1), max: Math.min(10, Math.max(...data)+1), grid: { color: '#f3f4f6' } },
-                x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 30 } }
-            }
-        }
-    });
-})();
-</script>
 {% endif %}
 
 {# ── Lista de sesiones ── #}
@@ -87,16 +128,13 @@
         {% set fecha = (partes[2]|int)|string + ' ' + meses[(partes[1]|int)-1] + ', ' + partes[0] if partes|length==3 else s.session_date %}
 
         {% if s.status == 'active' %}
-        {# Sesión activa — botón para retomar #}
         <a href="{{ url_for('archer.training_score', session_id=s.id) }}"
            class="flex items-center gap-4 bg-white rounded-2xl shadow-sm border-2 border-green-300 p-4
                   hover:shadow-md transition-all">
             <div class="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center text-xl shrink-0">🎯</div>
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 mb-0.5">
-                    <p class="font-bold text-sm text-gray-900">{{ s.distance }}
-                        {% if s.mode == 'free' %}<span class="text-gray-400 font-normal">· Libre</span>{% endif %}
-                    </p>
+                    <p class="font-bold text-sm text-gray-900">{{ s.distance }}</p>
                     <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5
                                  rounded-full bg-green-100 text-green-700 shrink-0">
                         <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse inline-block"></span>
@@ -111,14 +149,10 @@
         </a>
 
         {% else %}
-        {# Sesión finalizada — ver resumen #}
         <div class="flex items-center gap-4 bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-            <div class="w-11 h-11 rounded-xl bg-gray-50 flex items-center justify-center text-xl shrink-0">
-                {% if s.mode == 'free' %}🏃{% else %}🏹{% endif %}
-            </div>
+            <div class="w-11 h-11 rounded-xl bg-gray-50 flex items-center justify-center text-xl shrink-0"></div>
             <div class="flex-1 min-w-0">
                 <p class="font-semibold text-sm text-gray-900">{{ s.distance }}
-                    {% if s.mode == 'free' %}<span class="text-gray-400 font-normal text-xs">· Libre</span>{% endif %}
                     {% if s.setup_name %}<span class="text-gray-400 font-normal text-xs">· {{ s.setup_name }}</span>{% endif %}
                 </p>
                 <p class="text-xs text-gray-400 mt-0.5">{{ fecha }} · {{ s.ends_done or 0 }} tandas</p>
@@ -166,14 +200,14 @@
 <div x-data="{
         open: false,
         step: 1,
-        mode: 'scored',
-        distance: '20m',
+        distance: '18m',
         customDist: '',
         arrowsPerEnd: 5,
-        totalEnds: 5,
+        totalEnds: 1,
         unlimited: false,
         setupId: '',
-        environment: 'indoor'
+        environment: 'indoor',
+        targetType: localStorage.getItem('archer_last_target') || 'wa10'
      }"
      @open-training-modal.window="open = true; step = 1"
      x-show="open" x-cloak
@@ -201,7 +235,8 @@
             <div class="w-10 h-1.5 bg-gray-200 rounded-full"></div>
         </div>
 
-        <form method="POST" action="{{ url_for('archer.training_new') }}" novalidate>
+        <form method="POST" action="{{ url_for('archer.training_new') }}" novalidate
+              @submit="localStorage.setItem('archer_last_target', targetType)">
 
             {# ── Indicador de pasos ── #}
             <div class="flex items-center justify-between px-5 pt-3 pb-4">
@@ -215,40 +250,14 @@
                 </div>
             </div>
 
-            {# ══════════ PASO 1: Modo + Distancia ══════════ #}
+            {# ══════════ PASO 1: Distancia + Diana ══════════ #}
             <div x-show="step === 1" class="px-5 pb-5 space-y-5">
-
-                {# Modo #}
-                <div>
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Modo</p>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button type="button" @click="mode = 'scored'"
-                                :class="mode === 'scored'
-                                    ? 'border-2 border-green-600 bg-green-50 text-green-800'
-                                    : 'border border-gray-200 text-gray-600'"
-                                class="flex flex-col items-center gap-1.5 px-4 py-3.5 rounded-2xl
-                                       font-semibold text-sm transition-all">
-                            <span class="text-2xl">🎯</span>
-                            <span>Puntuado</span>
-                        </button>
-                        <button type="button" @click="mode = 'free'"
-                                :class="mode === 'free'
-                                    ? 'border-2 border-blue-600 bg-blue-50 text-blue-800'
-                                    : 'border border-gray-200 text-gray-600'"
-                                class="flex flex-col items-center gap-1.5 px-4 py-3.5 rounded-2xl
-                                       font-semibold text-sm transition-all">
-                            <span class="text-2xl">🏃</span>
-                            <span>Libre</span>
-                        </button>
-                    </div>
-                    <input type="hidden" name="mode" :value="mode" />
-                </div>
 
                 {# Distancia #}
                 <div>
                     <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Distancia</p>
                     <div class="flex flex-wrap gap-2">
-                        {% for d in ['18m','20m', '25m', '30m', '50m', '60m', '70m'] %}
+                        {% for d in ['18m','20m','25m','30m','50m','60m','70m'] %}
                         <button type="button" @click="distance = '{{ d }}'; customDist = ''"
                                 :class="distance === '{{ d }}' && customDist === ''
                                     ? 'bg-gray-900 text-white border-gray-900'
@@ -263,14 +272,64 @@
                                placeholder="Otra"
                                class="w-20 px-3 py-2 rounded-xl border border-gray-200 text-sm text-center
                                       focus:outline-none focus:ring-2 focus:ring-green-500"
-                               :class="distance === 'custom' && customDist
-                                   ? 'border-gray-900 bg-gray-50' : ''" />
+                               :class="distance === 'custom' && customDist ? 'border-gray-900 bg-gray-50' : ''" />
                     </div>
                     <input type="hidden" name="distance"
                            :value="distance === 'custom' ? customDist : distance" />
                 </div>
 
-                {# Ambiente (colapsado bajo "Más opciones") #}
+                {# Tipo de diana #}
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Tipo de diana</p>
+                    <div class="grid grid-cols-2 gap-3">
+
+                        {# WA 10 puntos #}
+                        <button type="button" @click="targetType = 'wa10'"
+                                :class="targetType === 'wa10'
+                                    ? 'border-2 border-green-600 bg-green-50'
+                                    : 'border border-gray-200 hover:border-gray-300'"
+                                class="flex flex-col items-center gap-2 p-3 rounded-2xl transition-all">
+                            {# Preview diana WA 10 — SVG concéntrico #}
+                            <svg viewBox="0 0 48 48" class="w-12 h-12" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="24" cy="24" r="23" fill="#fff" stroke="#ccc" stroke-width="1"/>
+                                <circle cx="24" cy="24" r="21" fill="#1e40af"/>
+                                <circle cx="24" cy="24" r="17" fill="#1e40af"/>
+                                <circle cx="24" cy="24" r="13" fill="#dc2626"/>
+                                <circle cx="24" cy="24" r="9"  fill="#dc2626"/>
+                                <circle cx="24" cy="24" r="5"  fill="#fbbf24"/>
+                                <circle cx="24" cy="24" r="2"  fill="#fbbf24"/>
+                            </svg>
+                            <div class="text-center">
+                                <p class="text-xs font-bold text-gray-800 leading-tight">Standard WA</p>
+                                <p class="text-[10px] text-gray-400">10 puntos · X al centro</p>
+                            </div>
+                        </button>
+
+                        {# Field WA 6 puntos #}
+                        <button type="button" @click="targetType = 'wa6field'"
+                                :class="targetType === 'wa6field'
+                                    ? 'border-2 border-green-600 bg-green-50'
+                                    : 'border border-gray-200 hover:border-gray-300'"
+                                class="flex flex-col items-center gap-2 p-3 rounded-2xl transition-all">
+                            {# Preview diana Field WA — negra con centro amarillo #}
+                            <svg viewBox="0 0 48 48" class="w-12 h-12" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="24" cy="24" r="23" fill="#1f2937" stroke="#ccc" stroke-width="1"/>
+                                <circle cx="24" cy="24" r="17" fill="#374151"/>
+                                <circle cx="24" cy="24" r="11" fill="#4b5563"/>
+                                <circle cx="24" cy="24" r="6"  fill="#fbbf24"/>
+                                <circle cx="24" cy="24" r="2"  fill="#fbbf24"/>
+                            </svg>
+                            <div class="text-center">
+                                <p class="text-xs font-bold text-gray-800 leading-tight">Field WA</p>
+                                <p class="text-[10px] text-gray-400">6 puntos · X al centro</p>
+                            </div>
+                        </button>
+
+                    </div>
+                    <input type="hidden" name="target_type" :value="targetType" />
+                </div>
+
+                {# Más opciones (colapsado) #}
                 <div x-data="{ extra: false }">
                     <button type="button" @click="extra = !extra"
                             class="text-xs text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1">
@@ -317,53 +376,39 @@
                 </button>
             </div>
 
-            {# ══════════ PASO 2: Configuración de tandas ══════════ #}
+            {# ══════════ PASO 2: Flechas y tandas ══════════ #}
             <div x-show="step === 2" x-cloak class="px-5 pb-5 space-y-5">
 
-                {# Flechas por tanda #}
+                {# Flechas por tanda — selector full-width #}
                 <div>
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Flechas por tanda</p>
-                    <div class="flex gap-2">
-                        {% for n in [3, 5] %}
-                        <button type="button" @click="arrowsPerEnd = {{ n }}"
-                                :class="arrowsPerEnd === {{ n }}
-                                    ? 'bg-gray-900 text-white border-gray-900'
-                                    : 'bg-white text-gray-700 border-gray-200'"
-                                class="flex-1 py-3 rounded-xl border text-lg font-black transition-all">
-                            {{ n }}
-                        </button>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+                        Flechas por tanda
+                    </label>
+                    <select name="arrows_per_end" x-model.number="arrowsPerEnd"
+                            class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold
+                                   bg-white focus:outline-none focus:ring-2 focus:ring-green-500
+                                   appearance-none cursor-pointer">
+                        {% for n in range(1, 13) %}
+                        <option value="{{ n }}" {% if n == 5 %}selected{% endif %}>{{ n }} flecha{{ 's' if n != 1 else '' }}</option>
                         {% endfor %}
-                        <div x-data="stepper(6, 1, 12)"
-                             class="flex-1 flex items-center border border-gray-200 rounded-xl overflow-hidden">
-                            <button type="button" @click="dec(); arrowsPerEnd = val"
-                                    class="w-10 h-12 text-lg font-light text-gray-500
-                                           hover:bg-gray-100 active:bg-gray-200 select-none">−</button>
-                            <input type="number" :value="arrowsPerEnd"
-                                   @change="arrowsPerEnd = parseInt($event.target.value) || 6; val = arrowsPerEnd"
-                                   class="flex-1 text-center text-sm font-semibold border-0
-                                          focus:outline-none h-12 w-0" min="1" max="12" />
-                            <button type="button" @click="inc(); arrowsPerEnd = val"
-                                    class="w-10 h-12 text-lg font-light text-gray-500
-                                           hover:bg-gray-100 active:bg-gray-200 select-none">+</button>
-                        </div>
-                    </div>
-                    <input type="hidden" name="arrows_per_end" :value="arrowsPerEnd" />
+                    </select>
                 </div>
 
-                {# Cantidad de tandas #}
+                {# Cantidad de tandas — selector full-width + toggle sin límite #}
                 <div>
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Tandas totales</p>
-                    <div class="flex gap-2 mb-3">
-                        {% for n in [3, 5, 10, 12, 20] %}
-                        <button type="button" @click="unlimited = false; totalEnds = {{ n }}"
-                                :class="!unlimited && totalEnds === {{ n }}
-                                    ? 'bg-gray-900 text-white border-gray-900'
-                                    : 'bg-white text-gray-700 border-gray-200'"
-                                class="flex-1 py-2.5 rounded-xl border text-sm font-bold transition-all">
-                            {{ n }}
-                        </button>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+                        Cantidad de tandas
+                    </label>
+                    <select name="total_ends_select" x-model.number="totalEnds"
+                            :disabled="unlimited"
+                            :class="unlimited ? 'opacity-40 cursor-not-allowed' : ''"
+                            class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold
+                                   bg-white focus:outline-none focus:ring-2 focus:ring-green-500
+                                   appearance-none cursor-pointer mb-3">
+                        {% for n in range(1, 21) %}
+                        <option value="{{ n }}" {% if n == 1 %}selected{% endif %}>{{ n }} tanda{{ 's' if n != 1 else '' }}</option>
                         {% endfor %}
-                    </div>
+                    </select>
                     <button type="button" @click="unlimited = !unlimited"
                             :class="unlimited ? 'border-2 border-green-600 bg-green-50 text-green-800' : 'border border-gray-200 text-gray-600'"
                             class="w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2">
@@ -379,7 +424,7 @@
                         ← Atrás
                     </button>
                     <button type="submit"
-                            class="flex-2 flex-1 text-white font-bold py-3 px-6 rounded-xl text-sm transition-colors"
+                            class="flex-1 text-white font-bold py-3 px-6 rounded-xl text-sm transition-colors"
                             style="background-color: {{ club.color_from }}">
                         ¡Arrancar! 🏹
                     </button>
@@ -389,11 +434,5 @@
         </form>
     </div>
 </div>
-
-<script>
-function stepper(initial, min, max) {
-    return { val: parseInt(initial)||min, inc(){if(this.val<max)this.val++;}, dec(){if(this.val>min)this.val--;} };
-}
-</script>
 
 {% endblock %}

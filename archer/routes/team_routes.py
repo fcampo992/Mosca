@@ -240,6 +240,7 @@ team_archer_bp = Blueprint("team_archer", __name__, url_prefix="/team")
 def score(tournament_id: str):
     """Vista del teclado táctil para torneo por equipos."""
     from archer.modules.club import get_club_settings  # noqa: PLC0415
+    from archer.modules.training import TARGET_TYPES, DEFAULT_TARGET  # noqa: PLC0415
 
     archer_id   = session["archer_id"]
     archer_name = session.get("archer_name", "Arquero")
@@ -255,6 +256,9 @@ def score(tournament_id: str):
 
     photo_url = session.get("photo_url")
 
+    target_type = tournament.get("target_type") or DEFAULT_TARGET
+    target_cfg  = TARGET_TYPES.get(target_type, TARGET_TYPES[DEFAULT_TARGET])
+
     return render_template(
         "archer/team_score.html",
         club=club,
@@ -268,6 +272,8 @@ def score(tournament_id: str):
         tournament_done=summary.get("tournament_done", False),
         arrows_per_end=summary.get("arrows_per_end", tournament["arrows_per_end"]),
         ends_history=history,
+        target_type=target_type,
+        target_cfg=target_cfg,
     )
 
 

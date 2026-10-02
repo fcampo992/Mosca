@@ -26,7 +26,7 @@ _VALID_TRANSITIONS: dict[str, set[str]] = {
 }
 
 
-def create_tournament(name: str, date: str, rounds: int = 10, arrows_per_end: int = 5, rounds_count: int = 1) -> dict:
+def create_tournament(name: str, date: str, rounds: int = 10, arrows_per_end: int = 5, rounds_count: int = 1, target_type: str = "wa10") -> dict:
     """Crea un torneo con estado 'created' y un UUID v4 como identificador.
 
     - rounds       = tandas por ronda (ends_per_round), default 10
@@ -64,8 +64,8 @@ def create_tournament(name: str, date: str, rounds: int = 10, arrows_per_end: in
     tournament_id = str(uuid.uuid4())
 
     conn.execute(
-        "INSERT INTO tournaments (id, name, date, status, rounds, arrows_per_end, rounds_count) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (tournament_id, name, date, "created", rounds, arrows_per_end, rounds_count),
+        "INSERT INTO tournaments (id, name, date, status, rounds, arrows_per_end, rounds_count, target_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (tournament_id, name, date, "created", rounds, arrows_per_end, rounds_count, target_type or "wa10"),
     )
     try:
         conn.commit()

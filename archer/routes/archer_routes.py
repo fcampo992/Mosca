@@ -316,6 +316,9 @@ def _render_score(error=None):
     ends_per_round = tournament.get("rounds", ENDS_PER_ROUND)
     rounds_count   = tournament.get("rounds_count", 1)
 
+    target_type = tournament.get("target_type") or DEFAULT_TARGET
+    target_cfg  = TARGET_TYPES.get(target_type, TARGET_TYPES[DEFAULT_TARGET])
+
     # Historial de todas las tandas guardadas (para mostrar debajo del teclado)
     try:
         from archer.db import get_connection as _gc
@@ -367,6 +370,8 @@ def _render_score(error=None):
         arrows_per_end=arrows_per_end,
         ends_per_round=ends_per_round,
         rounds_count=rounds_count,
+        target_type=target_type,
+        target_cfg=target_cfg,
         error=error,
     )
 
@@ -886,6 +891,8 @@ from archer.modules.training import (  # noqa: E402
     finish_session, delete_session,
     save_end, get_end, list_ends,
     session_stats, training_kpis, training_trend,
+    training_trend_by_distance, most_recent_distance,
+    TARGET_TYPES, DEFAULT_TARGET,
 )
 from archer.modules.profile import list_setups as _list_setups  # noqa: E402
 
@@ -897,13 +904,16 @@ def training():
     archer_id = session["archer_id"]
     sessions  = list_sessions(archer_id)
     kpis      = training_kpis(archer_id)
-    trend     = list(reversed(training_trend(archer_id)))  # ASC para el chart
+    trend_by_dist   = training_trend_by_distance(archer_id)
+    default_dist    = most_recent_distance(archer_id)
     setups    = _list_setups(archer_id)
     return render_template(
         "archer/training.html",
         sessions=sessions,
         kpis=kpis,
-        trend=trend,
+        trend_by_dist=trend_by_dist,
+        default_dist=default_dist,
+        target_types=TARGET_TYPES,
         setups=setups,
     )
 
@@ -915,29 +925,32 @@ def training_new():
     archer_id = session["archer_id"]
     form = request.form
 
-    # Convertir campos numéricos con fallback
     try:
-        arrows_per_end = int(form.get("arrows_per_end", 6))
+        arrows_per_end = int(form.get("arrows_per_end", 5))
     except (ValueError, TypeError):
-        arrows_per_end = 6
+        arrows_per_end = 5
 
     raw_total = form.get("total_ends", "").strip()
     total_ends = int(raw_total) if raw_total and raw_total.isdigit() else None
 
+    target_type = form.get("target_type", DEFAULT_TARGET)
+    if target_type not in TARGET_TYPES:
+        target_type = DEFAULT_TARGET
+
     result = create_session(
         archer_id=archer_id,
-        mode=form.get("mode", "scored"),
+        mode="scored",
         distance=form.get("distance", "18m"),
         arrows_per_end=arrows_per_end,
         total_ends=total_ends,
         bow_setup_id=form.get("bow_setup_id") or None,
         target_face=form.get("target_face") or None,
+        target_type=target_type,
         environment=form.get("environment", "indoor"),
         notes=form.get("notes", ""),
     )
 
     if "error" in result:
-        # Volver a la lista con el error en flash (simplificado)
         return redirect(url_for("archer.training"))
 
     return redirect(url_for("archer.training_score", session_id=result["id"]))
@@ -946,30 +959,26 @@ def training_new():
 @archer_bp.route("/training/<session_id>/score", methods=["GET"])
 @require_session
 def training_score(session_id: str):
-    """GET — Teclado de entrenamiento (scored o free)."""
+    """GET — Teclado de entrenamiento (scored)."""
     archer_id = session["archer_id"]
     sess = get_session(session_id, archer_id)
     if sess is None:
         return redirect(url_for("archer.training"))
 
-    # Si ya finalizó, ir al resumen
     if sess["status"] == "finished":
         return redirect(url_for("archer.training_summary", session_id=session_id))
 
     ends      = list_ends(session_id)
     ends_done = len(ends)
     stats     = session_stats(session_id)
-
-    # Determinar tanda actual
     current_end = ends_done + 1
-
-    # Calcular si es la última tanda
     total_ends   = sess.get("total_ends")
     is_last_end  = (total_ends is not None and current_end >= total_ends)
     is_unlimited = total_ends is None
-
-    # Tanda en progreso (la actual si no está guardada aún)
     current_end_data = get_end(session_id, current_end)
+
+    target_type = sess.get("target_type") or DEFAULT_TARGET
+    target_cfg  = TARGET_TYPES.get(target_type, TARGET_TYPES[DEFAULT_TARGET])
 
     return render_template(
         "archer/training_score.html",
@@ -981,6 +990,8 @@ def training_score(session_id: str):
         current_end_data=current_end_data,
         is_last_end=is_last_end,
         is_unlimited=is_unlimited,
+        target_type=target_type,
+        target_cfg=target_cfg,
     )
 
 
@@ -993,32 +1004,20 @@ def training_save_end(session_id: str):
     if sess is None:
         return redirect(url_for("archer.training"))
 
-    # Scored: array de valores en campo "arrows" (JSON string)
-    # Free: campo "arrow_count" con cantidad
-    mode = sess.get("mode", "scored")
-
-    if mode == "free":
-        try:
-            count = int(request.form.get("arrow_count", 0))
-        except (ValueError, TypeError):
-            count = 0
-        scores = ["M"] * count   # sin valor de puntaje — solo volumen
-    else:
-        import json as _json
-        try:
-            raw = request.form.get("arrows_json", "[]")
-            scores = _json.loads(raw)
-            if not isinstance(scores, list):
-                scores = []
-        except Exception:
+    import json as _json
+    try:
+        raw = request.form.get("arrows_json", "[]")
+        scores = _json.loads(raw)
+        if not isinstance(scores, list):
             scores = []
+    except Exception:
+        scores = []
 
     note       = request.form.get("note", "").strip()
     end_number = int(request.form.get("end_number", 1))
 
     save_end(session_id, end_number, scores, note)
 
-    # Verificar si se completaron todas las tandas
     total_ends = sess.get("total_ends")
     ends_done  = len(list_ends(session_id))
 
@@ -1026,7 +1025,6 @@ def training_save_end(session_id: str):
         finish_session(session_id, archer_id)
         return redirect(url_for("archer.training_summary", session_id=session_id))
 
-    # Comprobar si el usuario pidió finalizar manualmente
     if request.form.get("finish") == "1":
         finish_session(session_id, archer_id)
         return redirect(url_for("archer.training_summary", session_id=session_id))
@@ -1046,7 +1044,7 @@ def training_finish(session_id: str):
 @archer_bp.route("/training/<session_id>/summary", methods=["GET"])
 @require_session
 def training_summary(session_id: str):
-    """GET — Resumen de la sesión finalizada (reutiliza training_score con flag)."""
+    """GET — Resumen de la sesión finalizada."""
     archer_id = session["archer_id"]
     sess = get_session(session_id, archer_id)
     if sess is None:
@@ -1054,6 +1052,9 @@ def training_summary(session_id: str):
 
     ends  = list_ends(session_id)
     stats = session_stats(session_id)
+
+    target_type = sess.get("target_type") or DEFAULT_TARGET
+    target_cfg  = TARGET_TYPES.get(target_type, TARGET_TYPES[DEFAULT_TARGET])
 
     return render_template(
         "archer/training_score.html",
@@ -1066,6 +1067,8 @@ def training_summary(session_id: str):
         is_last_end=False,
         is_unlimited=False,
         summary_mode=True,
+        target_type=target_type,
+        target_cfg=target_cfg,
     )
 
 

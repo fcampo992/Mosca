@@ -235,6 +235,11 @@ def init_db(conn) -> None:
         "ALTER TABLE tournaments ADD COLUMN arrows_per_end INTEGER NOT NULL DEFAULT 6",
         "ALTER TABLE tournaments ADD COLUMN rounds_count INTEGER NOT NULL DEFAULT 1",
         "ALTER TABLE club_settings ADD COLUMN ticker_enabled INTEGER NOT NULL DEFAULT 1",
+        # Tipo de diana para torneos individuales y por equipos
+        "ALTER TABLE tournaments ADD COLUMN target_type TEXT NOT NULL DEFAULT 'wa10'",
+        "ALTER TABLE team_tournaments ADD COLUMN target_type TEXT NOT NULL DEFAULT 'wa10'",
+        # Tipo de diana para sesiones de entrenamiento
+        "ALTER TABLE training_sessions ADD COLUMN target_type TEXT NOT NULL DEFAULT 'wa10'",
     ]
     for migration in migrations:
         try:

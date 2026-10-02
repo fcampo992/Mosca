@@ -30,6 +30,34 @@ ARROW_POINTS: dict[str, int] = {
 }
 VALID_ARROW_VALS = set(ARROW_POINTS.keys())
 
+# Configuración de tipos de diana
+TARGET_TYPES: dict[str, dict] = {
+    "wa10": {
+        "label": "Standard WA / 10 pts",
+        "buttons": ["X", "10", "9", "8", "7", "6", "5", "4", "3", "2", "1", "M"],
+        "points":  {"X": 10, "10": 10, "9": 9, "8": 8, "7": 7,
+                    "6": 6, "5": 5, "4": 4, "3": 3, "2": 2, "1": 1, "M": 0},
+    },
+    "wa6field": {
+        "label": "Field WA / 6 pts",
+        "buttons": ["X", "6", "5", "4", "3", "2", "1", "M"],
+        "points":  {"X": 6, "6": 6, "5": 5, "4": 4, "3": 3, "2": 2, "1": 1, "M": 0},
+    },
+}
+DEFAULT_TARGET = "wa10"
+
+
+def _normalize_distance(d: str) -> str:
+    """Normaliza la distancia a formato canónico con 'm' al final.
+    '18', '18m', '18M', ' 18m ' → '18m'
+    """
+    if not d:
+        return d
+    d = d.strip().lower()
+    if not d.endswith("m"):
+        d = d + "m"
+    return d
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -69,32 +97,37 @@ def create_session(
     total_ends: int | None,
     bow_setup_id: str | None = None,
     target_face: str | None = None,
+    target_type: str = DEFAULT_TARGET,
     environment: str = "indoor",
     notes: str = "",
     session_date: str | None = None,
 ) -> dict:
     """Crea una sesión de entrenamiento. Retorna el dict de la sesión."""
-    if mode not in ("scored", "free"):
-        return {"error": "Modo inválido.", "field": "mode"}
+    if mode not in ("scored",):
+        return {"error": "Modo inválido. Solo se admite 'scored'.", "field": "mode"}
     if not distance:
         return {"error": "La distancia es obligatoria.", "field": "distance"}
     if arrows_per_end < 1 or arrows_per_end > 12:
         return {"error": "Flechas por tanda: entre 1 y 12.", "field": "arrows_per_end"}
+    if target_type not in TARGET_TYPES:
+        target_type = DEFAULT_TARGET
 
     session_id = str(_uuid.uuid4())
     today = session_date or date.today().isoformat()
+    distance_norm = _normalize_distance(distance)
 
     conn = get_connection()
     conn.execute(
         """
         INSERT INTO training_sessions
             (id, archer_id, bow_setup_id, mode, distance, target_face,
-             environment, arrows_per_end, total_ends, session_date, notes, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
+             target_type, environment, arrows_per_end, total_ends,
+             session_date, notes, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
         """,
         (session_id, archer_id, bow_setup_id or None, mode,
-         distance.strip(), target_face or None,
-         environment, arrows_per_end, total_ends,
+         distance_norm, target_face or None,
+         target_type, environment, arrows_per_end, total_ends,
          today, (notes or "").strip()),
     )
     try:
@@ -354,9 +387,48 @@ def training_trend(archer_id: str) -> list[dict]:
         result.append({
             "session_id":      s["id"],
             "session_date":    s["session_date"],
-            "distance":        s["distance"],
+            "distance":        _normalize_distance(s["distance"]),
             "total_points":    pts,
             "avg_per_arrow":   round(pts / total, 2) if total else 0.0,
         })
 
-    return result  # ya viene DESC, el template lo puede invertir para el chart
+    return result  # DESC, el template lo puede invertir para el chart
+
+
+def training_trend_by_distance(archer_id: str) -> dict[str, list[dict]]:
+    """
+    Retorna los datos de tendencia agrupados por distancia normalizada.
+    Formato: {"18m": [...sesiones ASC...], "30m": [...], ...}
+    Las distancias están ordenadas de menor a mayor (numérico).
+    Solo incluye distancias con al menos 1 sesión finalizada.
+    """
+    raw = training_trend(archer_id)   # ya normalizado, viene DESC
+
+    grouped: dict[str, list[dict]] = {}
+    for entry in reversed(raw):       # invertir a ASC para cada distancia
+        dist = entry["distance"]
+        grouped.setdefault(dist, []).append(entry)
+
+    # Ordenar las distancias de menor a mayor (extraer número)
+    def _dist_key(d: str) -> float:
+        try:
+            return float(d.replace("m", "").replace(",", "."))
+        except ValueError:
+            return 9999.0
+
+    return {k: grouped[k] for k in sorted(grouped, key=_dist_key)}
+
+
+def most_recent_distance(archer_id: str) -> str | None:
+    """Retorna la distancia con actividad más reciente (para el chip default)."""
+    conn = get_connection()
+    row = conn.execute(
+        """
+        SELECT distance FROM training_sessions
+        WHERE archer_id = ? AND status = 'finished'
+        ORDER BY session_date DESC, created_at DESC
+        LIMIT 1
+        """,
+        (archer_id,),
+    ).fetchone()
+    return _normalize_distance(row["distance"]) if row else None

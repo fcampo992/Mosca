@@ -11,14 +11,37 @@
         [x-cloak]{display:none!important}
         @keyframes pop { 0%{transform:scale(.6);opacity:0} 70%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
         .chip-pop { animation: pop .18s ease-out forwards; }
+        /* oculta flechas de number input en Chrome/Safari */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none; }
     </style>
 </head>
 <body class="min-h-screen bg-gray-900 text-white" style="min-width:360px">
 
-{% set is_free    = sess.mode == 'free' %}
 {% set is_summary = summary_mode is defined and summary_mode %}
 
-{# ── Header compacto ── #}
+{# ── Paleta de botones según tipo de diana ── #}
+{#
+   target_cfg viene del route: { "buttons": [...], "points": {...}, "label": "..." }
+   wa10:    X 10 9 8 7 6 5 4 3 2 1 M  (12 botones → grid 4 cols, 3 filas)
+   wa6field: X 6 5 4 3 2 1 M          (8 botones  → grid 4 cols, 2 filas)
+#}
+{% set btn_styles = {
+    'X':  'bg-yellow-400 text-gray-900 hover:bg-yellow-500 active:bg-yellow-600',
+    '10': 'bg-yellow-300 text-gray-900 hover:bg-yellow-400 active:bg-yellow-500',
+    '9':  'bg-red-500 text-white hover:bg-red-600 active:bg-red-700',
+    '8':  'bg-red-400 text-white hover:bg-red-500 active:bg-red-600',
+    '7':  'bg-red-300 text-gray-900 hover:bg-red-400 active:bg-red-500',
+    '6':  'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700',
+    '5':  'bg-blue-400 text-white hover:bg-blue-500 active:bg-blue-600',
+    '4':  'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400',
+    '3':  'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400',
+    '2':  'bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500',
+    '1':  'bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500',
+    'M':  'bg-gray-800 text-gray-400 border border-gray-600 hover:bg-gray-700 active:bg-gray-600',
+} %}
+
+{# ── Header ── #}
 <header class="h-14 flex items-center justify-between px-4 shadow"
         style="background-color: {{ club.color_from }}">
     <a href="{{ url_for('archer.training') }}"
@@ -28,12 +51,12 @@
         </svg>
     </a>
     <div class="text-center">
-        <p class="font-bold text-sm leading-tight">{{ sess.distance }}
-            {% if is_free %}<span class="opacity-70 font-normal">· Libre</span>{% endif %}
+        <p class="font-bold text-sm leading-tight">{{ sess.distance }}</p>
+        <p class="text-[10px] opacity-60">{{ sess.session_date }}
+            {% if target_cfg is defined %}· {{ target_cfg.label }}{% endif %}
         </p>
-        <p class="text-[10px] opacity-60">{{ sess.session_date }}</p>
     </div>
-    {% if not is_summary and not is_free %}
+    {% if not is_summary %}
     <form method="POST" action="{{ url_for('archer.training_finish', session_id=sess.id) }}">
         <button type="submit"
                 class="text-xs font-bold bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-xl transition-colors">
@@ -57,7 +80,6 @@
         <p class="text-gray-400 text-sm mt-1">{{ sess.distance }} · {{ ends_done }} tandas</p>
     </div>
 
-    {# KPIs #}
     <div class="grid grid-cols-2 gap-3 mb-6">
         <div class="bg-gray-800 rounded-2xl p-4 text-center">
             <p class="text-3xl font-black text-green-400">{{ stats.total_points }}</p>
@@ -77,7 +99,6 @@
         </div>
     </div>
 
-    {# Detalle por tanda #}
     {% if ends %}
     <div class="bg-gray-800 rounded-2xl overflow-hidden mb-6">
         <table class="w-full text-sm">
@@ -110,7 +131,7 @@
                     <td class="px-4 py-3 text-right font-bold text-green-400">{{ end.total_points }}</td>
                 </tr>
                 {% if end.note %}
-                <tr class="bg-gray-750">
+                <tr>
                     <td colspan="3" class="px-4 py-2 text-xs text-gray-400 italic">💬 {{ end.note }}</td>
                 </tr>
                 {% endif %}
@@ -127,76 +148,6 @@
     </a>
 </div>
 
-{% elif is_free %}
-{# ════════════════════════════════════
-   MODO LIBRE — contador de volumen
-   ════════════════════════════════════ #}
-<div class="max-w-sm mx-auto px-4 py-6 flex flex-col items-center gap-6"
-     x-data="{ count: 0, note: '', showNote: false }">
-
-    {# Contador grande #}
-    <div class="text-center">
-        <p class="text-7xl font-black text-white" x-text="count"></p>
-        <p class="text-gray-400 text-sm mt-2">flechas tiradas</p>
-    </div>
-
-    {# Botones de incremento #}
-    <div class="flex gap-4 w-full">
-        <button type="button" @click="if(count>0) count--"
-                class="flex-1 bg-gray-700 hover:bg-gray-600 active:bg-gray-500
-                       text-white text-3xl font-light rounded-2xl py-6 transition-colors select-none">
-            −
-        </button>
-        <button type="button" @click="count += {{ sess.arrows_per_end }}"
-                class="flex-[2] text-white text-2xl font-black rounded-2xl py-6 transition-colors select-none shadow-lg"
-                style="background-color: {{ club.color_from }}">
-            +{{ sess.arrows_per_end }}
-        </button>
-        <button type="button" @click="count++"
-                class="flex-1 bg-gray-700 hover:bg-gray-600 active:bg-gray-500
-                       text-white text-3xl font-light rounded-2xl py-6 transition-colors select-none">
-            +
-        </button>
-    </div>
-
-    {# Nota #}
-    <button type="button" @click="showNote = !showNote"
-            class="text-xs text-gray-400 hover:text-gray-200 flex items-center gap-1 transition-colors">
-        💬 <span x-text="showNote ? 'Ocultar nota' : 'Agregar nota'"></span>
-    </button>
-    <textarea x-show="showNote" x-cloak x-model="note"
-              rows="2" maxlength="200" placeholder="Ej: Técnica de suelta…"
-              class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5
-                     text-sm text-white placeholder-gray-500 resize-none
-                     focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
-
-    {# Guardar tanda #}
-    <form method="POST" action="{{ url_for('archer.training_save_end', session_id=sess.id) }}"
-          class="w-full" @submit.prevent="
-              document.getElementById('free-count').value = count;
-              document.getElementById('free-note').value  = note;
-              document.getElementById('free-end-num').value = {{ ends_done + 1 }};
-              $el.submit();
-          ">
-        <input type="hidden" id="free-count"   name="arrow_count" />
-        <input type="hidden" id="free-note"    name="note" />
-        <input type="hidden" id="free-end-num" name="end_number" />
-        <button type="submit"
-                class="w-full text-white font-bold py-4 rounded-2xl text-base transition-colors"
-                style="background-color: {{ club.color_from }}">
-            Guardar tanda {{ ends_done + 1 }}
-        </button>
-    </form>
-
-    {# Resumen de tandas anteriores #}
-    {% if ends %}
-    <div class="w-full text-center text-sm text-gray-400">
-        {{ ends|length }} tanda{{ 's' if ends|length != 1 else '' }} guardadas ·
-        {{ ends | sum(attribute='total_points') if sess.mode == 'scored' else (ends | map(attribute='scores') | map('length') | sum) }} flechas totales
-    </div>
-    {% endif %}
-</div>
-
 {% else %}
 {# ════════════════════════════════════
    MODO PUNTUADO — teclado táctil
@@ -208,15 +159,15 @@
          showNote: false,
          maxArrows: {{ sess.arrows_per_end }},
          endNum: {{ current_end }},
-         points: { 'X':10,'10':10,'9':9,'8':8,'7':7,'6':6,'5':5,'4':4,'3':3,'2':2,'1':1,'M':0 },
-         get subtotal() { return this.arrows.reduce((s,a) => s + (this.points[a]||0), 0); },
+         points: {{ target_cfg.points | tojson }},
+         get subtotal() { return this.arrows.reduce((s,a) => s + (this.points[a] ?? 0), 0); },
          get isFull()   { return this.arrows.length >= this.maxArrows; },
          add(v) { if(!this.isFull) this.arrows.push(v); },
-         del()  { this.arrows.pop(); },
+         del()  { if(this.arrows.length) this.arrows.pop(); },
      }">
 
     {# ── Stats en vivo ── #}
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between bg-gray-800 rounded-2xl px-4 py-3">
         <div class="text-center">
             <p class="text-2xl font-black text-green-400">{{ stats.total_points }}</p>
             <p class="text-[10px] text-gray-400 uppercase tracking-wide">Total</p>
@@ -240,17 +191,16 @@
     </div>
 
     {# ── Chips de flechas de la tanda actual ── #}
-    <div class="flex flex-wrap gap-2 bg-gray-800 rounded-2xl px-3 py-3 min-h-[3rem]"
-         aria-label="Flechas de la tanda">
+    <div class="flex flex-wrap gap-2 bg-gray-800 rounded-2xl px-3 py-3 min-h-[3rem]">
         <template x-for="(v, i) in arrows" :key="i">
             <span class="chip-pop inline-flex items-center justify-center rounded-xl font-black text-sm
                          px-2.5 py-1 min-w-[2.5rem]"
                   :class="{
                       'bg-yellow-400 text-gray-900': v==='X',
                       'bg-yellow-300 text-gray-900': v==='10',
-                      'bg-red-500 text-white':  ['9','8','7'].includes(v),
-                      'bg-blue-500 text-white':  ['6','5'].includes(v),
-                      'bg-gray-600 text-white':  ['4','3'].includes(v),
+                      'bg-red-500 text-white':   ['9','8','7'].includes(v),
+                      'bg-blue-500 text-white':   ['6','5'].includes(v),
+                      'bg-gray-600 text-white':   ['4','3'].includes(v),
                       'bg-gray-700 text-gray-300': ['2','1'].includes(v),
                       'bg-gray-800 border border-gray-600 text-gray-400': v==='M',
                   }"
@@ -261,23 +211,10 @@
         </span>
     </div>
 
-    {# ── Teclado ── #}
-    {% set arrow_buttons = [
-        ('X',  'bg-yellow-400 text-gray-900 hover:bg-yellow-500 active:bg-yellow-600'),
-        ('10', 'bg-yellow-300 text-gray-900 hover:bg-yellow-400 active:bg-yellow-500'),
-        ('9',  'bg-red-500 text-white hover:bg-red-600 active:bg-red-700'),
-        ('8',  'bg-red-400 text-white hover:bg-red-500 active:bg-red-600'),
-        ('7',  'bg-red-300 text-gray-900 hover:bg-red-400 active:bg-red-500'),
-        ('6',  'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700'),
-        ('5',  'bg-blue-400 text-white hover:bg-blue-500 active:bg-blue-600'),
-        ('4',  'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400'),
-        ('3',  'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400'),
-        ('2',  'bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500'),
-        ('1',  'bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500'),
-        ('M',  'bg-gray-800 text-gray-400 border border-gray-600 hover:bg-gray-700 active:bg-gray-600'),
-    ] %}
+    {# ── Teclado dinámico según diana ── #}
     <div class="grid grid-cols-4 gap-2" role="group" aria-label="Teclado de flechas">
-        {% for val, cls in arrow_buttons %}
+        {% for val in target_cfg.buttons %}
+        {% set cls = btn_styles.get(val, 'bg-gray-700 text-white') %}
         <button type="button" @click="add('{{ val }}')"
                 :disabled="isFull"
                 :class="isFull ? 'opacity-30 cursor-not-allowed' : ''"
@@ -289,36 +226,33 @@
         {% endfor %}
     </div>
 
-    {# ── Acciones de tanda ── #}
+    {# ── Borrar + Nota + Confirmar ── #}
     <div class="flex items-center gap-2">
 
-        {# Borrar última flecha #}
         <button type="button" @click="del()"
                 :disabled="arrows.length === 0"
+                :class="arrows.length === 0 ? 'opacity-30 cursor-not-allowed' : ''"
                 class="p-3.5 rounded-2xl bg-gray-700 hover:bg-gray-600 active:bg-gray-500
-                       transition-colors flex items-center justify-center"
-                :class="arrows.length === 0 ? 'opacity-30 cursor-not-allowed' : ''">
+                       transition-colors flex items-center justify-center">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round"
                       d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z"/>
             </svg>
         </button>
 
-        {# Nota (ícono discreto) #}
         <button type="button" @click="showNote = !showNote"
                 :class="note ? 'bg-yellow-500/20 border-yellow-500/50' : 'bg-gray-700 border-transparent'"
                 class="p-3.5 rounded-2xl border transition-colors flex items-center justify-center">
             <span class="text-lg">💬</span>
         </button>
 
-        {# Confirmar tanda #}
         <form method="POST" action="{{ url_for('archer.training_save_end', session_id=sess.id) }}"
               class="flex-1"
               @submit.prevent="
                   if(arrows.length === 0) return;
-                  document.getElementById('arrows-json').value  = JSON.stringify(arrows);
-                  document.getElementById('end-note').value     = note;
-                  document.getElementById('end-number').value   = endNum;
+                  document.getElementById('arrows-json').value = JSON.stringify(arrows);
+                  document.getElementById('end-note').value    = note;
+                  document.getElementById('end-number').value  = endNum;
                   $el.submit();
               ">
             <input type="hidden" id="arrows-json" name="arrows_json" />
@@ -334,7 +268,7 @@
         </form>
     </div>
 
-    {# Campo de nota (colapsable) #}
+    {# Campo de nota colapsable #}
     <div x-show="showNote" x-cloak>
         <textarea x-model="note" rows="2" maxlength="200"
                   placeholder="Ej: Viento de costado, probar nuevo punto de ancla…"

@@ -141,9 +141,10 @@ def tournaments():
         rounds = request.form.get("rounds", "10").strip()
         arrows_per_end = request.form.get("arrows_per_end", "5").strip()
         rounds_count = request.form.get("rounds_count", "1").strip()
+        target_type  = request.form.get("target_type", "wa10").strip()
         form_data = {"name": name, "date": date, "rounds": rounds, "arrows_per_end": arrows_per_end, "rounds_count": rounds_count}
 
-        result = create_tournament(name, date, rounds=rounds, arrows_per_end=arrows_per_end, rounds_count=rounds_count)
+        result = create_tournament(name, date, rounds=rounds, arrows_per_end=arrows_per_end, rounds_count=rounds_count, target_type=target_type)
 
         if "error" in result:
             error = result["error"]

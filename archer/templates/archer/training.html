@@ -151,9 +151,8 @@
         renderChart(d);
     };
 
-    document.addEventListener('DOMContentLoaded', function() {
-        window.selectDist(DEFAULT_DIST);
-    });
+    // El script corre luego del canvas — DOM ya disponible
+    window.selectDist(DEFAULT_DIST);
 })();
 </script>
 {% endif %}

@@ -159,7 +159,7 @@
          showNote: false,
          maxArrows: {{ sess.arrows_per_end }},
          endNum: {{ current_end }},
-         points: {{ target_cfg.points | tojson }},
+         points: {{ (target_cfg.points if target_cfg is defined and target_cfg else {'X':10,'10':10,'9':9,'8':8,'7':7,'6':6,'5':5,'4':4,'3':3,'2':2,'1':1,'M':0}) | tojson }},
          get subtotal() { return this.arrows.reduce((s,a) => s + (this.points[a] ?? 0), 0); },
          get isFull()   { return this.arrows.length >= this.maxArrows; },
          add(v) { if(!this.isFull) this.arrows.push(v); },

@@ -84,10 +84,10 @@
              },
              selectDist(d) {
                  this.activeDist = d;
-                 this.$nextTick(() => this.initChart());
+                 this.$nextTick(() => { this.initChart(); });
              }
          }"
-         x-init="$nextTick(() => initChart())">
+         x-init="$nextTick(() => { initChart(); })">
 
     <div class="flex items-center justify-between mb-3">
         <h2 class="text-sm font-semibold text-gray-700">Evolución del promedio</h2>
@@ -379,36 +379,40 @@
             {# ══════════ PASO 2: Flechas y tandas ══════════ #}
             <div x-show="step === 2" x-cloak class="px-5 pb-5 space-y-5">
 
-                {# Flechas por tanda — selector full-width #}
+                {# Flechas por tanda — stepper + [n] - #}
                 <div>
-                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
-                        Flechas por tanda
-                    </label>
-                    <select name="arrows_per_end" x-model.number="arrowsPerEnd"
-                            class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold
-                                   bg-white focus:outline-none focus:ring-2 focus:ring-green-500
-                                   appearance-none cursor-pointer">
-                        {% for n in range(1, 13) %}
-                        <option value="{{ n }}" {% if n == 5 %}selected{% endif %}>{{ n }} flecha{{ 's' if n != 1 else '' }}</option>
-                        {% endfor %}
-                    </select>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Flechas por tanda</p>
+                    <div class="flex items-center border border-gray-200 rounded-xl overflow-hidden">
+                        <button type="button"
+                                @click="if(arrowsPerEnd > 1) arrowsPerEnd--"
+                                class="w-12 h-12 flex items-center justify-center text-xl font-light
+                                       text-gray-500 hover:bg-gray-100 active:bg-gray-200 select-none transition-colors">−</button>
+                        <div class="flex-1 text-center font-black text-lg text-gray-800 pointer-events-none select-none"
+                             x-text="arrowsPerEnd + (arrowsPerEnd === 1 ? ' flecha' : ' flechas')"></div>
+                        <button type="button"
+                                @click="if(arrowsPerEnd < 12) arrowsPerEnd++"
+                                class="w-12 h-12 flex items-center justify-center text-xl font-light
+                                       text-gray-500 hover:bg-gray-100 active:bg-gray-200 select-none transition-colors">+</button>
+                    </div>
+                    <input type="hidden" name="arrows_per_end" :value="arrowsPerEnd" />
                 </div>
 
-                {# Cantidad de tandas — selector full-width + toggle sin límite #}
+                {# Cantidad de tandas — stepper + [n] - + toggle sin límite #}
                 <div>
-                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
-                        Cantidad de tandas
-                    </label>
-                    <select name="total_ends_select" x-model.number="totalEnds"
-                            :disabled="unlimited"
-                            :class="unlimited ? 'opacity-40 cursor-not-allowed' : ''"
-                            class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold
-                                   bg-white focus:outline-none focus:ring-2 focus:ring-green-500
-                                   appearance-none cursor-pointer mb-3">
-                        {% for n in range(1, 21) %}
-                        <option value="{{ n }}" {% if n == 1 %}selected{% endif %}>{{ n }} tanda{{ 's' if n != 1 else '' }}</option>
-                        {% endfor %}
-                    </select>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Cantidad de tandas</p>
+                    <div class="flex items-center border border-gray-200 rounded-xl overflow-hidden mb-3"
+                         :class="unlimited ? 'opacity-40 pointer-events-none' : ''">
+                        <button type="button"
+                                @click="if(totalEnds > 1) totalEnds--"
+                                class="w-12 h-12 flex items-center justify-center text-xl font-light
+                                       text-gray-500 hover:bg-gray-100 active:bg-gray-200 select-none transition-colors">−</button>
+                        <div class="flex-1 text-center font-black text-lg text-gray-800 pointer-events-none select-none"
+                             x-text="totalEnds + (totalEnds === 1 ? ' tanda' : ' tandas')"></div>
+                        <button type="button"
+                                @click="if(totalEnds < 20) totalEnds++"
+                                class="w-12 h-12 flex items-center justify-center text-xl font-light
+                                       text-gray-500 hover:bg-gray-100 active:bg-gray-200 select-none transition-colors">+</button>
+                    </div>
                     <button type="button" @click="unlimited = !unlimited"
                             :class="unlimited ? 'border-2 border-green-600 bg-green-50 text-green-800' : 'border border-gray-200 text-gray-600'"
                             class="w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2">

@@ -102,9 +102,16 @@
 
         if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
-        var ctx = document.getElementById('trendChart');
-        if (!ctx) return;
-        chartInstance = new Chart(ctx, {
+        // Reemplazar el canvas para que Chart.js arranque limpio
+        var wrap = document.getElementById('chart-wrap');
+        var oldCanvas = document.getElementById('trendChart');
+        if (oldCanvas) { oldCanvas.remove(); }
+        var newCanvas = document.createElement('canvas');
+        newCanvas.id = 'trendChart';
+        newCanvas.height = 150;
+        wrap.appendChild(newCanvas);
+
+        chartInstance = new Chart(newCanvas, {
             type: 'line',
             data: {
                 labels: labels,

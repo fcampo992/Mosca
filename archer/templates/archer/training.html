@@ -65,8 +65,8 @@
 
     {# Datos serializados en atributo data — evita problemas de escaping en JS inline #}
     <div id="trend-data"
-         data-trend="{{ trend_by_dist | tojson }}"
-         data-default="{{ default_dist or distances[0] }}"
+         data-trend='{{ trend_by_dist | tojson }}'
+         data-default='{{ default_dist or distances[0] }}'
          style="display:none"></div>
 
     <div id="chart-wrap">
@@ -192,7 +192,27 @@
 
         {% else %}
         <div class="flex items-center gap-4 bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-            <div class="w-11 h-11 rounded-xl bg-gray-50 flex items-center justify-center text-xl shrink-0">🏹</div>
+            {# Ícono de diana según target_type de la sesión #}
+            <div class="w-11 h-11 rounded-xl shrink-0 flex items-center justify-center overflow-hidden
+                        {% if s.target_type == 'wa6field' %}bg-gray-800{% else %}bg-white border border-gray-200{% endif %}">
+                {% if s.target_type == 'wa6field' %}
+                <svg viewBox="0 0 32 32" class="w-9 h-9">
+                    <circle cx="16" cy="16" r="15" fill="#1f2937"/>
+                    <circle cx="16" cy="16" r="11" fill="#374151"/>
+                    <circle cx="16" cy="16" r="7"  fill="#4b5563"/>
+                    <circle cx="16" cy="16" r="4"  fill="#fbbf24"/>
+                    <circle cx="16" cy="16" r="1.5" fill="#fde68a"/>
+                </svg>
+                {% else %}
+                <svg viewBox="0 0 32 32" class="w-9 h-9">
+                    <circle cx="16" cy="16" r="15" fill="#fff" stroke="#e5e7eb" stroke-width="0.5"/>
+                    <circle cx="16" cy="16" r="13" fill="#1e40af"/>
+                    <circle cx="16" cy="16" r="9"  fill="#dc2626"/>
+                    <circle cx="16" cy="16" r="5"  fill="#fbbf24"/>
+                    <circle cx="16" cy="16" r="2"  fill="#fde68a"/>
+                </svg>
+                {% endif %}
+            </div>
             <div class="flex-1 min-w-0">
                 <p class="font-semibold text-sm text-gray-900">{{ s.distance }}
                     {% if s.setup_name %}<span class="text-gray-400 font-normal text-xs">· {{ s.setup_name }}</span>{% endif %}

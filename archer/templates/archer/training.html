@@ -52,7 +52,7 @@
         <div class="flex gap-1.5 flex-wrap justify-end" id="dist-chips">
             {% for d in distances %}
             <button type="button"
-                    onclick="selectDist({{ d | tojson }})"
+                    onclick="selectDist(this.dataset.dist)"
                     data-dist="{{ d }}"
                     class="px-2.5 py-1 rounded-full text-xs font-semibold transition-colors
                            bg-gray-100 text-gray-600 hover:bg-gray-200">
@@ -62,6 +62,12 @@
         </div>
         {% endif %}
     </div>
+
+    {# Datos serializados en atributo data — evita problemas de escaping en JS inline #}
+    <div id="trend-data"
+         data-trend="{{ trend_by_dist | tojson | e }}"
+         data-default="{{ (default_dist or distances[0]) | e }}"
+         style="display:none"></div>
 
     <div id="chart-wrap">
         <canvas id="trendChart" height="150"></canvas>
@@ -74,14 +80,15 @@
 
 <script>
 (function() {
-    var TREND_DATA   = {{ trend_by_dist | tojson }};
-    var DEFAULT_DIST = {{ (default_dist or distances[0]) | tojson }};
+    var metaEl      = document.getElementById('trend-data');
+    var TREND_DATA  = JSON.parse(metaEl.getAttribute('data-trend'));
+    var DEFAULT_DIST = metaEl.getAttribute('data-default');
     var chartInstance = null;
 
     function renderChart(dist) {
-        var series   = TREND_DATA[dist] || [];
-        var wrapEl   = document.getElementById('chart-wrap');
-        var emptyEl  = document.getElementById('chart-empty');
+        var series  = TREND_DATA[dist] || [];
+        var wrapEl  = document.getElementById('chart-wrap');
+        var emptyEl = document.getElementById('chart-empty');
 
         if (series.length < 2) {
             wrapEl.classList.add('hidden');
@@ -99,10 +106,8 @@
             return i === 0 ? '#16a34a' : (v >= data[i-1] ? '#16a34a' : '#dc2626');
         });
 
-        // Destruir instancia anterior
         if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
-        // Recrear canvas limpio
         var oldCanvas = document.getElementById('trendChart');
         if (oldCanvas) { oldCanvas.remove(); }
         var canvas = document.createElement('canvas');
@@ -142,8 +147,7 @@
     }
 
     window.selectDist = function(d) {
-        var chips = document.querySelectorAll('#dist-chips button');
-        chips.forEach(function(btn) {
+        document.querySelectorAll('#dist-chips button').forEach(function(btn) {
             btn.className = btn.dataset.dist === d
                 ? 'px-2.5 py-1 rounded-full text-xs font-semibold transition-colors bg-gray-900 text-white'
                 : 'px-2.5 py-1 rounded-full text-xs font-semibold transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200';
@@ -151,7 +155,6 @@
         renderChart(d);
     };
 
-    // El script corre luego del canvas — DOM ya disponible
     window.selectDist(DEFAULT_DIST);
 })();
 </script>

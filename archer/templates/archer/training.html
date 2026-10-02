@@ -44,62 +44,20 @@
 {# ── Gráfico de evolución por distancia ── #}
 {% if trend_by_dist and trend_by_dist|length > 0 %}
 {% set distances = trend_by_dist.keys()|list %}
-<section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6"
-         x-data="{
-             activeDist: {{ (default_dist or distances[0]) | tojson }},
-             trendData:  {{ trend_by_dist | tojson }},
-             chart: null,
-             get series() { return this.trendData[this.activeDist] || []; },
-             get hasEnough() { return this.series.length >= 2; },
-             initChart() {
-                 if (this.chart) { this.chart.destroy(); this.chart = null; }
-                 if (!this.hasEnough) return;
-                 const data   = this.series.map(t => t.avg_per_arrow);
-                 const labels = this.series.map(t => t.session_date.slice(5));
-                 const colors = data.map((v,i) => i===0 ? '#16a34a' : v >= data[i-1] ? '#16a34a' : '#dc2626');
-                 this.chart = new Chart(document.getElementById('trendChart'), {
-                     type: 'line',
-                     data: {
-                         labels,
-                         datasets: [{
-                             data, borderColor: '#16a34a',
-                             backgroundColor: 'rgba(22,163,74,0.07)',
-                             borderWidth: 2.5, pointRadius: 5, fill: true, tension: 0.35,
-                             pointBackgroundColor: colors,
-                             pointBorderColor: '#fff', pointBorderWidth: 2,
-                         }]
-                     },
-                     options: {
-                         responsive: true,
-                         plugins: { legend: { display: false } },
-                         scales: {
-                             y: { min: Math.max(0, Math.min(...data)-1),
-                                  max: Math.min(10, Math.max(...data)+1),
-                                  grid: { color: '#f3f4f6' } },
-                             x: { grid: { display: false },
-                                  ticks: { font: { size: 10 }, maxRotation: 30 } }
-                         }
-                     }
-                 });
-             },
-             selectDist(d) {
-                 this.activeDist = d;
-                 this.$nextTick(() => { this.initChart(); });
-             }
-         }"
-         x-init="$nextTick(() => { initChart(); })">
+<section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6"></section>
 
     <div class="flex items-center justify-between mb-3">
         <h2 class="text-sm font-semibold text-gray-700">Evolución del promedio</h2>
-        {# Chips de distancia — solo si hay 2 o más distancias #}
+        {# Chips de distancia — solo si hay 2 o más #}
         {% if distances|length >= 2 %}
-        <div class="flex gap-1.5 flex-wrap justify-end">
+        <div class="flex gap-1.5 flex-wrap justify-end" id="dist-chips">
             {% for d in distances %}
-            <button type="button" @click="selectDist({{ d | tojson }})"
-                    :class="activeDist === {{ d | tojson }}
-                        ? 'bg-gray-900 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
-                    class="px-2.5 py-1 rounded-full text-xs font-semibold transition-colors">
+            <button type="button"
+                    onclick="selectDist({{ d | tojson }})"
+                    id="chip-{{ loop.index }}"
+                    data-dist="{{ d }}"
+                    class="px-2.5 py-1 rounded-full text-xs font-semibold transition-colors
+                           bg-gray-100 text-gray-600 hover:bg-gray-200">
                 {{ d }}
             </button>
             {% endfor %}
@@ -107,15 +65,92 @@
         {% endif %}
     </div>
 
-    {# Canvas — siempre presente, Alpine lo gestiona #}
-    <div x-show="hasEnough">
+    <div id="chart-wrap">
         <canvas id="trendChart" height="150"></canvas>
     </div>
-    <p x-show="!hasEnough" class="text-xs text-gray-400 text-center py-6">
-        Necesitás al menos 2 sesiones en <span x-text="activeDist"></span> para ver el gráfico.
+    <p id="chart-empty" class="hidden text-xs text-gray-400 text-center py-6">
+        Necesitás al menos 2 sesiones para ver el gráfico.
     </p>
 
 </section>
+
+<script>
+(function() {
+    var TREND_DATA = {{ trend_by_dist | tojson }};
+    var DEFAULT_DIST = {{ (default_dist or distances[0]) | tojson }};
+    var activeDist = DEFAULT_DIST;
+    var chartInstance = null;
+
+    function renderChart(dist) {
+        var series = TREND_DATA[dist] || [];
+        var wrap   = document.getElementById('chart-wrap');
+        var empty  = document.getElementById('chart-empty');
+
+        if (series.length < 2) {
+            wrap.classList.add('hidden');
+            empty.classList.remove('hidden');
+            empty.textContent = 'Necesitás al menos 2 sesiones en ' + dist + ' para ver el gráfico.';
+            return;
+        }
+
+        wrap.classList.remove('hidden');
+        empty.classList.add('hidden');
+
+        var data   = series.map(function(t){ return t.avg_per_arrow; });
+        var labels = series.map(function(t){ return t.session_date.slice(5); });
+        var colors = data.map(function(v,i){ return i===0 ? '#16a34a' : (v >= data[i-1] ? '#16a34a' : '#dc2626'); });
+
+        if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+        var ctx = document.getElementById('trendChart');
+        if (!ctx) return;
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    borderColor: '#16a34a',
+                    backgroundColor: 'rgba(22,163,74,0.07)',
+                    borderWidth: 2.5, pointRadius: 5, fill: true, tension: 0.35,
+                    pointBackgroundColor: colors,
+                    pointBorderColor: '#fff', pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { min: Math.max(0, Math.min.apply(null,data)-1),
+                         max: Math.min(10, Math.max.apply(null,data)+1),
+                         grid: { color: '#f3f4f6' } },
+                    x: { grid: { display: false },
+                         ticks: { font: { size: 10 }, maxRotation: 30 } }
+                }
+            }
+        });
+    }
+
+    window.selectDist = function(d) {
+        activeDist = d;
+        // actualizar chips
+        var chips = document.querySelectorAll('#dist-chips button');
+        chips.forEach(function(btn) {
+            if (btn.dataset.dist === d) {
+                btn.className = 'px-2.5 py-1 rounded-full text-xs font-semibold transition-colors bg-gray-900 text-white';
+            } else {
+                btn.className = 'px-2.5 py-1 rounded-full text-xs font-semibold transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200';
+            }
+        });
+        renderChart(d);
+    };
+
+    // inicializar al cargar
+    document.addEventListener('DOMContentLoaded', function() {
+        selectDist(DEFAULT_DIST);
+    });
+})();
+</script>
 {% endif %}
 
 {# ── Lista de sesiones ── #}

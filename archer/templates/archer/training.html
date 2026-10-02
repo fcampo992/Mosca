@@ -44,17 +44,15 @@
 {# ── Gráfico de evolución por distancia ── #}
 {% if trend_by_dist and trend_by_dist|length > 0 %}
 {% set distances = trend_by_dist.keys()|list %}
-<section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6"></section>
+<section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
 
     <div class="flex items-center justify-between mb-3">
         <h2 class="text-sm font-semibold text-gray-700">Evolución del promedio</h2>
-        {# Chips de distancia — solo si hay 2 o más #}
         {% if distances|length >= 2 %}
         <div class="flex gap-1.5 flex-wrap justify-end" id="dist-chips">
             {% for d in distances %}
             <button type="button"
                     onclick="selectDist({{ d | tojson }})"
-                    id="chip-{{ loop.index }}"
                     data-dist="{{ d }}"
                     class="px-2.5 py-1 rounded-full text-xs font-semibold transition-colors
                            bg-gray-100 text-gray-600 hover:bg-gray-200">
@@ -76,42 +74,43 @@
 
 <script>
 (function() {
-    var TREND_DATA = {{ trend_by_dist | tojson }};
+    var TREND_DATA   = {{ trend_by_dist | tojson }};
     var DEFAULT_DIST = {{ (default_dist or distances[0]) | tojson }};
-    var activeDist = DEFAULT_DIST;
     var chartInstance = null;
 
     function renderChart(dist) {
-        var series = TREND_DATA[dist] || [];
-        var wrap   = document.getElementById('chart-wrap');
-        var empty  = document.getElementById('chart-empty');
+        var series   = TREND_DATA[dist] || [];
+        var wrapEl   = document.getElementById('chart-wrap');
+        var emptyEl  = document.getElementById('chart-empty');
 
         if (series.length < 2) {
-            wrap.classList.add('hidden');
-            empty.classList.remove('hidden');
-            empty.textContent = 'Necesitás al menos 2 sesiones en ' + dist + ' para ver el gráfico.';
+            wrapEl.classList.add('hidden');
+            emptyEl.classList.remove('hidden');
+            emptyEl.textContent = 'Necesitás al menos 2 sesiones en ' + dist + ' para ver el gráfico.';
             return;
         }
 
-        wrap.classList.remove('hidden');
-        empty.classList.add('hidden');
+        wrapEl.classList.remove('hidden');
+        emptyEl.classList.add('hidden');
 
         var data   = series.map(function(t){ return t.avg_per_arrow; });
         var labels = series.map(function(t){ return t.session_date.slice(5); });
-        var colors = data.map(function(v,i){ return i===0 ? '#16a34a' : (v >= data[i-1] ? '#16a34a' : '#dc2626'); });
+        var colors = data.map(function(v, i) {
+            return i === 0 ? '#16a34a' : (v >= data[i-1] ? '#16a34a' : '#dc2626');
+        });
 
+        // Destruir instancia anterior
         if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
-        // Reemplazar el canvas para que Chart.js arranque limpio
-        var wrap = document.getElementById('chart-wrap');
+        // Recrear canvas limpio
         var oldCanvas = document.getElementById('trendChart');
         if (oldCanvas) { oldCanvas.remove(); }
-        var newCanvas = document.createElement('canvas');
-        newCanvas.id = 'trendChart';
-        newCanvas.height = 150;
-        wrap.appendChild(newCanvas);
+        var canvas = document.createElement('canvas');
+        canvas.id = 'trendChart';
+        canvas.height = 150;
+        wrapEl.appendChild(canvas);
 
-        chartInstance = new Chart(newCanvas, {
+        chartInstance = new Chart(canvas, {
             type: 'line',
             data: {
                 labels: labels,
@@ -128,33 +127,32 @@
                 responsive: true,
                 plugins: { legend: { display: false } },
                 scales: {
-                    y: { min: Math.max(0, Math.min.apply(null,data)-1),
-                         max: Math.min(10, Math.max.apply(null,data)+1),
-                         grid: { color: '#f3f4f6' } },
-                    x: { grid: { display: false },
-                         ticks: { font: { size: 10 }, maxRotation: 30 } }
+                    y: {
+                        min: Math.max(0, Math.min.apply(null, data) - 1),
+                        max: Math.min(10, Math.max.apply(null, data) + 1),
+                        grid: { color: '#f3f4f6' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 10 }, maxRotation: 30 }
+                    }
                 }
             }
         });
     }
 
     window.selectDist = function(d) {
-        activeDist = d;
-        // actualizar chips
         var chips = document.querySelectorAll('#dist-chips button');
         chips.forEach(function(btn) {
-            if (btn.dataset.dist === d) {
-                btn.className = 'px-2.5 py-1 rounded-full text-xs font-semibold transition-colors bg-gray-900 text-white';
-            } else {
-                btn.className = 'px-2.5 py-1 rounded-full text-xs font-semibold transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200';
-            }
+            btn.className = btn.dataset.dist === d
+                ? 'px-2.5 py-1 rounded-full text-xs font-semibold transition-colors bg-gray-900 text-white'
+                : 'px-2.5 py-1 rounded-full text-xs font-semibold transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200';
         });
         renderChart(d);
     };
 
-    // inicializar al cargar
     document.addEventListener('DOMContentLoaded', function() {
-        selectDist(DEFAULT_DIST);
+        window.selectDist(DEFAULT_DIST);
     });
 })();
 </script>

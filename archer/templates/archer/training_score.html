@@ -333,8 +333,6 @@
                     style="background-color: {{ club.color_from }}">
                 Registrar (0/{{ sess.arrows_per_end }})
             </button>
-                Registrar (0/{{ sess.arrows_per_end }})
-            </button>
         </form>
     </div>
 
@@ -495,11 +493,15 @@
 
         // confirmar btn
         var btn = document.getElementById('btn-confirm');
+        // Solo tocar las clases de estado, nunca sobreescribir className completo
+        // para preservar el style="background-color" inline
         if (n > 0) {
-            btn.className = 'w-full text-white font-bold py-3.5 rounded-2xl text-sm hover:opacity-90 active:opacity-80 transition-all';
+            btn.classList.remove('opacity-40','cursor-not-allowed');
+            btn.classList.add('hover:opacity-90','active:opacity-80');
             btn.textContent = n >= maxArrows ? 'Confirmar tanda ✓' : 'Registrar (' + n + '/' + maxArrows + ')';
         } else {
-            btn.className = 'w-full text-white font-bold py-3.5 rounded-2xl text-sm opacity-40 cursor-not-allowed transition-all';
+            btn.classList.add('opacity-40','cursor-not-allowed');
+            btn.classList.remove('hover:opacity-90','active:opacity-80');
             btn.textContent = 'Registrar (0/' + maxArrows + ')';
         }
 

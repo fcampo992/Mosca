@@ -271,12 +271,22 @@
     ch.appendChild(mkEl(NS,'line',{x1:x,y1:y-6,x2:x,y2:y+6,stroke:'rgba(255,255,255,0.9)','stroke-width':'0.9'}));
     this.loupeSvgEl.appendChild(ch);
 
-    // Posición lupa
+    // Posición lupa — siempre por encima del dedo, nunca debajo
     var lw = 100, lh = 100;
+    var OFFSET_ABOVE = 55; // distancia fija por encima del punto de toque
+
+    // Centrar horizontalmente sobre el punto de toque
     var lx = clientX - zRect.left - lw / 2;
-    var ly = clientY - zRect.top  - lh - 45;
-    if (ly < 4) ly = clientY - zRect.top + 20;
-    lx = Math.max(4, Math.min(lx, zRect.width  - lw - 4));
+    // Siempre arriba: si no hay espacio la lupa puede salir del contenedor
+    // pero usamos position:absolute relativo a diana-zone, que puede tener overflow visible
+    var ly = clientY - zRect.top - lh - OFFSET_ABOVE;
+
+    // Clampear solo horizontalmente (para no salirse a los lados)
+    lx = Math.max(4, Math.min(lx, zRect.width - lw - 4));
+    // Verticalmente: si el resultado es negativo, la lupa queda cortada en el borde
+    // superior del contenedor — aceptable, siempre mejor que tapar el punto de toque
+    // No hacemos fallback a "debajo" en ningún caso.
+
     this.loupeEl.style.left    = lx + 'px';
     this.loupeEl.style.top     = ly + 'px';
     this.loupeEl.style.display = 'block';

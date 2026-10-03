@@ -59,7 +59,7 @@
     {% if not is_summary %}
     <form method="POST" action="{{ url_for('archer.training_finish', session_id=sess.id) }}">
         <button type="submit"
-                class="text-xs font-bold bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-xl transition-colors">
+                class="text-xs font-bold bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 py-1.5 rounded-xl transition-colors">
             Terminar
         </button>
     </form>
@@ -307,16 +307,16 @@
     <div class="flex items-center gap-2">
         <button type="button" onclick="deleteLast()"
                 id="btn-delete"
-                class="p-3.5 rounded-2xl bg-gray-700 hover:bg-gray-600 active:bg-gray-500
-                       transition-colors flex items-center justify-center opacity-30">
+                class="w-12 h-12 rounded-2xl bg-gray-700 hover:bg-gray-600 active:bg-gray-500
+                       transition-colors flex items-center justify-center opacity-30 shrink-0">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round"
                       d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z"/>
             </svg>
         </button>
         <button type="button" id="btn-note" onclick="toggleNote()"
-                class="p-3.5 rounded-2xl bg-gray-700 border border-transparent
-                       transition-colors flex items-center justify-center">
+                class="w-12 h-12 rounded-2xl bg-gray-700 border border-transparent
+                       transition-colors flex items-center justify-center shrink-0">
             <span class="text-lg">💬</span>
         </button>
         <form id="end-form" method="POST"
@@ -331,6 +331,8 @@
                     class="w-full text-white font-bold py-3.5 rounded-2xl text-sm
                            opacity-40 cursor-not-allowed transition-all"
                     style="background-color: {{ club.color_from }}">
+                Registrar (0/{{ sess.arrows_per_end }})
+            </button>
                 Registrar (0/{{ sess.arrows_per_end }})
             </button>
         </form>
@@ -464,8 +466,8 @@
         document.getElementById('note-wrap').style.display = noteVisible ? 'block' : 'none';
         var btn = document.getElementById('btn-note');
         btn.className = noteVisible
-            ? 'p-3.5 rounded-2xl bg-yellow-500/20 border border-yellow-500/50 transition-colors flex items-center justify-center'
-            : 'p-3.5 rounded-2xl bg-gray-700 border border-transparent transition-colors flex items-center justify-center';
+            ? 'w-12 h-12 rounded-2xl bg-yellow-500/20 border border-yellow-500/50 transition-colors flex items-center justify-center shrink-0'
+            : 'w-12 h-12 rounded-2xl bg-gray-700 border border-transparent transition-colors flex items-center justify-center shrink-0';
     };
 
     window.prepareSubmit = function() {
@@ -488,7 +490,7 @@
 
         // borrar btn
         document.getElementById('btn-delete').className =
-            'p-3.5 rounded-2xl bg-gray-700 hover:bg-gray-600 active:bg-gray-500 transition-colors flex items-center justify-center' +
+            'w-12 h-12 rounded-2xl bg-gray-700 hover:bg-gray-600 active:bg-gray-500 transition-colors flex items-center justify-center shrink-0' +
             (n === 0 ? ' opacity-30' : '');
 
         // confirmar btn

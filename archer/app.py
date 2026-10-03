@@ -8,11 +8,20 @@ Vercel uses the `app` variable at module level as the WSGI entrypoint.
 from __future__ import annotations
 
 import logging
+import os
 import sys
 
 from flask import Flask
 
 from archer.config import Config
+
+# Cargar variables de entorno desde .env (solo en desarrollo local)
+try:
+    from dotenv import load_dotenv  # noqa: PLC0415
+    load_dotenv()
+except ImportError:
+    # python-dotenv no instalado — Vercel inyecta las vars directamente
+    pass
 
 # Configurar root logger — captura todos los loggers del proyecto en Vercel
 logging.basicConfig(
@@ -112,6 +121,27 @@ def create_app(config_object: object = Config) -> Flask:
         app.register_blueprint(team_archer_bp)
     except ImportError:
         logger.debug("team_routes blueprint not available yet.")
+
+    # ── Google OAuth (authlib) ────────────────────────────────────────────────
+    google_client_id     = os.environ.get("GOOGLE_CLIENT_ID")
+    google_client_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
+    if google_client_id and google_client_secret:
+        try:
+            from authlib.integrations.flask_client import OAuth  # noqa: PLC0415
+            oauth = OAuth(app)
+            oauth.register(
+                name="google",
+                client_id=google_client_id,
+                client_secret=google_client_secret,
+                server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+                client_kwargs={"scope": "openid email profile"},
+            )
+            app.extensions["oauth"] = oauth
+            logger.info("Google OAuth configurado correctamente.")
+        except Exception as exc:
+            logger.warning("No se pudo configurar Google OAuth: %s", exc)
+    else:
+        logger.info("GOOGLE_CLIENT_ID/SECRET no configurados — Google OAuth deshabilitado.")
 
     # ── Home route ───────────────────────────────────────────────────────────
     @app.route("/")

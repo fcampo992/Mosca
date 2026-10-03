@@ -1128,3 +1128,131 @@ def training_delete(session_id: str):
     archer_id = session["archer_id"]
     delete_session(session_id, archer_id)
     return redirect(url_for("archer.training"))
+
+
+# ---------------------------------------------------------------------------
+# Autenticación: email + contraseña
+# ---------------------------------------------------------------------------
+
+@archer_bp.route("/auth/register", methods=["POST"])
+def auth_register():
+    """POST — Registra un arquero nuevo con email + contraseña."""
+    from archer.modules.auth import register_with_email  # noqa: PLC0415
+
+    first_name = request.form.get("first_name", "").strip()
+    last_name  = request.form.get("last_name",  "").strip()
+    email      = request.form.get("email",      "").strip()
+    password   = request.form.get("password",   "")
+
+    result = register_with_email(first_name, last_name, email, password)
+
+    if "error" in result:
+        return render_template(
+            "archer/login.html",
+            tab="register",
+            error=result["error"],
+            field=result.get("field"),
+            form_data=request.form,
+        ), 400
+
+    # Éxito — crear sesión
+    session["archer_id"]      = result["id"]
+    session["archer_name"]    = result.get("name", email)
+    session["last_active"]    = datetime.now().isoformat()
+    session["auth_provider"]  = "email"
+    session.pop("photo_url", None)
+    return redirect(url_for("archer.dashboard"))
+
+
+@archer_bp.route("/auth/email", methods=["POST"])
+def auth_email():
+    """POST — Login con email + contraseña."""
+    from archer.modules.auth import login_with_email  # noqa: PLC0415
+
+    email    = request.form.get("email",    "").strip()
+    password = request.form.get("password", "")
+
+    result = login_with_email(email, password)
+
+    if "error" in result:
+        return render_template(
+            "archer/login.html",
+            tab="login",
+            error=result["error"],
+            field=result.get("field"),
+            blocked=result.get("blocked", False),
+            form_data=request.form,
+        ), 429 if result.get("blocked") else 401
+
+    session["archer_id"]     = result["id"]
+    session["archer_name"]   = result.get("name", email)
+    session["last_active"]   = datetime.now().isoformat()
+    session["auth_provider"] = "email"
+    session.pop("photo_url", None)
+    return redirect(url_for("archer.dashboard"))
+
+
+# ---------------------------------------------------------------------------
+# Autenticación: Google OAuth
+# ---------------------------------------------------------------------------
+
+@archer_bp.route("/auth/google")
+def auth_google():
+    """GET — Inicia el flujo OAuth con Google."""
+    oauth = current_app.extensions.get("oauth")
+    if oauth is None:
+        return render_template(
+            "archer/login.html",
+            tab="login",
+            error="Google OAuth no está configurado en este servidor.",
+        ), 503
+
+    import os  # noqa: PLC0415
+    redirect_uri = os.environ.get(
+        "GOOGLE_REDIRECT_URI",
+        url_for("archer.auth_google_callback", _external=True),
+    )
+    return oauth.google.authorize_redirect(redirect_uri)
+
+
+@archer_bp.route("/auth/google/callback")
+def auth_google_callback():
+    """GET — Callback de Google: intercambia code por token y crea sesión."""
+    from archer.modules.auth import find_or_create_google_archer  # noqa: PLC0415
+
+    oauth = current_app.extensions.get("oauth")
+    if oauth is None:
+        return redirect(url_for("archer.login"))
+
+    try:
+        token   = oauth.google.authorize_access_token()
+        profile = token.get("userinfo") or oauth.google.userinfo()
+    except Exception as exc:
+        import logging as _log  # noqa: PLC0415
+        _log.getLogger(__name__).error("Google OAuth callback error: %s", exc)
+        return render_template(
+            "archer/login.html",
+            tab="login",
+            error="Error al autenticar con Google. Intentá de nuevo.",
+        ), 500
+
+    result = find_or_create_google_archer(profile)
+
+    if "error" in result:
+        return render_template(
+            "archer/login.html",
+            tab="login",
+            error=result["error"],
+        ), 500
+
+    session["archer_id"]     = result["id"]
+    session["archer_name"]   = result.get("name", profile.get("email", ""))
+    session["last_active"]   = datetime.now().isoformat()
+    session["auth_provider"] = "google"
+    # Foto de Google → guardar en sesión
+    if result.get("photo_url"):
+        session["photo_url"] = result["photo_url"]
+    else:
+        session.pop("photo_url", None)
+
+    return redirect(url_for("archer.dashboard"))

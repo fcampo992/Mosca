@@ -4,3 +4,9 @@ ltm/runtime/*
 ltm/reports/*
 ltm/snapshots/*
 # --- /ltm-power ---
+
+# Variables de entorno — nunca subir al repo
+.env
+.env.local
+.env.production
+*.env

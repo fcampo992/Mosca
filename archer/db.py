@@ -240,6 +240,13 @@ def init_db(conn) -> None:
         "ALTER TABLE team_tournaments ADD COLUMN target_type TEXT NOT NULL DEFAULT 'wa10'",
         # Tipo de diana para sesiones de entrenamiento
         "ALTER TABLE training_sessions ADD COLUMN target_type TEXT NOT NULL DEFAULT 'wa10'",
+        # Autenticación de arqueros: email + contraseña + Google OAuth
+        "ALTER TABLE archers ADD COLUMN email TEXT",
+        "ALTER TABLE archers ADD COLUMN password_hash TEXT",
+        "ALTER TABLE archers ADD COLUMN google_id TEXT",
+        "ALTER TABLE archers ADD COLUMN auth_provider TEXT DEFAULT 'pin'",
+        "ALTER TABLE archers ADD COLUMN first_name TEXT",
+        "ALTER TABLE archers ADD COLUMN last_name TEXT",
     ]
     for migration in migrations:
         try:

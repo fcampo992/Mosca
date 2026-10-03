@@ -43,62 +43,24 @@
 
 {# ══ Teclado de tiro ══ #}
 {% else %}
-{# Inyectar datos de diana via atributo data- — evita SyntaxError por escaping en script inline #}
-<div id="diana-data"
-     data-points='{{ (target_cfg.points if target_cfg is defined and target_cfg else {"X":10,"10":10,"9":9,"8":8,"7":7,"6":6,"5":5,"4":4,"3":3,"2":2,"1":1,"M":0}) | tojson }}'
+{# Inyectar plotter #}
+<script src="{{ url_for('static', filename='js/plotter.js') }}"></script>
+<div id="session-meta"
+     data-target-type="{{ target_type or 'wa10' }}"
+     data-max-arrows="{{ arrows_per_end }}"
+     data-prev-plots='{{ (previous_plots or []) | tojson }}'
+     data-endpoint="{{ url_for('team_archer.score_end', tournament_id=tournament.id) }}"
      style="display:none"></div>
-<script>
-window._ARCHER_POINTS = JSON.parse(document.getElementById('diana-data').getAttribute('data-points'));
-</script>
 
-<div class="max-w-sm mx-auto px-3 py-3 flex flex-col gap-3"
-     x-data="{
-         arrows: [],
-         maxArrows: {{ arrows_per_end }},
-         submitting: false,
-         showModal: false,
-         POINTS: window._ARCHER_POINTS,
-         get subtotal(){ return this.arrows.reduce((s,v)=>s+(this.POINTS[v]||0), 0); },
-         get isFull(){ return this.arrows.length >= this.maxArrows; },
-         add(v){
-             if(this.isFull || this.submitting) return;
-             this.arrows.push(v);
-         },
-         del(){ if(!this.submitting) this.arrows.pop(); },
-         openModal(){
-             if(!this.isFull || this.submitting) return;
-             this.showModal = true;
-         },
-         confirm(){
-             if(this.submitting) return;
-             this.submitting = true;
-             this.showModal = false;
-             const fd = new FormData();
-             fd.append('arrows_json', JSON.stringify(this.arrows));
-             const controller = new AbortController();
-             const timeout = setTimeout(() => controller.abort(), 15000);
-             fetch('{{ url_for('team_archer.score_end', tournament_id=tournament.id) }}', {
-                 method:'POST', body:fd, credentials:'same-origin',
-                 signal: controller.signal
-             })
-                 .then(() => { clearTimeout(timeout); window.location.reload(); })
-                 .catch(() => {
-                     clearTimeout(timeout);
-                     this.submitting = false;
-                     alert('Error al guardar. Revisá tu conexión e intentá de nuevo.');
-                 });
-         }
-     }">
+<div class="max-w-sm mx-auto px-3 py-3 flex flex-col gap-3">
 
     {# ── Header ── #}
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
             {% if photo_url %}
-            <img src="{{ photo_url }}" class="w-9 h-9 rounded-full object-cover border-2 shrink-0"
-                 style="border-color:{{ club.color_from }}" />
+            <img src="{{ photo_url }}" class="w-9 h-9 rounded-full object-cover border-2 shrink-0" style="border-color:{{ club.color_from }}" />
             {% else %}
-            <div class="w-9 h-9 rounded-full flex items-center justify-center font-black text-sm shrink-0"
-                 style="background-color:{{ club.color_from }}">
+            <div class="w-9 h-9 rounded-full flex items-center justify-center font-black text-sm shrink-0" style="background-color:{{ club.color_from }}">
                 {{ archer_name[0]|upper if archer_name else '?' }}
             </div>
             {% endif %}
@@ -107,13 +69,11 @@ window._ARCHER_POINTS = JSON.parse(document.getElementById('diana-data').getAttr
                 <p class="text-[10px] text-gray-400 truncate max-w-[140px]">{{ tournament.name }}</p>
             </div>
         </div>
-        {# Badge de equipo #}
         {% if team_info %}
         <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold"
              style="background-color:{{ club.color_from }}33; color:{{ club.color_from }}">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
             {{ team_info.team_name }}
         </div>
@@ -122,14 +82,14 @@ window._ARCHER_POINTS = JSON.parse(document.getElementById('diana-data').getAttr
         {% endif %}
     </div>
 
-    {# ── Stats en vivo ── #}
+    {# ── Stats ── #}
     <div class="flex items-center justify-between bg-gray-800 rounded-2xl px-4 py-3">
         <div class="text-center">
             <p class="text-3xl font-black text-white">{{ accumulated }}</p>
             <p class="text-[10px] text-gray-400 uppercase tracking-wide">Total</p>
         </div>
         <div class="text-center">
-            <p class="text-2xl font-black text-green-400" x-text="subtotal">0</p>
+            <p class="text-2xl font-black text-green-400" id="subtotal-display">0</p>
             <p class="text-[10px] text-gray-400 uppercase tracking-wide">Esta tanda</p>
         </div>
         <div class="text-center">
@@ -138,76 +98,83 @@ window._ARCHER_POINTS = JSON.parse(document.getElementById('diana-data').getAttr
         </div>
     </div>
 
-    {# ── Chips de la tanda actual ── #}
-    <div class="flex flex-wrap gap-2 bg-gray-800 rounded-2xl px-3 py-3 min-h-[3rem]">
-        <template x-for="(v,i) in arrows" :key="i">
-            <span class="chip-pop inline-flex items-center justify-center rounded-xl font-black text-sm px-2.5 py-1 min-w-[2.5rem]"
-                  :class="{
-                      'bg-yellow-400 text-gray-900':v==='X',
-                      'bg-yellow-300 text-gray-900':v==='10',
-                      'bg-red-500 text-white':['9','8','7'].includes(v),
-                      'bg-blue-500 text-white':['6','5'].includes(v),
-                      'bg-gray-600 text-white':['4','3'].includes(v),
-                      'bg-gray-700 text-gray-300':['2','1'].includes(v),
-                      'bg-gray-800 border border-gray-600 text-gray-400':v==='M'
-                  }" x-text="v"></span>
-        </template>
-        <span x-show="arrows.length===0" class="text-gray-500 text-sm self-center">Anotá tus flechas →</span>
+    {# ── Toggle ── #}
+    <div class="flex bg-gray-800 rounded-xl p-1 gap-1">
+        <button id="seg-plot" onclick="setInputMode('plot')"
+                class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all bg-white text-gray-900">
+            🎯 Plotter
+        </button>
+        <button id="seg-keys" onclick="setInputMode('keys')"
+                class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all text-gray-400">
+            🔢 Teclado
+        </button>
     </div>
 
-    {# ── Teclado dinámico según diana ── #}
-    {% set btn_styles = {
-        'X':  'bg-yellow-400 text-gray-900 hover:bg-yellow-500 active:bg-yellow-600',
-        '10': 'bg-yellow-300 text-gray-900 hover:bg-yellow-400 active:bg-yellow-500',
-        '9':  'bg-red-500 text-white hover:bg-red-600 active:bg-red-700',
-        '8':  'bg-red-400 text-white hover:bg-red-500 active:bg-red-600',
-        '7':  'bg-red-300 text-gray-900 hover:bg-red-400 active:bg-red-500',
-        '6':  'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700',
-        '5':  'bg-blue-400 text-white hover:bg-blue-500 active:bg-blue-600',
-        '4':  'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400',
-        '3':  'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400',
-        '2':  'bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500',
-        '1':  'bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500',
-        'M':  'bg-gray-800 text-gray-400 border border-gray-600 hover:bg-gray-700 active:bg-gray-600',
-    } %}
-    {% set active_buttons = target_cfg.buttons if target_cfg is defined else ['X','10','9','8','7','6','5','4','3','2','1','M'] %}
-    <div class="grid grid-cols-4 gap-2">
-        {% for val in active_buttons %}
-        {% set cls = btn_styles.get(val, 'bg-gray-700 text-white') %}
-        <button type="button"
-                @click="add('{{ val }}')"
-                :disabled="isFull || submitting"
-                :class="(isFull||submitting)?'opacity-30 cursor-not-allowed':''"
-                class="flex items-center justify-center rounded-2xl font-black text-xl select-none transition-colors {{ cls }}"
-                style="min-height:56px">
-            {{ val }}
-        </button>
-        {% endfor %}
+    {# ── Modo Plotter ── #}
+    <div id="mode-plot">
+        <style>
+            #diana-container{transition:transform 0.18s cubic-bezier(0.34,1.56,0.64,1);transform-origin:center;cursor:crosshair;user-select:none;}
+            #diana-container.zoomed{transform:scale(1.55);}
+            #loupe-wrap{position:absolute;width:100px;height:100px;border-radius:50%;border:2.5px solid rgba(255,255,255,0.85);overflow:hidden;pointer-events:none;display:none;z-index:60;box-shadow:0 4px 24px rgba(0,0,0,0.7);background:#111827;}
+            #score-pill{position:absolute;display:none;z-index:61;background:rgba(0,0,0,0.92);border:1px solid rgba(255,255,255,0.2);color:white;font-size:13px;font-weight:900;padding:4px 12px;border-radius:20px;pointer-events:none;transform:translateX(-50%);white-space:nowrap;}
+        </style>
+        <div id="diana-zone" style="position:relative;display:flex;align-items:center;justify-content:center;height:290px;">
+            <div id="diana-container">
+                <svg id="the-svg" viewBox="-110 -110 220 220" width="260" height="260" style="display:block;touch-action:none;">
+                    <g id="pins-g"></g>
+                    <g id="drag-cursor" style="display:none">
+                        <circle cx="0" cy="0" r="4" fill="white" fill-opacity="0.3"/>
+                        <circle cx="0" cy="0" r="2.5" fill="white"/>
+                        <line x1="-7" y1="0" x2="-4" y2="0" stroke="white" stroke-width="1"/>
+                        <line x1="4" y1="0" x2="7" y2="0" stroke="white" stroke-width="1"/>
+                        <line x1="0" y1="-7" x2="0" y2="-4" stroke="white" stroke-width="1"/>
+                        <line x1="0" y1="4" x2="0" y2="7" stroke="white" stroke-width="1"/>
+                    </g>
+                </svg>
+            </div>
+            <div id="loupe-wrap"><svg id="loupe-svg" viewBox="-110 -110 220 220" width="100" height="100"></svg></div>
+            <div id="score-pill"></div>
+        </div>
+        <div id="chips-plot" class="flex flex-wrap gap-1.5 px-1 min-h-[2.5rem]">
+            <span class="text-gray-500 text-sm self-center">Tocá la diana para anotar →</span>
+        </div>
+    </div>
+
+    {# ── Modo Teclado ── #}
+    <div id="mode-keys" class="hidden">
+        <div class="flex justify-center mb-2">
+            <svg id="mini-svg" viewBox="-110 -110 220 220" width="100" height="100" style="display:block;"></svg>
+        </div>
+        {% set btn_styles = {'X':'bg-yellow-400 text-gray-900 hover:bg-yellow-500 active:bg-yellow-600','10':'bg-yellow-300 text-gray-900 hover:bg-yellow-400 active:bg-yellow-500','9':'bg-red-500 text-white hover:bg-red-600 active:bg-red-700','8':'bg-red-400 text-white hover:bg-red-500 active:bg-red-600','7':'bg-red-300 text-gray-900 hover:bg-red-400 active:bg-red-500','6':'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700','5':'bg-blue-400 text-white hover:bg-blue-500 active:bg-blue-600','4':'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400','3':'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400','2':'bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500','1':'bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500','M':'bg-gray-800 text-gray-400 border border-gray-600 hover:bg-gray-700 active:bg-gray-600'} %}
+        {% set active_buttons = target_cfg.buttons if target_cfg is defined and target_cfg else ['X','10','9','8','7','6','5','4','3','2','1','M'] %}
+        <div class="grid grid-cols-4 gap-2">
+            {% for val in active_buttons %}{% set cls = btn_styles.get(val,'bg-gray-700 text-white') %}
+            <button type="button" onclick="addFromKey('{{ val }}')"
+                    class="flex items-center justify-center rounded-2xl font-black text-xl select-none transition-colors {{ cls }}"
+                    style="min-height:56px">{{ val }}</button>
+            {% endfor %}
+        </div>
+        <div id="chips-keys" class="flex flex-wrap gap-1.5 px-1 mt-2 min-h-[2.5rem]">
+            <span class="text-gray-500 text-sm self-center">Anotá tus flechas →</span>
+        </div>
     </div>
 
     {# ── Borrar + Confirmar ── #}
     <div class="flex items-center gap-2">
-        <button type="button"
-                @click="del()"
-                :disabled="arrows.length===0 || submitting"
-                :class="(arrows.length===0||submitting)?'opacity-30 cursor-not-allowed':''"
-                class="p-3.5 rounded-2xl bg-gray-700 hover:bg-gray-600 active:bg-gray-500 transition-colors">
+        <button type="button" onclick="deleteLast()" id="btn-delete"
+                class="p-3.5 rounded-2xl bg-gray-700 hover:bg-gray-600 active:bg-gray-500 transition-colors opacity-30">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z"/>
             </svg>
         </button>
-        <button type="button"
-                @click="openModal()"
-                :disabled="!isFull || submitting"
-                :class="(!isFull||submitting)?'opacity-40 cursor-not-allowed':'hover:opacity-90 active:opacity-80'"
-                class="flex-1 text-white font-bold py-3.5 rounded-2xl text-sm transition-all"
+        <button type="button" id="btn-confirm" onclick="openConfirmModal()"
+                class="flex-1 text-white font-bold py-3.5 rounded-2xl text-sm opacity-40 cursor-not-allowed transition-all"
                 style="background-color:{{ club.color_from }}">
-            <span x-show="!submitting" x-text="isFull ? 'Confirmar tanda ✓' : `Registrar (${arrows.length}/${maxArrows})`"></span>
-            <span x-show="submitting" x-cloak>Guardando...</span>
+            Registrar (0/{{ arrows_per_end }})
         </button>
     </div>
 
-    {# ── Historial de tandas ── #}
+    {# ── Historial ── #}
     {% if ends_history %}
     <div class="mt-1">
         <p class="text-[10px] text-gray-500 uppercase tracking-wide font-bold mb-2">Tandas anteriores</p>
@@ -221,13 +188,7 @@ window._ARCHER_POINTS = JSON.parse(document.getElementById('diana-data').getAttr
                 <div class="flex flex-wrap gap-1 flex-1">
                     {% for v in e.arrows %}{% if v %}
                     <span class="text-[10px] font-bold px-1.5 py-0.5 rounded
-                        {% if v == 'X' %}bg-yellow-400 text-gray-900
-                        {% elif v == '10' %}bg-yellow-300 text-gray-900
-                        {% elif v in ['9','8','7'] %}bg-red-500 text-white
-                        {% elif v in ['6','5'] %}bg-blue-500 text-white
-                        {% elif v in ['4','3'] %}bg-gray-600 text-white
-                        {% elif v in ['2','1'] %}bg-gray-700 text-gray-300
-                        {% else %}bg-gray-800 text-gray-400 border border-gray-600{% endif %}">{{ v }}</span>
+                        {% if v=='X' %}bg-yellow-400 text-gray-900{% elif v=='10' %}bg-yellow-300 text-gray-900{% elif v in ['9','8','7'] %}bg-red-500 text-white{% elif v in ['6','5'] %}bg-blue-500 text-white{% elif v in ['4','3'] %}bg-gray-600 text-white{% elif v in ['2','1'] %}bg-gray-700 text-gray-300{% else %}bg-gray-800 text-gray-400 border border-gray-600{% endif %}">{{ v }}</span>
                     {% endif %}{% endfor %}
                 </div>
                 <span class="text-xs font-black text-green-400 shrink-0">{{ e.pts }}</span>
@@ -238,45 +199,98 @@ window._ARCHER_POINTS = JSON.parse(document.getElementById('diana-data').getAttr
     {% endif %}
 
     {# ══ Modal de confirmación ══ #}
-    <div x-show="showModal" x-cloak
+    <div id="confirm-modal" style="display:none"
          class="fixed inset-0 z-50 flex items-end justify-center p-4"
          style="background:rgba(0,0,0,.75)">
-        <div class="w-full max-w-sm bg-gray-800 border border-gray-700 rounded-3xl p-6 text-center" @click.stop>
+        <div class="w-full max-w-sm bg-gray-800 border border-gray-700 rounded-3xl p-6 text-center">
             <div class="text-4xl mb-3">✅</div>
             <h3 class="text-xl font-extrabold mb-1">¿Confirmás la tanda?</h3>
-            <p class="text-sm text-gray-400 mb-1">Revisá antes de avanzar. No podrás corregir después.</p>
-            <div class="flex flex-wrap justify-center gap-1.5 my-4 min-h-[2rem]">
-                <template x-for="(v,i) in arrows" :key="i">
-                    <span class="inline-flex items-center justify-center rounded-lg font-bold text-xs px-2 py-0.5 min-w-8"
-                          :class="{
-                              'bg-yellow-400 text-gray-900':v==='X',
-                              'bg-yellow-300 text-gray-900':v==='10',
-                              'bg-red-500 text-white':['9','8','7'].includes(v),
-                              'bg-blue-500 text-white':['6','5'].includes(v),
-                              'bg-gray-600 text-white':['4','3'].includes(v),
-                              'bg-gray-700 text-gray-300':['2','1'].includes(v),
-                              'bg-gray-800 border border-gray-600 text-gray-400':v==='M'
-                          }" x-text="v"></span>
-                </template>
-            </div>
-            <p class="text-sm text-gray-300 mb-5">
-                Subtotal: <strong class="text-green-400" x-text="subtotal"></strong> pts
-            </p>
+            <p class="text-sm text-gray-400 mb-1">Revisá antes de avanzar.</p>
+            <div id="modal-chips" class="flex flex-wrap justify-center gap-1.5 my-4 min-h-[2rem]"></div>
+            <p class="text-sm text-gray-300 mb-5">Subtotal: <strong class="text-green-400" id="modal-subtotal">0</strong> pts</p>
             <div class="flex gap-3">
-                <button type="button" @click="showModal=false"
-                        class="flex-1 py-3 rounded-xl border border-gray-600 text-sm font-semibold text-gray-300 hover:bg-gray-700">
-                    ← Corregir
-                </button>
-                <button type="button" @click="confirm()"
+                <button type="button" onclick="closeConfirmModal()"
+                        class="flex-1 py-3 rounded-xl border border-gray-600 text-sm font-semibold text-gray-300 hover:bg-gray-700">← Corregir</button>
+                <button type="button" id="modal-confirm-btn" onclick="doConfirm()"
                         class="flex-1 py-3 rounded-xl text-white text-sm font-bold hover:opacity-90"
-                        style="background-color:{{ club.color_from }}">
-                    Confirmar ›
-                </button>
+                        style="background-color:{{ club.color_from }}">Confirmar ›</button>
             </div>
         </div>
     </div>
-
 </div>
+
+<script>
+(function(){
+    var meta       = document.getElementById('session-meta');
+    var targetType = meta.dataset.targetType || 'wa10';
+    var maxArrows  = parseInt(meta.dataset.maxArrows) || 6;
+    var prevPlots  = JSON.parse(meta.getAttribute('data-prev-plots') || '[]');
+    var endpoint   = meta.dataset.endpoint;
+    var submitting = false;
+
+    var plotter = new TargetPlotter({
+        svgId:'the-svg',zoneId:'diana-zone',containerId:'diana-container',
+        loupeId:'loupe-wrap',loupeSvgId:'loupe-svg',pillId:'score-pill',cursorId:'drag-cursor',
+        targetType:targetType,maxArrows:maxArrows,
+        onArrowAdded:function(){renderUI();},onArrowRemoved:function(){renderUI();}
+    });
+    plotter.loadPreviousPlots(prevPlots);
+
+    var CHIP_BG={X:'background:#fbbf24;color:#111827','10':'background:#fde68a;color:#111827','9':'background:#ef4444;color:white','8':'background:#dc2626;color:white','7':'background:#b91c1c;color:white','6':'background:#3b82f6;color:white','5':'background:#2563eb;color:white','4':'background:#4b5563;color:white','3':'background:#374151;color:white','2':'background:#1f2937;color:#d1d5db','1':'background:#111827;color:#9ca3af',M:'background:#0f172a;color:#6b7280;border:1px solid #374151'};
+
+    window.setInputMode=function(m){
+        document.getElementById('mode-plot').classList.toggle('hidden',m!=='plot');
+        document.getElementById('mode-keys').classList.toggle('hidden',m!=='keys');
+        ['plot','keys'].forEach(function(id){
+            var el=document.getElementById('seg-'+id);
+            el.className=id===m?'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all bg-white text-gray-900':'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all text-gray-400';
+        });
+        renderUI();
+    };
+    window.addFromKey=function(val){
+        if(plotter.getArrows().length>=maxArrows||submitting)return;
+        var rings={X:[0,5],'10':[5,10],'9':[10,20],'8':[20,30],'7':[30,40],'6':[40,50],'5':[50,60],'4':[60,70],'3':[70,80],'2':[80,90],'1':[90,100],'M':[100,110]};
+        var rng=rings[val]||[50,100];var r=rng[0]+Math.random()*(rng[1]-rng[0])*0.75;var a=Math.random()*Math.PI*2;
+        plotter._arrows.push({val:val,x:r*Math.cos(a),y:r*Math.sin(a)});plotter._renderPins();
+        if(navigator.vibrate)navigator.vibrate(12);renderUI();
+    };
+    window.deleteLast=function(){if(!submitting){plotter.deleteLast();renderUI();}};
+    window.openConfirmModal=function(){
+        var arrows=plotter.getArrows();if(!arrows.length||submitting)return;
+        var ch=document.getElementById('modal-chips');ch.innerHTML='';
+        arrows.forEach(function(a){var sp=document.createElement('span');sp.style.cssText=(CHIP_BG[a.val]||'')+';display:inline-flex;align-items:center;justify-content:center;border-radius:8px;font-weight:700;font-size:12px;padding:2px 8px;min-width:2rem;';sp.textContent=a.val;ch.appendChild(sp);});
+        document.getElementById('modal-subtotal').textContent=plotter.subtotal();
+        document.getElementById('confirm-modal').style.display='flex';
+    };
+    window.closeConfirmModal=function(){document.getElementById('confirm-modal').style.display='none';};
+    window.doConfirm=function(){
+        if(submitting)return;submitting=true;
+        document.getElementById('confirm-modal').style.display='none';
+        var arrows=plotter.getArrows();var vals=arrows.map(function(a){return a.val;});
+        var fd=new FormData();fd.append('arrows_json',JSON.stringify(vals));fd.append('plots_json',JSON.stringify(arrows));
+        var ctrl=new AbortController();var t=setTimeout(function(){ctrl.abort();},15000);
+        fetch(endpoint,{method:'POST',body:fd,credentials:'same-origin',signal:ctrl.signal})
+        .then(function(){clearTimeout(t);window.location.reload();})
+        .catch(function(){clearTimeout(t);submitting=false;alert('Error al guardar. Intentá de nuevo.');});
+    };
+    function renderUI(){
+        var arrows=plotter.getArrows();var n=arrows.length;var pts=plotter.subtotal();
+        document.getElementById('subtotal-display').textContent=pts;
+        var btn=document.getElementById('btn-confirm');var del=document.getElementById('btn-delete');
+        del.className='p-3.5 rounded-2xl bg-gray-700 hover:bg-gray-600 active:bg-gray-500 transition-colors'+(n===0?' opacity-30':'');
+        if(n>0){btn.className='flex-1 text-white font-bold py-3.5 rounded-2xl text-sm hover:opacity-90 active:opacity-80 transition-all';btn.textContent=n>=maxArrows?'Confirmar tanda ✓':'Registrar ('+n+'/'+maxArrows+')';}
+        else{btn.className='flex-1 text-white font-bold py-3.5 rounded-2xl text-sm opacity-40 cursor-not-allowed transition-all';btn.textContent='Registrar (0/'+maxArrows+')';}
+        ['chips-plot','chips-keys'].forEach(function(cid){
+            var el=document.getElementById(cid);if(!el)return;el.innerHTML='';
+            if(!arrows.length){var s=document.createElement('span');s.className='text-gray-500 text-sm self-center';s.textContent=cid==='chips-plot'?'Tocá la diana para anotar →':'Anotá tus flechas →';el.appendChild(s);return;}
+            arrows.forEach(function(a){var sp=document.createElement('span');sp.style.cssText=(CHIP_BG[a.val]||'')+';display:inline-flex;align-items:center;justify-content:center;border-radius:12px;font-weight:900;font-size:14px;padding:4px 10px;min-width:2.5rem;';sp.textContent=a.val;el.appendChild(sp);});
+        });
+        var mp=document.getElementById('mini-pins');if(mp){var pg=document.getElementById('pins-g');if(pg)mp.innerHTML=pg.innerHTML;}
+    }
+    renderUI();
+})();
+</script>
+
 {% endif %}
 
 {# ══ Bottom nav ══ #}

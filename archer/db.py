@@ -323,6 +323,29 @@ def init_db(conn) -> None:
     except Exception:
         pass
 
+    # ── Arrow plots (coordenadas de impacto para heatmap) ───────────────────
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS arrow_plots (
+            id           TEXT PRIMARY KEY,
+            session_type TEXT NOT NULL CHECK(session_type IN ('training','tournament','team')),
+            session_id   TEXT NOT NULL,
+            archer_id    TEXT NOT NULL,
+            end_number   INTEGER NOT NULL,
+            arrow_index  INTEGER NOT NULL,
+            x_pct        REAL NOT NULL,
+            y_pct        REAL NOT NULL,
+            score_val    TEXT NOT NULL,
+            created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (archer_id) REFERENCES archers(id)
+        )
+        """
+    )
+    try:
+        conn.commit()
+    except Exception:
+        pass
+
     # -----------------------------------------------------------------------
     # Perfil extendido del arquero (datos personales editables)
     # -----------------------------------------------------------------------

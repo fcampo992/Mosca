@@ -281,8 +281,9 @@ def score(tournament_id: str):
 @_require_archer_session
 def score_end(tournament_id: str):
     """Recibe y guarda una tanda del arquero en torneo por equipos."""
-    archer_id = session["archer_id"]
-    summary   = get_archer_team_score_summary(tournament_id, archer_id)
+    archer_id  = session["archer_id"]
+    summary    = get_archer_team_score_summary(tournament_id, archer_id)
+    end_number = summary.get("end_number", 1)
 
     arrows_json = request.form.get("arrows_json", "[]")
     try:
@@ -293,7 +294,19 @@ def score_end(tournament_id: str):
     save_team_end(
         tournament_id, archer_id,
         summary.get("round_number", 1),
-        summary.get("end_number", 1),
+        end_number,
         arrows,
     )
+
+    # Guardar plots si el front los mandó
+    try:
+        from archer.modules.plotter import save_plots  # noqa: PLC0415
+        raw_plots = request.form.get("plots_json", "")
+        if raw_plots:
+            plots = json.loads(raw_plots)
+            if isinstance(plots, list) and plots:
+                save_plots("team", tournament_id, archer_id, end_number, plots)
+    except Exception:
+        pass
+
     return ("", 204)

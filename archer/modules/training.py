@@ -197,6 +197,12 @@ def delete_session(session_id: str, archer_id: str) -> dict:
         return {"error": "Sesión no encontrada.", "status_code": 404}
     conn.execute("DELETE FROM training_ends WHERE session_id = ?", (session_id,))
     conn.execute("DELETE FROM training_sessions WHERE id = ?", (session_id,))
+    # Limpiar plots asociados
+    try:
+        from archer.modules.plotter import delete_all_plots_for_session  # noqa: PLC0415
+        delete_all_plots_for_session("training", session_id)
+    except Exception:
+        pass
     try:
         conn.commit()
     except Exception:

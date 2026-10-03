@@ -355,6 +355,15 @@ def _render_score(error=None):
              end_number > ends_per_round)
         )
 
+    # Plots de coordenadas (plotter mode)
+    from archer.modules.plotter import get_plots_for_end, get_all_plots_for_session  # noqa: PLC0415
+    try:
+        current_plots  = get_plots_for_end("tournament", tournament["id"], end_number)
+        previous_plots = get_all_plots_for_session("tournament", tournament["id"], archer_id)
+    except Exception:
+        current_plots  = []
+        previous_plots = []
+
     return render_template(
         "archer/score.html",
         tournament=tournament,
@@ -372,6 +381,8 @@ def _render_score(error=None):
         rounds_count=rounds_count,
         target_type=target_type,
         target_cfg=target_cfg,
+        current_plots=current_plots,
+        previous_plots=previous_plots,
         error=error,
     )
 
@@ -510,6 +521,18 @@ def score_end():
 
     is_last_end   = (end_number >= ends_per_round)
     is_last_round = (round_number >= rounds_count)
+
+    # Guardar plots de coordenadas si el front los mandó (plotter mode)
+    try:
+        import json as _json2
+        from archer.modules.plotter import save_plots  # noqa: PLC0415
+        raw_plots = request.form.get("plots_json", "")
+        if raw_plots:
+            plots = _json2.loads(raw_plots)
+            if isinstance(plots, list) and plots:
+                save_plots("tournament", tournament["id"], archer_id, end_number, plots)
+    except Exception:
+        pass
 
     if is_last_end and is_last_round:
         session["tournament_done"] = True
@@ -980,6 +1003,11 @@ def training_score(session_id: str):
     target_type = sess.get("target_type") or DEFAULT_TARGET
     target_cfg  = TARGET_TYPES.get(target_type, TARGET_TYPES[DEFAULT_TARGET])
 
+    # Plots de la tanda actual (si existen del plotter) y de tandas anteriores
+    from archer.modules.plotter import get_plots_for_end, get_all_plots_for_session  # noqa: PLC0415
+    current_plots  = get_plots_for_end("training", session_id, current_end)
+    previous_plots = get_all_plots_for_session("training", session_id, archer_id)
+
     return render_template(
         "archer/training_score.html",
         sess=sess,
@@ -992,6 +1020,8 @@ def training_score(session_id: str):
         is_unlimited=is_unlimited,
         target_type=target_type,
         target_cfg=target_cfg,
+        current_plots=current_plots,
+        previous_plots=previous_plots,
     )
 
 
@@ -1017,6 +1047,18 @@ def training_save_end(session_id: str):
     end_number = int(request.form.get("end_number", 1))
 
     save_end(session_id, end_number, scores, note)
+
+    # Guardar plots de coordenadas si el front los mandó (plotter mode)
+    try:
+        import json as _json2
+        from archer.modules.plotter import save_plots  # noqa: PLC0415
+        raw_plots = request.form.get("plots_json", "")
+        if raw_plots:
+            plots = _json2.loads(raw_plots)
+            if isinstance(plots, list) and plots:
+                save_plots("training", session_id, archer_id, end_number, plots)
+    except Exception:
+        pass
 
     total_ends = sess.get("total_ends")
     ends_done  = len(list_ends(session_id))
@@ -1056,6 +1098,10 @@ def training_summary(session_id: str):
     target_type = sess.get("target_type") or DEFAULT_TARGET
     target_cfg  = TARGET_TYPES.get(target_type, TARGET_TYPES[DEFAULT_TARGET])
 
+    # Todos los plots para el heatmap del resumen
+    from archer.modules.plotter import get_all_plots_for_session  # noqa: PLC0415
+    all_plots = get_all_plots_for_session("training", session_id, archer_id)
+
     return render_template(
         "archer/training_score.html",
         sess=sess,
@@ -1069,6 +1115,9 @@ def training_summary(session_id: str):
         summary_mode=True,
         target_type=target_type,
         target_cfg=target_cfg,
+        current_plots=[],
+        previous_plots=all_plots,
+        all_plots=all_plots,
     )
 
 

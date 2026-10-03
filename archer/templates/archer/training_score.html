@@ -330,7 +330,7 @@
                     onclick="return prepareSubmit()"
                     class="w-full text-white font-bold py-3.5 rounded-2xl text-sm
                            opacity-40 cursor-not-allowed transition-all"
-                    style="background-color: {{ club.color_from }}">
+                    style="background-color: #16a34a">
                 Registrar (0/{{ sess.arrows_per_end }})
             </button>
         </form>
@@ -497,11 +497,11 @@
         // para preservar el style="background-color" inline
         if (n > 0) {
             btn.classList.remove('opacity-40','cursor-not-allowed');
-            btn.classList.add('hover:opacity-90','active:opacity-80');
+            btn.classList.add('hover:opacity-90','active:opacity-80','ring-2','ring-white/30');
             btn.textContent = n >= maxArrows ? 'Confirmar tanda ✓' : 'Registrar (' + n + '/' + maxArrows + ')';
         } else {
             btn.classList.add('opacity-40','cursor-not-allowed');
-            btn.classList.remove('hover:opacity-90','active:opacity-80');
+            btn.classList.remove('hover:opacity-90','active:opacity-80','ring-2','ring-white/30');
             btn.textContent = 'Registrar (0/' + maxArrows + ')';
         }
 

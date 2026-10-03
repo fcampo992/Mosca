@@ -183,6 +183,17 @@
     function onStart(cx, cy) {
       if (self._arrows.length >= self.maxArrows) return;
       self._pressing = true;
+      // Deshabilitar transición para que el origen se actualice instantáneamente
+      self.containerEl.style.transition = 'none';
+      // Anclar el transform-origin al punto de toque — el zoom expande desde ahí
+      var rect = self.containerEl.getBoundingClientRect();
+      var ox = ((cx - rect.left) / rect.width)  * 100;
+      var oy = ((cy - rect.top)  / rect.height) * 100;
+      self.containerEl.style.transformOrigin = ox + '% ' + oy + '%';
+      // Forzar reflow para que el origen se aplique antes del scale
+      void self.containerEl.offsetWidth;
+      // Reactivar transición y aplicar zoom
+      self.containerEl.style.transition = '';
       self.containerEl.classList.add('zoomed');
       var c = svgCoords(svg, cx, cy);
       if (self.cursorEl) {
@@ -194,6 +205,7 @@
 
     function onMove(cx, cy) {
       if (!self._pressing) return;
+      // Actualizar coordenadas de lupa y cursor sin cambiar el origin (ya está anclado)
       var c = svgCoords(svg, cx, cy);
       if (self.cursorEl) {
         self.cursorEl.setAttribute('transform', 'translate(' + c.x + ',' + c.y + ')');
@@ -205,6 +217,8 @@
       if (!self._pressing) return;
       self._pressing = false;
       self.containerEl.classList.remove('zoomed');
+      // Resetear origin al centro para que el unzoom sea suave hacia el centro
+      self.containerEl.style.transformOrigin = 'center center';
       var c = svgCoords(svg, cx, cy);
       var r = Math.sqrt(c.x * c.x + c.y * c.y);
       if (r <= 107) {

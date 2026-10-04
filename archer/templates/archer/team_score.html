@@ -7,13 +7,15 @@
     <title>{{ tournament.name }} — Equipos</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         [x-cloak]{display:none!important}
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
         @keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
         .chip-pop{animation:pop .18s ease-out forwards}
     </style>
 </head>
-<body class="min-h-screen bg-gray-900 text-white pb-16" style="min-width:360px">
+<body class="min-h-screen bg-[#0b0f19] text-white pb-16" style="min-width:360px">
 
 {# ══ Torneo completado ══ #}
 {% if tournament_done %}

@@ -3,18 +3,17 @@
 
 {% block content %}
 {% set club = club_settings() %}
-{% set meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'] %}
 
 {# ── Banner de portada ── #}
-<div class="relative -mx-4 -mt-6 mb-0 h-36 overflow-hidden"
-     style="{% if profile.banner_url %}background-image:url('{{ profile.banner_url }}');background-size:cover;background-position:center{% else %}background: linear-gradient(135deg, {{ club.color_from }}, {{ club.color_to }}){% endif %}">
-    {# Botón subir banner #}
+<div class="relative -mx-4 -mt-6 mb-0 h-36 overflow-hidden rounded-b-2xl"
+     style="{% if profile.banner_url %}background-image:url('{{ profile.banner_url }}');background-size:cover;background-position:center{% else %}background:linear-gradient(135deg,#1e293b,#0f172a){% endif %}">
+    <div class="absolute inset-0 bg-gradient-to-t from-[#0b0f19]/60 to-transparent"></div>
     <form method="POST" action="{{ url_for('archer.upload_banner_route') }}"
           enctype="multipart/form-data" id="banner-form">
         <label for="banner-input"
                class="absolute bottom-3 right-3 cursor-pointer flex items-center gap-1.5
-                      bg-black/40 hover:bg-black/60 text-white text-xs font-medium
-                      px-3 py-1.5 rounded-xl backdrop-blur-sm transition-colors">
+                      bg-black/50 hover:bg-black/70 text-white text-xs font-medium
+                      px-3 py-1.5 rounded-xl backdrop-blur-sm transition-colors border border-white/10">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -28,24 +27,23 @@
 
 {# ── Avatar + nombre ── #}
 <div class="flex items-end gap-3 -mt-10 mb-5 px-1">
-    {# Foto de perfil — clicable para cambiar #}
     <div class="relative shrink-0">
         <form method="POST" action="{{ url_for('archer.upload_photo') }}"
               enctype="multipart/form-data" id="photo-form">
             <label for="photo-input" class="cursor-pointer block">
                 {% if profile.photo_url %}
                 <img src="{{ profile.photo_url }}" alt="Foto"
-                     class="w-16 h-16 rounded-full object-cover border-4 border-white shadow-lg" />
+                     class="w-16 h-16 rounded-full object-cover border-4 border-[#0b0f19] shadow-xl" />
                 {% else %}
-                <div class="w-16 h-16 rounded-full border-4 border-white shadow-lg
-                            flex items-center justify-center font-black text-xl text-white"
-                     style="background-color: {{ club.color_from }}">
+                <div class="w-16 h-16 rounded-full border-4 border-[#0b0f19] shadow-xl
+                            flex items-center justify-center font-black text-xl text-amber-400
+                            bg-amber-500/10">
                     {{ profile.name[0]|upper if profile.name else '?' }}
                 </div>
                 {% endif %}
-                <div class="absolute bottom-0 right-0 w-6 h-6 bg-white rounded-full shadow
-                            flex items-center justify-center border border-gray-200">
-                    <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <div class="absolute bottom-0 right-0 w-6 h-6 bg-[#111827] rounded-full shadow
+                            flex items-center justify-center border border-white/10">
+                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                     </svg>
                 </div>
@@ -55,17 +53,12 @@
         </form>
     </div>
     <div class="pb-1 min-w-0 flex-1">
-        <h1 class="text-lg font-extrabold text-gray-900 leading-tight">
-            {{ profile.name or 'Arquero' }}
-        </h1>
-        {% if profile.nickname %}
-        <p class="text-sm font-medium text-gray-400">"{{ profile.nickname }}"</p>
-        {% endif %}
-        {% if profile.club %}
-        <p class="text-xs text-gray-500 mt-0.5">{{ profile.club }}</p>
-        {% endif %}
+        <h1 class="text-lg font-extrabold text-white leading-tight">{{ profile.name or 'Arquero' }}</h1>
+        {% if profile.nickname %}<p class="text-sm font-medium text-slate-400">"{{ profile.nickname }}"</p>{% endif %}
+        {% if profile.club %}<p class="text-xs text-slate-500 mt-0.5">{{ profile.club }}</p>{% endif %}
         {% if profile.bow_category %}
-        <span class="inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+        <span class="inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-full
+                     bg-amber-500/15 text-amber-400 border border-amber-500/20">
             {{ profile.bow_category }}
         </span>
         {% endif %}
@@ -74,15 +67,15 @@
 
 {# Frase de temporada #}
 {% if profile.season_goal %}
-<div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3 mb-5 flex items-center gap-3">
+<div class="bg-[#111827] border border-white/[0.06] rounded-2xl px-4 py-3 mb-5 flex items-center gap-3">
     <span class="text-lg shrink-0">🎯</span>
-    <p class="text-sm text-gray-600 italic">"{{ profile.season_goal }}"</p>
+    <p class="text-sm text-slate-300 italic">"{{ profile.season_goal }}"</p>
 </div>
 {% endif %}
 
 {# ── Mensajes ── #}
 {% if success %}
-<div class="mb-4 flex items-center gap-2 bg-green-50 border border-green-200 text-green-800
+<div class="mb-4 flex items-center gap-2 bg-green-500/10 border border-green-500/20 text-green-400
             text-sm rounded-xl px-4 py-3">
     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
@@ -91,17 +84,17 @@
 </div>
 {% endif %}
 {% if error and field == 'banner' %}
-<div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">{{ error }}</div>
+<div class="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl">{{ error }}</div>
 {% endif %}
 
 {# ── Formulario de datos personales ── #}
-<section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6"
+<section class="bg-[#111827] border border-white/[0.06] rounded-2xl p-5 mb-6"
          x-data="{ open: {{ 'true' if error and field != 'banner' else 'false' }} }">
 
     <button type="button" @click="open = !open"
             class="w-full flex items-center justify-between text-left">
-        <h2 class="text-sm font-bold text-gray-800">Datos personales</h2>
-        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
+        <h2 class="text-sm font-bold text-white">Datos personales</h2>
+        <svg class="w-4 h-4 text-slate-500 transition-transform duration-200"
              :class="open ? 'rotate-180' : ''"
              fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
@@ -114,92 +107,94 @@
          x-transition:enter-end="opacity-100 translate-y-0"
          class="mt-4">
         <form method="POST" action="{{ url_for('archer.profile') }}" novalidate>
-
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                {# Nombre #}
+
                 <div class="sm:col-span-2">
-                    <label class="block text-xs font-medium text-gray-600 mb-1.5">
-                        Nombre completo <span class="text-red-500">*</span>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                        Nombre completo <span class="text-red-400">*</span>
                     </label>
                     <input name="name" type="text" maxlength="100"
                            value="{{ profile.name or '' }}"
-                           class="w-full border rounded-xl px-3 py-2.5 text-sm
-                                  {% if field == 'name' %}border-red-400 bg-red-50{% else %}border-gray-200{% endif %}
-                                  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                           required />
-                    {% if field == 'name' %}<p class="text-red-600 text-xs mt-1">{{ error }}</p>{% endif %}
+                           class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-white
+                                  bg-white/[0.05] border {% if field == 'name' %}border-red-500/60{% else %}border-white/[0.10]{% endif %}
+                                  focus:outline-none focus:border-amber-500/60 focus:bg-white/[0.08] transition-colors
+                                  placeholder:text-slate-500" required />
+                    {% if field == 'name' %}<p class="text-red-400 text-xs mt-1">{{ error }}</p>{% endif %}
                 </div>
 
-                {# Nickname #}
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Apodo / Nickname</label>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Apodo</label>
                     <input name="nickname" type="text" maxlength="80"
-                           value="{{ profile.nickname or '' }}"
-                           placeholder="Ej. El Zorro"
-                           class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
-                                  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" />
+                           value="{{ profile.nickname or '' }}" placeholder="Ej. El Zorro"
+                           class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-white
+                                  bg-white/[0.05] border border-white/[0.10]
+                                  focus:outline-none focus:border-amber-500/60 focus:bg-white/[0.08] transition-colors
+                                  placeholder:text-slate-500" />
                 </div>
 
-                {# Club #}
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Club que representa</label>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Club</label>
                     <input name="club" type="text" maxlength="100"
-                           value="{{ profile.club or '' }}"
-                           placeholder="Ej. Arqueros del Sur"
-                           class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
-                                  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" />
+                           value="{{ profile.club or '' }}" placeholder="Ej. Arqueros del Sur"
+                           class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-white
+                                  bg-white/[0.05] border border-white/[0.10]
+                                  focus:outline-none focus:border-amber-500/60 focus:bg-white/[0.08] transition-colors
+                                  placeholder:text-slate-500" />
                 </div>
 
-                {# Mano dominante #}
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Mano dominante</label>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Mano dominante</label>
                     <select name="dominant_hand"
-                            class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
-                                   focus:outline-none focus:ring-2 focus:ring-green-500">
-                        <option value="Diestro" {% if profile.dominant_hand == 'Diestro' %}selected{% endif %}>🏹 Diestro</option>
-                        <option value="Zurdo"   {% if profile.dominant_hand == 'Zurdo'   %}selected{% endif %}>🏹 Zurdo</option>
+                            class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-white
+                                   bg-white/[0.05] border border-white/[0.10]
+                                   focus:outline-none focus:border-amber-500/60 transition-colors">
+                        <option value="Diestro" {% if profile.dominant_hand == 'Diestro' %}selected{% endif %} class="bg-[#111827]">🏹 Diestro</option>
+                        <option value="Zurdo"   {% if profile.dominant_hand == 'Zurdo'   %}selected{% endif %} class="bg-[#111827]">🏹 Zurdo</option>
                     </select>
                 </div>
 
-                {# Categoría de arco #}
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Categoría principal</label>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Categoría</label>
                     <select name="bow_category"
-                            class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
-                                   focus:outline-none focus:ring-2 focus:ring-green-500">
-                        <option value="">— Sin especificar —</option>
+                            class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-white
+                                   bg-white/[0.05] border border-white/[0.10]
+                                   focus:outline-none focus:border-amber-500/60 transition-colors">
+                        <option value="" class="bg-[#111827]">— Sin especificar —</option>
                         {% for opt in ['Recurvo', 'Compuesto', 'Barebow', 'Longbow', 'Tradicional'] %}
-                        <option value="{{ opt }}" {% if profile.bow_category == opt %}selected{% endif %}>{{ opt }}</option>
+                        <option value="{{ opt }}" {% if profile.bow_category == opt %}selected{% endif %} class="bg-[#111827]">{{ opt }}</option>
                         {% endfor %}
                     </select>
                 </div>
 
-                {# Meta de temporada #}
                 <div class="sm:col-span-2">
-                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Meta de la temporada</label>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Meta de temporada</label>
                     <input name="season_goal" type="text" maxlength="200"
-                           value="{{ profile.season_goal or '' }}"
-                           placeholder="Ej. Camino al Nacional 70m"
-                           class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
-                                  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" />
+                           value="{{ profile.season_goal or '' }}" placeholder="Ej. Camino al Nacional 70m"
+                           class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-white
+                                  bg-white/[0.05] border border-white/[0.10]
+                                  focus:outline-none focus:border-amber-500/60 focus:bg-white/[0.08] transition-colors
+                                  placeholder:text-slate-500" />
                 </div>
             </div>
 
             <button type="submit"
-                    class="w-full text-white font-semibold py-3 rounded-xl text-sm transition-colors"
-                    style="background-color: {{ club.color_from }}">
+                    class="w-full py-3.5 rounded-2xl font-bold text-sm text-[#0b0f19] transition-all
+                           bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500
+                           hover:from-amber-300 hover:to-orange-300
+                           hover:-translate-y-0.5 active:translate-y-0
+                           shadow-lg shadow-orange-500/25">
                 Guardar cambios
             </button>
         </form>
     </div>
 </section>
 
-{# ── Mis setups de equipo (resumen) ── #}
+{# ── Mis setups de equipo ── #}
 <section>
     <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-bold text-gray-800">Mi equipo</h2>
+        <h2 class="text-sm font-bold text-slate-300">Mi equipo</h2>
         <a href="{{ url_for('archer.equipment') }}"
-           class="text-xs font-medium text-green-700 hover:underline">
+           class="text-xs font-medium text-amber-400 hover:text-amber-300 transition-colors">
             Gestionar →
         </a>
     </div>
@@ -208,17 +203,17 @@
     <div class="space-y-2">
         {% for s in setups %}
         <a href="{{ url_for('archer.equipment_edit', setup_id=s.id) }}"
-           class="flex items-center gap-3 bg-white rounded-2xl shadow-sm border border-gray-100
-                  p-4 hover:border-green-300 hover:shadow-md transition-all">
-            <div class="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-xl shrink-0">🏹</div>
+           class="flex items-center gap-3 bg-[#111827] border border-white/[0.06] rounded-2xl p-4
+                  hover:border-amber-500/20 transition-all">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-xl shrink-0">🏹</div>
             <div class="min-w-0">
-                <p class="font-semibold text-sm text-gray-900 truncate">{{ s.name }}</p>
-                <p class="text-xs text-gray-400">
+                <p class="font-semibold text-sm text-white truncate">{{ s.name }}</p>
+                <p class="text-xs text-slate-500">
                     {{ s.bow_type }}{% if s.draw_weight %} · {{ s.draw_weight }} lbs{% endif %}
                     {% if s.arrow_model %} · {{ s.arrow_model }}{% endif %}
                 </p>
             </div>
-            <svg class="w-4 h-4 text-gray-300 shrink-0 ml-auto" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 text-slate-600 shrink-0 ml-auto" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
             </svg>
         </a>
@@ -226,8 +221,8 @@
     </div>
     {% else %}
     <a href="{{ url_for('archer.equipment') }}"
-       class="flex items-center gap-3 bg-white rounded-2xl border border-dashed border-gray-200
-              p-5 text-gray-400 hover:border-green-300 hover:text-green-700 transition-all">
+       class="flex items-center gap-3 bg-[#111827] border border-dashed border-white/[0.08] rounded-2xl p-5
+              text-slate-500 hover:border-amber-500/30 hover:text-amber-400 transition-all">
         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
         </svg>

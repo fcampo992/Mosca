@@ -1131,6 +1131,33 @@ def training_delete(session_id: str):
 
 
 # ---------------------------------------------------------------------------
+# Sección Club — ranking + feed de actividad
+# ---------------------------------------------------------------------------
+
+@archer_bp.route("/club", methods=["GET"])
+@require_session
+def club():
+    """GET — Sección Club: ranking global, rankings activos y feed de actividad."""
+    from archer.modules.club_feed import (  # noqa: PLC0415
+        get_active_tournaments_ranking,
+        get_global_ranking,
+        get_activity_feed,
+    )
+    active_rankings = get_active_tournaments_ranking()
+    global_ranking  = get_global_ranking(limit=20)
+    activity_feed   = get_activity_feed(limit=20)
+    archer_id       = session["archer_id"]
+
+    return render_template(
+        "archer/club.html",
+        active_rankings=active_rankings,
+        global_ranking=global_ranking,
+        activity_feed=activity_feed,
+        current_archer_id=archer_id,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Autenticación: email + contraseña
 # ---------------------------------------------------------------------------
 

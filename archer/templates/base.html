@@ -7,15 +7,20 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>[x-cloak]{display:none!important}</style>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        [x-cloak]{display:none!important}
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
     {% block head %}{% endblock %}
 </head>
 {% set club = club_settings() %}
 {% set archer_logged = session.get('archer_id') %}
-<body class="min-h-screen bg-gray-50 text-gray-900" style="min-width:360px"
+<body class="min-h-screen bg-[#0b0f19] text-gray-100" style="min-width:360px"
       x-data="{ drawerOpen: false }">
 
     <!-- ── Header ── -->
+    {% block header %}
     <header class="text-white px-4 h-14 flex items-center justify-between shadow-sm sticky top-0 z-40"
             style="background-color: {{ club.color_from }}">
         <a href="{{ '/archer/dashboard' if archer_logged else '/' }}"
@@ -131,6 +136,7 @@
         </nav>
         {% endblock %}{# /header_nav #}
     </header>
+    {% endblock %}{# /header #}
 
     <!-- ── Overlay drawer (solo para visitantes) ── -->
     {% if not archer_logged %}

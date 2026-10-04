@@ -146,48 +146,16 @@ def create_app(config_object: object = Config) -> Flask:
     # ── Home route ───────────────────────────────────────────────────────────
     @app.route("/")
     def home():
-        from flask import render_template  # noqa: PLC0415
-        from archer.modules.club import get_club_settings  # noqa: PLC0415
-        from archer.modules.news import get_active_news  # noqa: PLC0415
-        try:
-            from archer.db import get_connection  # noqa: PLC0415
-            conn = get_connection()
-            cursor = conn.execute(
-                "SELECT id, name FROM tournaments WHERE status = 'active' ORDER BY created_at DESC"
-            )
-            active_tournaments = [dict(row) for row in cursor.fetchall()]
-            cursor2 = conn.execute(
-                """
-                SELECT a.name,
-                       COALESCE(SUM(s.points), 0) AS total_points
-                FROM archers a
-                LEFT JOIN scores s ON s.archer_id = a.id
-                LEFT JOIN tournaments t ON t.id = s.tournament_id AND t.status = 'finished'
-                GROUP BY a.id, a.name
-                ORDER BY total_points DESC, a.name ASC
-                LIMIT 5
-                """
-            )
-            top_archers = [dict(row) for row in cursor2.fetchall()]
-        except Exception:
-            active_tournaments = []
-            top_archers = []
-        club = get_club_settings()
-        active_news = get_active_news()
-        # El banner solo usa el Gestor de Noticias — ticker_text de club_settings ya no se usa
-        ticker_enabled = int(club.get("ticker_enabled", 1))
-        if ticker_enabled and active_news:
-            ticker = " · ".join(
-                f"📢 {n['title']}: {n['content']}" for n in active_news
-            )
-        else:
-            ticker = ""  # sin noticias activas o banner deshabilitado → sin banner
-        return render_template("home.html",
-                               active_tournaments=active_tournaments,
-                               top_archers=top_archers,
-                               club=club,
-                               ticker=ticker,
-                               active_news=active_news)
+        """Redirige según estado de sesión: dashboard si logueado, login si no."""
+        from flask import redirect, url_for, session  # noqa: PLC0415
+        from archer.modules.archer import is_session_valid  # noqa: PLC0415
+
+        archer_id   = session.get("archer_id")
+        last_active = session.get("last_active", "")
+
+        if archer_id and is_session_valid(last_active):
+            return redirect(url_for("archer.dashboard"))
+        return redirect(url_for("archer.login"))
 
     # ── Health / debug endpoint ───────────────────────────────────────────────
     @app.route("/health")

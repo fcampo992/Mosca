@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Ingresar — {{ club_settings().club_name }}{% endblock %}
 
-{# Suprimir el nav del header en la pantalla de login #}
-{% block header_nav %}{% endblock %}
+{# Suprimir header completo — el login tiene su propio layout con la diana #}
+{% block header %}{% endblock %}
+{# TODO: En el futuro agregar logo/branding del club en el header del login
+   por ahora solo se muestra el nombre del club dentro de la diana (mobile) y desktop #}
 
 {% block head %}
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">

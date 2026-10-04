@@ -1138,15 +1138,31 @@ def training_delete(session_id: str):
 def auth_register():
     """POST — Registra un arquero nuevo con email + contraseña."""
     from archer.modules.auth import register_with_email  # noqa: PLC0415
+    import logging as _log  # noqa: PLC0415
+    _logger = _log.getLogger(__name__)
 
     first_name = request.form.get("first_name", "").strip()
     last_name  = request.form.get("last_name",  "").strip()
     email      = request.form.get("email",      "").strip()
     password   = request.form.get("password",   "")
 
-    result = register_with_email(first_name, last_name, email, password)
+    _logger.info("auth_register: intento email=%s first=%s last=%s", email, first_name, last_name)
+
+    try:
+        result = register_with_email(first_name, last_name, email, password)
+    except Exception as exc:
+        import traceback as _tb  # noqa: PLC0415
+        _logger.error("auth_register: excepcion inesperada: %s\n%s", exc, _tb.format_exc())
+        return render_template(
+            "archer/login.html",
+            tab="register",
+            error="Error interno al crear la cuenta. Intentá de nuevo.",
+            field=None,
+            form_data=request.form,
+        ), 500
 
     if "error" in result:
+        _logger.warning("auth_register: error de validacion: %s", result["error"])
         return render_template(
             "archer/login.html",
             tab="register",
@@ -1155,7 +1171,7 @@ def auth_register():
             form_data=request.form,
         ), 400
 
-    # Éxito — crear sesión
+    _logger.info("auth_register: OK archer_id=%s", result.get("id"))
     session["archer_id"]      = result["id"]
     session["archer_name"]    = result.get("name", email)
     session["last_active"]    = datetime.now().isoformat()
@@ -1199,19 +1215,50 @@ def auth_email():
 @archer_bp.route("/auth/google")
 def auth_google():
     """GET — Inicia el flujo OAuth con Google."""
-    oauth = current_app.extensions.get("oauth")
-    if oauth is None:
-        return render_template(
-            "archer/login.html",
-            tab="login",
-            error="Google OAuth no está configurado en este servidor.",
-        ), 503
+    import os as _os  # noqa: PLC0415
+    import logging as _log  # noqa: PLC0415
+    _logger = _log.getLogger(__name__)
 
-    import os  # noqa: PLC0415
-    redirect_uri = os.environ.get(
+    client_id = _os.environ.get("GOOGLE_CLIENT_ID")
+    _logger.info("auth_google: GOOGLE_CLIENT_ID presente=%s", bool(client_id))
+
+    oauth = current_app.extensions.get("oauth")
+    _logger.info("auth_google: oauth extension presente=%s", oauth is not None)
+
+    if oauth is None:
+        # Intentar configurar en el momento si las variables existen ahora
+        client_secret = _os.environ.get("GOOGLE_CLIENT_SECRET")
+        if client_id and client_secret:
+            try:
+                from authlib.integrations.flask_client import OAuth  # noqa: PLC0415
+                oauth = OAuth(current_app)
+                oauth.register(
+                    name="google",
+                    client_id=client_id,
+                    client_secret=client_secret,
+                    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+                    client_kwargs={"scope": "openid email profile"},
+                )
+                current_app.extensions["oauth"] = oauth
+                _logger.info("auth_google: OAuth configurado on-demand OK")
+            except Exception as exc:
+                _logger.error("auth_google: fallo on-demand OAuth config: %s", exc)
+                return render_template(
+                    "archer/login.html", tab="login",
+                    error="Error al configurar Google OAuth. Contactá al administrador.",
+                ), 503
+        else:
+            _logger.error("auth_google: variables no disponibles CLIENT_ID=%s", bool(client_id))
+            return render_template(
+                "archer/login.html", tab="login",
+                error="Google OAuth no está configurado en este servidor.",
+            ), 503
+
+    redirect_uri = _os.environ.get(
         "GOOGLE_REDIRECT_URI",
         url_for("archer.auth_google_callback", _external=True),
     )
+    _logger.info("auth_google: redirect_uri=%s", redirect_uri)
     return oauth.google.authorize_redirect(redirect_uri)
 
 

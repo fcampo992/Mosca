@@ -40,7 +40,7 @@
                         {{ ranking[1].name.split()[0] }}
                     </p>
                     <p class="text-sm font-extrabold text-slate-200">{{ ranking[1].total_points }}</p>
-                    <div class="w-full bg-slate-600/40 border border-slate-600/30 rounded-t-xl mt-2" style="height:52px"></div>
+                    <div class="w-full rounded-t-xl mt-2" style="height:52px; background:#475569; border:1px solid #64748b"></div>
                 </div>
                 {% endif %}
 
@@ -64,7 +64,7 @@
                     </p>
                     <p class="text-base font-extrabold text-amber-400">{{ ranking[0].total_points }}</p>
                     <div class="w-full rounded-t-xl mt-2"
-                         style="height:80px; background: linear-gradient(135deg,rgba(245,158,11,0.25),rgba(249,115,22,0.20)); border:1px solid rgba(245,158,11,0.20)"></div>
+                         style="height:80px; background:linear-gradient(135deg,#f59e0b,#f97316); border:1px solid #f59e0b"></div>
                 </div>
 
                 {# 3er lugar — derecha #}
@@ -86,7 +86,7 @@
                         {{ ranking[2].name.split()[0] }}
                     </p>
                     <p class="text-sm font-extrabold text-slate-300">{{ ranking[2].total_points }}</p>
-                    <div class="w-full bg-amber-800/20 border border-amber-700/20 rounded-t-xl mt-2" style="height:36px"></div>
+                    <div class="w-full bg-amber-800 border border-amber-700 rounded-t-xl mt-2" style="height:36px"></div>
                 </div>
                 {% endif %}
 

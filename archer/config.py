@@ -27,6 +27,11 @@ class Config:
     ADMIN_USERNAME: str = os.environ.get("ADMIN_USERNAME", "admin")
     ADMIN_PASSWORD: str = os.environ.get("ADMIN_PASSWORD", "")
 
+    # ── Session lifetime ───────────────────────────────────────────────────────────────────
+    # session.permanent = True hace que Flask incluya Max-Age/Expires en la cookie.
+    # Con esto el usuario sigue logueado aunque cierre el browser (30 días).
+    PERMANENT_SESSION_LIFETIME: int = 60 * 60 * 24 * 30  # 30 días en segundos
+
     # ── Flask internals ────────────────────────────────────────────────────────────────────
     TESTING: bool = False
     DEBUG: bool = os.environ.get("FLASK_DEBUG", "0") == "1"

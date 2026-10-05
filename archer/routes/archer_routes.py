@@ -65,7 +65,8 @@ def _allowed_photo(filename: str) -> bool:
 
 def require_session(view):
     """Decorador que verifica sesión activa válida.
-    - Sin sesión o expirada → login
+    - Sin sesión → login
+    - Sesión expirada (30 min idle) → solo en rutas de score activo
     - Status 'pending' → pantalla de espera (solo rutas permitidas pasan)
     - Status 'suspended' → logout + login con mensaje
     """
@@ -74,7 +75,16 @@ def require_session(view):
         archer_id   = session.get("archer_id")
         last_active = session.get("last_active", "")
 
-        if not archer_id or not is_session_valid(last_active):
+        if not archer_id:
+            session.clear()
+            return redirect(url_for("archer.login"))
+
+        # El timeout de 30 min solo aplica en rutas de score activo (torneo en vivo).
+        # Para el resto de la app (dashboard, entrenamiento, perfil, club…) la sesión
+        # se mantiene mientras la cookie sea válida (30 días).
+        score_routes = {"archer.score", "archer.score_post", "archer.score_end",
+                        "archer.correct_arrow"}
+        if request.endpoint in score_routes and not is_session_valid(last_active):
             session.clear()
             return redirect(url_for("archer.login"))
 
@@ -1219,6 +1229,7 @@ def auth_register():
         ), 400
 
     _logger.info("auth_register: OK archer_id=%s", result.get("id"))
+    session.permanent         = True
     session["archer_id"]      = result["id"]
     session["archer_name"]    = result.get("name", email)
     session["last_active"]    = datetime.now().isoformat()
@@ -1250,6 +1261,7 @@ def auth_email():
             form_data=request.form,
         ), 429 if result.get("blocked") else 401
 
+    session.permanent        = True
     session["archer_id"]     = result["id"]
     session["archer_name"]   = result.get("name", email)
     session["last_active"]   = datetime.now().isoformat()
@@ -1345,6 +1357,7 @@ def auth_google_callback():
             error=result["error"],
         ), 500
 
+    session.permanent        = True
     session["archer_id"]     = result["id"]
     session["archer_name"]   = result.get("name", profile.get("email", ""))
     session["last_active"]   = datetime.now().isoformat()

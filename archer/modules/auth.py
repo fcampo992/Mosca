@@ -100,11 +100,10 @@ def register_with_email(
     conn.execute(
         """
         INSERT INTO archers
-            (id, name, first_name, last_name, email, password_hash, auth_provider, pin)
-        VALUES (?, ?, ?, ?, ?, ?, 'email', ?)
+            (id, name, first_name, last_name, email, password_hash, auth_provider, pin, status)
+        VALUES (?, ?, ?, ?, ?, ?, 'email', ?, 'pending')
         """,
         (archer_id, full_name, first_name, last_name, email, password_hash,
-         # pin placeholder único (no se usa, pero la columna es UNIQUE NOT NULL)
          f"__email__{archer_id[:8]}"),
     )
     try:
@@ -163,7 +162,10 @@ def login_with_email(email: str, password: str) -> dict:
 
     # Éxito — resetear intentos
     _email_lockout[email] = (0, 0.0)
-    return _row_to_archer(row)
+    result = _row_to_archer(row)
+    # Indicar si está pendiente de aprobación
+    result["is_pending"] = (row["status"] == "pending")
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -201,7 +203,9 @@ def find_or_create_google_archer(profile: dict) -> dict:
         "SELECT * FROM archers WHERE google_id = ?", (google_id,)
     ).fetchone()
     if row:
-        return _row_to_archer(row)
+        result = _row_to_archer(row)
+        result["is_pending"] = (row["status"] == "pending")
+        return result
 
     # 2. Buscar por email — unificar cuenta existente
     if email:
@@ -227,16 +231,18 @@ def find_or_create_google_archer(profile: dict) -> dict:
             row = conn.execute(
                 "SELECT * FROM archers WHERE id = ?", (row["id"],)
             ).fetchone()
-            return _row_to_archer(row)
+            result = _row_to_archer(row)
+            result["is_pending"] = (row["status"] == "pending")
+            return result
 
-    # 3. Crear arquero nuevo
+    # 3. Crear arquero nuevo — pending hasta aprobación del admin
     archer_id = str(uuid.uuid4())
     conn.execute(
         """
         INSERT INTO archers
             (id, name, first_name, last_name, email, google_id,
-             auth_provider, photo_url, pin)
-        VALUES (?, ?, ?, ?, ?, ?, 'google', ?, ?)
+             auth_provider, photo_url, pin, status)
+        VALUES (?, ?, ?, ?, ?, ?, 'google', ?, ?, 'pending')
         """,
         (archer_id, full_name, given, family, email or None,
          google_id, picture or None,
@@ -250,4 +256,8 @@ def find_or_create_google_archer(profile: dict) -> dict:
     row = conn.execute(
         "SELECT * FROM archers WHERE id = ?", (archer_id,)
     ).fetchone()
-    return _row_to_archer(row) if row else {"error": "Error al crear la cuenta con Google."}
+    if row:
+        result = _row_to_archer(row)
+        result["is_pending"] = True  # siempre pending al crear
+        return result
+    return {"error": "Error al crear la cuenta con Google."}

@@ -88,7 +88,7 @@ def login():
     if username == cfg["ADMIN_USERNAME"] and password == cfg["ADMIN_PASSWORD"]:
         session["admin_logged_in"] = True
         session["admin_username"] = username
-        return redirect(url_for("admin.tournaments"))
+        return redirect(url_for("admin.panel"))
 
     logger.warning("Admin login failed for username=%s", username)
     return render_template("admin/login.html", error="Credenciales incorrectas."), 401
@@ -115,6 +115,97 @@ def logout():
 def _status_code_from_error(result: dict, default: int = 400) -> int:
     """Extrae el código HTTP de un dict de error, o usa el valor por defecto."""
     return result.get("status_code", default)
+
+
+# ---------------------------------------------------------------------------
+# Panel principal — /admin/panel
+# ---------------------------------------------------------------------------
+
+@admin_bp.route("/")
+@require_admin
+def index():
+    """Redirige /admin → /admin/panel."""
+    return redirect(url_for("admin.panel"))
+
+
+@admin_bp.route("/panel")
+@require_admin
+def panel():
+    """GET — Dashboard del panel de administración."""
+    from archer.db import get_connection  # noqa: PLC0415
+
+    conn = get_connection()
+
+    # KPIs
+    total_archers = conn.execute(
+        "SELECT COUNT(*) AS c FROM archers WHERE auth_provider != 'pin' OR email IS NOT NULL"
+    ).fetchone()["c"]
+
+    pending_archers = conn.execute(
+        "SELECT COUNT(*) AS c FROM archers WHERE status = 'pending'"
+    ).fetchone()["c"]
+
+    active_tournaments = conn.execute(
+        "SELECT COUNT(*) AS c FROM tournaments WHERE status = 'active'"
+    ).fetchone()["c"]
+
+    finished_tournaments = conn.execute(
+        "SELECT COUNT(*) AS c FROM tournaments WHERE status = 'finished'"
+    ).fetchone()["c"]
+
+    # Arqueros pendientes (lista para la card de alerta)
+    pending_list = conn.execute(
+        """
+        SELECT id, name, email, auth_provider, created_at
+        FROM archers WHERE status = 'pending'
+        ORDER BY created_at DESC LIMIT 10
+        """
+    ).fetchall()
+
+    return render_template(
+        "admin/panel.html",
+        kpis={
+            "total_archers":      total_archers,
+            "pending_archers":    pending_archers,
+            "active_tournaments": active_tournaments,
+            "finished_tournaments": finished_tournaments,
+        },
+        pending_list=[dict(r) for r in pending_list],
+    )
+
+
+@admin_bp.route("/panel/archer/<archer_id>/approve", methods=["POST"])
+@require_admin
+def approve_archer(archer_id: str):
+    """POST — Aprueba un arquero pendiente."""
+    from archer.db import get_connection  # noqa: PLC0415
+    conn = get_connection()
+    conn.execute(
+        "UPDATE archers SET status = 'active' WHERE id = ?", (archer_id,)
+    )
+    try:
+        conn.commit()
+    except Exception:
+        pass
+    logger.info("Admin aprobó archer_id=%s", archer_id)
+    return redirect(url_for("admin.panel"))
+
+
+@admin_bp.route("/panel/archer/<archer_id>/reject", methods=["POST"])
+@require_admin
+def reject_archer(archer_id: str):
+    """POST — Rechaza (suspende) un arquero pendiente."""
+    from archer.db import get_connection  # noqa: PLC0415
+    conn = get_connection()
+    conn.execute(
+        "UPDATE archers SET status = 'suspended' WHERE id = ?", (archer_id,)
+    )
+    try:
+        conn.commit()
+    except Exception:
+        pass
+    logger.info("Admin rechazó archer_id=%s", archer_id)
+    return redirect(url_for("admin.panel"))
 
 
 # ---------------------------------------------------------------------------

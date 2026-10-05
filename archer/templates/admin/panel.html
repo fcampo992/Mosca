@@ -1,0 +1,186 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Panel — {{ club_settings().club_name }}{% endblock %}
+
+{% block content %}
+{% set club = club_settings() %}
+
+{# ── Bienvenida ── #}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">Panel de Administración</h1>
+    <p class="text-sm text-gray-400 mt-0.5">{{ club.club_name }} · Bienvenido, {{ session.get('admin_username', 'Admin') }}</p>
+</div>
+
+{# ── Alerta: arqueros pendientes ── #}
+{% if kpis.pending_archers > 0 %}
+<div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex items-start gap-3">
+    <div class="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-lg shrink-0">⚠️</div>
+    <div class="flex-1 min-w-0">
+        <p class="font-semibold text-amber-800 text-sm">
+            {{ kpis.pending_archers }} arquero{{ 's' if kpis.pending_archers != 1 else '' }} esperando aprobación
+        </p>
+        <p class="text-xs text-amber-600 mt-0.5">Revisá las solicitudes abajo para habilitarlos.</p>
+    </div>
+    <a href="#pendientes"
+       class="shrink-0 text-xs font-semibold text-amber-700 bg-amber-100 hover:bg-amber-200
+              px-3 py-1.5 rounded-xl transition-colors">
+        Ver →
+    </a>
+</div>
+{% endif %}
+
+{# ── KPIs ── #}
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+    <div class="bg-white rounded-2xl border border-gray-100 p-4 text-center shadow-sm">
+        <p class="text-3xl font-black text-gray-900">{{ kpis.total_archers }}</p>
+        <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-wide">Arqueros</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-{% if kpis.pending_archers > 0 %}amber-200{% else %}gray-100{% endif %} p-4 text-center shadow-sm">
+        <p class="text-3xl font-black {% if kpis.pending_archers > 0 %}text-amber-500{% else %}text-gray-900{% endif %}">
+            {{ kpis.pending_archers }}
+        </p>
+        <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-wide">Pendientes</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 p-4 text-center shadow-sm">
+        <p class="text-3xl font-black text-green-700">{{ kpis.active_tournaments }}</p>
+        <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-wide">En curso</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 p-4 text-center shadow-sm">
+        <p class="text-3xl font-black text-gray-900">{{ kpis.finished_tournaments }}</p>
+        <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-wide">Finalizados</p>
+    </div>
+</div>
+
+{# ── Módulos ── #}
+<h2 class="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">Módulos</h2>
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
+
+    <a href="{{ url_for('admin.tournaments') }}"
+       class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm
+              hover:border-green-300 hover:shadow-md transition-all flex flex-col gap-2">
+        <div class="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-xl">📅</div>
+        <p class="font-semibold text-sm text-gray-800">Torneos</p>
+        <p class="text-xs text-gray-400">Crear y gestionar torneos individuales</p>
+    </a>
+
+    <a href="{{ url_for('team_admin.index') }}"
+       class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm
+              hover:border-green-300 hover:shadow-md transition-all flex flex-col gap-2">
+        <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-xl">👥</div>
+        <p class="font-semibold text-sm text-gray-800">Equipos</p>
+        <p class="text-xs text-gray-400">Torneos por equipos y sorteos</p>
+    </a>
+
+    <a href="{{ url_for('admin.archers') }}"
+       class="bg-white border border-{% if kpis.pending_archers > 0 %}amber-200{% else %}gray-100{% endif %} rounded-2xl p-4 shadow-sm
+              hover:border-green-300 hover:shadow-md transition-all flex flex-col gap-2 relative">
+        <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-xl">🏹</div>
+        <p class="font-semibold text-sm text-gray-800">Arqueros</p>
+        <p class="text-xs text-gray-400">Gestionar miembros del club</p>
+        {% if kpis.pending_archers > 0 %}
+        <span class="absolute top-3 right-3 w-5 h-5 bg-amber-400 text-white text-[10px]
+                     font-bold rounded-full flex items-center justify-center">
+            {{ kpis.pending_archers }}
+        </span>
+        {% endif %}
+    </a>
+
+    <a href="{{ url_for('admin.club_settings') }}"
+       class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm
+              hover:border-green-300 hover:shadow-md transition-all flex flex-col gap-2">
+        <div class="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-xl">⚙️</div>
+        <p class="font-semibold text-sm text-gray-800">Club</p>
+        <p class="text-xs text-gray-400">Nombre, colores, branding</p>
+    </a>
+
+    <a href="{{ url_for('admin.news') }}"
+       class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm
+              hover:border-green-300 hover:shadow-md transition-all flex flex-col gap-2">
+        <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-xl">📢</div>
+        <p class="font-semibold text-sm text-gray-800">Noticias</p>
+        <p class="text-xs text-gray-400">Publicar anuncios al club</p>
+    </a>
+
+    <a href="{{ url_for('stats.ranking_view') }}"
+       class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm
+              hover:border-green-300 hover:shadow-md transition-all flex flex-col gap-2">
+        <div class="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center text-xl">🏆</div>
+        <p class="font-semibold text-sm text-gray-800">Ranking</p>
+        <p class="text-xs text-gray-400">Clasificación histórica global</p>
+    </a>
+
+    {# ── Próximamente ── #}
+    <div class="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-4 flex flex-col gap-2 opacity-60 cursor-not-allowed">
+        <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-xl">📦</div>
+        <p class="font-semibold text-sm text-gray-500">Stock</p>
+        <p class="text-xs text-gray-400">Próximamente</p>
+    </div>
+
+    <div class="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-4 flex flex-col gap-2 opacity-60 cursor-not-allowed">
+        <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-xl">💳</div>
+        <p class="font-semibold text-sm text-gray-500">Cuotas</p>
+        <p class="text-xs text-gray-400">Próximamente</p>
+    </div>
+
+</div>
+
+{# ── Sección aprobaciones ── #}
+{% if pending_list %}
+<section id="pendientes">
+    <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-bold text-gray-800">Solicitudes pendientes</h2>
+        <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">
+            {{ pending_list | length }} pendiente{{ 's' if pending_list | length != 1 else '' }}
+        </span>
+    </div>
+
+    <div class="space-y-3">
+        {% for archer in pending_list %}
+        <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm
+                    flex items-center gap-4">
+            {# Avatar #}
+            <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200
+                        flex items-center justify-center font-black text-amber-600 shrink-0">
+                {{ archer.name[0] | upper if archer.name else '?' }}
+            </div>
+
+            {# Info #}
+            <div class="flex-1 min-w-0">
+                <p class="font-semibold text-sm text-gray-900 truncate">{{ archer.name }}</p>
+                <p class="text-xs text-gray-400 mt-0.5 truncate">
+                    {{ archer.email or 'Sin email' }}
+                    <span class="mx-1">·</span>
+                    <span class="{% if archer.auth_provider == 'google' %}text-blue-500{% else %}text-gray-400{% endif %}">
+                        {% if archer.auth_provider == 'google' %}Google{% else %}Email{% endif %}
+                    </span>
+                </p>
+            </div>
+
+            {# Acciones #}
+            <div class="flex items-center gap-2 shrink-0">
+                <form method="POST"
+                      action="{{ url_for('admin.approve_archer', archer_id=archer.id) }}">
+                    <button type="submit"
+                            class="text-xs font-semibold text-green-700 bg-green-50
+                                   hover:bg-green-100 border border-green-200
+                                   px-3 py-1.5 rounded-xl transition-colors">
+                        ✓ Aprobar
+                    </button>
+                </form>
+                <form method="POST"
+                      action="{{ url_for('admin.reject_archer', archer_id=archer.id) }}"
+                      onsubmit="return confirm('¿Rechazar a {{ archer.name }}? Su cuenta quedará suspendida.')">
+                    <button type="submit"
+                            class="text-xs font-semibold text-red-500 bg-red-50
+                                   hover:bg-red-100 border border-red-200
+                                   px-3 py-1.5 rounded-xl transition-colors">
+                        ✕ Rechazar
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% endblock %}

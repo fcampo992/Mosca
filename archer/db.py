@@ -247,6 +247,8 @@ def init_db(conn) -> None:
         "ALTER TABLE archers ADD COLUMN auth_provider TEXT DEFAULT 'pin'",
         "ALTER TABLE archers ADD COLUMN first_name TEXT",
         "ALTER TABLE archers ADD COLUMN last_name TEXT",
+        # Estado del arquero: pending → aprobación manual requerida, active → puede usar la app
+        "ALTER TABLE archers ADD COLUMN status TEXT NOT NULL DEFAULT 'active'",
     ]
     for migration in migrations:
         try:

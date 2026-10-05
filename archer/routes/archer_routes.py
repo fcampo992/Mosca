@@ -64,21 +64,38 @@ def _allowed_photo(filename: str) -> bool:
 # ---------------------------------------------------------------------------
 
 def require_session(view):
-    """Decorador que verifica que existe una sesión activa válida (≤ 30 min).
-
-    Si la sesión no existe o expiró, limpia la sesión y redirige a /archer/login.
-    Si es válida, actualiza last_active antes de continuar.
+    """Decorador que verifica sesión activa válida.
+    - Sin sesión o expirada → login
+    - Status 'pending' → pantalla de espera (solo rutas permitidas pasan)
+    - Status 'suspended' → logout + login con mensaje
     """
     @functools.wraps(view)
     def wrapped(*args, **kwargs):
-        archer_id = session.get("archer_id")
+        archer_id   = session.get("archer_id")
         last_active = session.get("last_active", "")
 
         if not archer_id or not is_session_valid(last_active):
             session.clear()
             return redirect(url_for("archer.login"))
 
-        # Actualizar last_active en cada request autenticado (Req 4.4)
+        # Verificar status del arquero en DB si no está en sesión
+        archer_status = session.get("archer_status", "active")
+        if archer_status == "pending":
+            # Rutas permitidas mientras está pendiente
+            allowed = {"archer.pending", "archer.logout", "archer.training",
+                       "archer.training_score", "archer.training_summary",
+                       "archer.training_new", "archer.training_save_end",
+                       "archer.training_finish", "archer.training_delete",
+                       "archer.profile", "archer.upload_photo",
+                       "archer.equipment", "archer.equipment_edit",
+                       "archer.club"}
+            if request.endpoint not in allowed:
+                return redirect(url_for("archer.pending"))
+
+        if archer_status == "suspended":
+            session.clear()
+            return redirect(url_for("archer.login"))
+
         session["last_active"] = datetime.now().isoformat()
         return view(*args, **kwargs)
 
@@ -203,13 +220,16 @@ def login():
 
 @archer_bp.route("/logout", methods=["POST"])
 def logout():
-    """
-    POST — Invalida la sesión activa y redirige al login.
-
-    Requerimientos: 4.5
-    """
+    """POST — Invalida la sesión activa y redirige al login."""
     session.clear()
     return redirect(url_for("archer.login"))
+
+
+@archer_bp.route("/pending", methods=["GET"])
+@require_session
+def pending():
+    """GET — Pantalla de espera para arqueros pendientes de aprobación."""
+    return render_template("archer/pending.html")
 
 
 # ---------------------------------------------------------------------------
@@ -1203,7 +1223,10 @@ def auth_register():
     session["archer_name"]    = result.get("name", email)
     session["last_active"]    = datetime.now().isoformat()
     session["auth_provider"]  = "email"
+    session["archer_status"]  = result.get("status", "active")
     session.pop("photo_url", None)
+    if result.get("is_pending"):
+        return redirect(url_for("archer.pending"))
     return redirect(url_for("archer.dashboard"))
 
 
@@ -1231,7 +1254,10 @@ def auth_email():
     session["archer_name"]   = result.get("name", email)
     session["last_active"]   = datetime.now().isoformat()
     session["auth_provider"] = "email"
+    session["archer_status"] = result.get("status", "active")
     session.pop("photo_url", None)
+    if result.get("is_pending"):
+        return redirect(url_for("archer.pending"))
     return redirect(url_for("archer.dashboard"))
 
 
@@ -1323,10 +1349,11 @@ def auth_google_callback():
     session["archer_name"]   = result.get("name", profile.get("email", ""))
     session["last_active"]   = datetime.now().isoformat()
     session["auth_provider"] = "google"
-    # Foto de Google → guardar en sesión
+    session["archer_status"] = result.get("status", "active")
     if result.get("photo_url"):
         session["photo_url"] = result["photo_url"]
     else:
         session.pop("photo_url", None)
-
+    if result.get("is_pending"):
+        return redirect(url_for("archer.pending"))
     return redirect(url_for("archer.dashboard"))

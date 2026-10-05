@@ -329,12 +329,262 @@ def create_archer(name: str, pin: str) -> dict:
 
 
 def list_archers() -> list[dict]:
-    """Retorna todos los arqueros ordenados alfabéticamente por nombre ASC (Req 3.9)."""
+    """Retorna todos los arqueros con datos completos, ordenados por nombre ASC."""
     conn = get_connection()
     cursor = conn.execute(
-        "SELECT id, pin, name, COALESCE(photo_url, '') AS photo_url, created_at FROM archers ORDER BY name ASC"
+        """
+        SELECT
+            id,
+            pin,
+            name,
+            COALESCE(first_name, '') AS first_name,
+            COALESCE(last_name, '')  AS last_name,
+            COALESCE(email, '')      AS email,
+            COALESCE(photo_url, '')  AS photo_url,
+            COALESCE(auth_provider, 'pin') AS auth_provider,
+            COALESCE(status, 'active')     AS status,
+            created_at
+        FROM archers
+        ORDER BY name ASC
+        """
     )
     return [dict(row) for row in cursor.fetchall()]
+
+
+def get_archer_detail(archer_id: str) -> dict | None:
+    """Retorna la ficha completa de un arquero con stats de torneos y entrenamientos.
+
+    Returns None si el arquero no existe.
+    Incluye:
+    - Datos básicos del arquero
+    - KPIs: torneos jugados, promedio por flecha, mejor puntuación, sesiones de entrenamiento
+    - Historial de torneos (últimos 10)
+    - Últimas sesiones de entrenamiento (últimas 5)
+    """
+    conn = get_connection()
+
+    # Datos básicos
+    row = conn.execute(
+        """
+        SELECT id, pin, name, first_name, last_name, email, photo_url,
+               auth_provider, status, created_at
+        FROM archers WHERE id = ?
+        """,
+        (archer_id,),
+    ).fetchone()
+    if row is None:
+        return None
+
+    archer = dict(row)
+
+    # Torneos jugados y promedio por flecha
+    stats = conn.execute(
+        """
+        SELECT
+            COUNT(DISTINCT s.tournament_id)      AS tournaments_played,
+            COALESCE(AVG(s.points), 0)           AS avg_per_arrow,
+            COALESCE(MAX(sub.total), 0)          AS best_tournament_pts,
+            COUNT(s.id)                          AS total_arrows
+        FROM scores s
+        LEFT JOIN (
+            SELECT tournament_id, SUM(points) AS total
+            FROM scores WHERE archer_id = ?
+            GROUP BY tournament_id
+        ) sub ON sub.tournament_id = s.tournament_id
+        WHERE s.archer_id = ?
+        """,
+        (archer_id, archer_id),
+    ).fetchone()
+
+    archer["kpis"] = {
+        "tournaments_played":  stats["tournaments_played"] if stats else 0,
+        "avg_per_arrow":       round(stats["avg_per_arrow"] or 0, 2) if stats else 0,
+        "best_tournament_pts": stats["best_tournament_pts"] if stats else 0,
+        "total_arrows":        stats["total_arrows"] if stats else 0,
+    }
+
+    # Sesiones de entrenamiento
+    training_row = conn.execute(
+        """
+        SELECT COUNT(*) AS total_sessions
+        FROM training_sessions WHERE archer_id = ? AND status = 'finished'
+        """,
+        (archer_id,),
+    ).fetchone()
+    archer["kpis"]["training_sessions"] = training_row["total_sessions"] if training_row else 0
+
+    # Historial de torneos
+    history = conn.execute(
+        """
+        SELECT
+            t.id,
+            t.name                AS tournament_name,
+            t.date,
+            t.status,
+            COALESCE(SUM(s.points), 0) AS total_points,
+            COUNT(s.id)               AS arrows_shot
+        FROM registrations r
+        JOIN tournaments t ON t.id = r.tournament_id
+        LEFT JOIN scores s ON s.tournament_id = t.id AND s.archer_id = r.archer_id
+        WHERE r.archer_id = ?
+        GROUP BY t.id
+        ORDER BY t.date DESC
+        LIMIT 10
+        """,
+        (archer_id,),
+    ).fetchall()
+    archer["history"] = [dict(h) for h in history]
+
+    # Últimas sesiones de entrenamiento
+    training = conn.execute(
+        """
+        SELECT id, session_date, distance, target_type, environment,
+               arrows_per_end, total_ends, status
+        FROM training_sessions
+        WHERE archer_id = ? AND status = 'finished'
+        ORDER BY session_date DESC, created_at DESC
+        LIMIT 5
+        """,
+        (archer_id,),
+    ).fetchall()
+    archer["training"] = [dict(t) for t in training]
+
+    # Torneos activos en los que participa
+    active = conn.execute(
+        """
+        SELECT t.id, t.name, t.status
+        FROM registrations r
+        JOIN tournaments t ON t.id = r.tournament_id
+        WHERE r.archer_id = ? AND t.status = 'active'
+        LIMIT 3
+        """,
+        (archer_id,),
+    ).fetchall()
+    archer["active_tournaments"] = [dict(a) for a in active]
+
+    return archer
+
+
+def get_archer_activity(archer_id: str) -> list[dict]:
+    """Retorna una línea de tiempo de actividad del arquero.
+
+    Eventos incluidos: registro, aprobación (estimada), torneos jugados,
+    últimas sesiones de entrenamiento. Ordenado del más reciente al más antiguo.
+    """
+    conn = get_connection()
+    events: list[dict] = []
+
+    # Registro
+    row = conn.execute(
+        "SELECT name, created_at, status, auth_provider FROM archers WHERE id = ?",
+        (archer_id,),
+    ).fetchone()
+    if row is None:
+        return []
+
+    events.append({
+        "type": "register",
+        "icon": "👤",
+        "label": f"Se registró con {'Google' if row['auth_provider'] == 'google' else 'email' if row['auth_provider'] == 'email' else 'PIN'}",
+        "date": row["created_at"],
+    })
+
+    # Torneos en los que participó (últimos 5)
+    tournaments = conn.execute(
+        """
+        SELECT t.name, t.date, t.status,
+               COALESCE(SUM(s.points), 0) AS total_points
+        FROM registrations r
+        JOIN tournaments t ON t.id = r.tournament_id
+        LEFT JOIN scores s ON s.tournament_id = t.id AND s.archer_id = r.archer_id
+        WHERE r.archer_id = ?
+        GROUP BY t.id
+        ORDER BY t.date DESC
+        LIMIT 5
+        """,
+        (archer_id,),
+    ).fetchall()
+
+    for t in tournaments:
+        events.append({
+            "type": "tournament",
+            "icon": "🏆",
+            "label": f"Participó en {t['name']} — {t['total_points']} pts",
+            "date": t["date"],
+        })
+
+    # Últimas 3 sesiones de entrenamiento
+    sessions = conn.execute(
+        """
+        SELECT session_date, distance, target_type
+        FROM training_sessions
+        WHERE archer_id = ? AND status = 'finished'
+        ORDER BY session_date DESC, created_at DESC
+        LIMIT 3
+        """,
+        (archer_id,),
+    ).fetchall()
+
+    for s in sessions:
+        events.append({
+            "type": "training",
+            "icon": "🎯",
+            "label": f"Entrenamiento {s['distance'] or ''} · {s['target_type'] or 'diana'}",
+            "date": s["session_date"],
+        })
+
+    # Ordenar del más reciente al más antiguo
+    events.sort(key=lambda e: str(e["date"] or ""), reverse=True)
+    return events
+
+
+def export_archers_csv() -> str:
+    """Genera un CSV con todos los arqueros y sus stats básicas.
+
+    Columnas: Nombre, Email, Estado, Proveedor, Torneos, Promedio/flecha, Fecha registro
+    Retorna el contenido CSV como string.
+    """
+    import csv
+    import io
+
+    conn = get_connection()
+    rows = conn.execute(
+        """
+        SELECT
+            a.id,
+            a.name,
+            COALESCE(a.email, '') AS email,
+            COALESCE(a.status, 'active') AS status,
+            COALESCE(a.auth_provider, 'pin') AS auth_provider,
+            a.created_at,
+            COUNT(DISTINCT s.tournament_id) AS tournaments_played,
+            ROUND(COALESCE(AVG(s.points), 0), 2) AS avg_per_arrow
+        FROM archers a
+        LEFT JOIN scores s ON s.archer_id = a.id
+        GROUP BY a.id
+        ORDER BY a.name ASC
+        """
+    ).fetchall()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Nombre", "Email", "Estado", "Proveedor", "Torneos jugados", "Promedio/flecha", "Fecha de registro"])
+
+    status_labels = {"active": "Activo", "pending": "Pendiente", "suspended": "Suspendido"}
+    provider_labels = {"email": "Email", "google": "Google", "pin": "PIN"}
+
+    for r in rows:
+        writer.writerow([
+            r["name"],
+            r["email"],
+            status_labels.get(r["status"], r["status"]),
+            provider_labels.get(r["auth_provider"], r["auth_provider"]),
+            r["tournaments_played"],
+            r["avg_per_arrow"],
+            str(r["created_at"])[:10] if r["created_at"] else "",
+        ])
+
+    return output.getvalue()
 
 
 def delete_archer(archer_id: str) -> dict:

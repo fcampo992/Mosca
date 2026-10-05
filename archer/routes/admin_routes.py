@@ -32,6 +32,9 @@ from archer.modules.admin import (
     delete_archer,
     delete_tournament,
     enroll_archer,
+    export_archers_csv,
+    get_archer_activity,
+    get_archer_detail,
     get_tournament,
     list_archers,
     list_categories,
@@ -416,10 +419,7 @@ def categories(tournament_id: str):
 def archers():
     """
     GET  — Renderiza la lista de arqueros junto con el formulario de creación.
-    POST — Crea un nuevo arquero; si hay error re-renderiza el formulario con
-           el mensaje de error; si tiene éxito redirige a la misma vista.
-
-    Requerimientos: 3.1, 3.2, 3.3, 3.4, 3.9
+    POST — Crea un nuevo arquero PIN; si hay error re-renderiza con mensaje.
     """
     error = None
     field = None
@@ -449,10 +449,10 @@ def archers():
                 status_code,
             )
 
-        # Éxito → redirigir (POST-Redirect-GET)
         return redirect(url_for("admin.archers"))
 
-    # GET
+    # GET — pasar filtro activo desde query param
+    status_filter = request.args.get("status", "all")
     return render_template(
         "admin/archers.html",
         archers=list_archers(),
@@ -461,7 +461,85 @@ def archers():
         field=field,
         form_data=form_data,
         enroll_error=None,
+        status_filter=status_filter,
     )
+
+
+@admin_bp.route("/archers/export.csv", methods=["GET"])
+@require_admin
+def archers_export_csv():
+    """GET — Descarga CSV con todos los arqueros y sus stats."""
+    from flask import Response  # noqa: PLC0415
+    csv_content = export_archers_csv()
+    return Response(
+        csv_content,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=arqueros.csv"},
+    )
+
+
+@admin_bp.route("/archers/<archer_id>", methods=["GET"])
+@require_admin
+def archer_profile(archer_id: str):
+    """GET — Ficha detallada del arquero: stats, historial, actividad."""
+    archer = get_archer_detail(archer_id)
+    if archer is None:
+        return redirect(url_for("admin.archers"))
+    activity = get_archer_activity(archer_id)
+    return render_template(
+        "admin/archer_profile.html",
+        archer=archer,
+        activity=activity,
+    )
+
+
+@admin_bp.route("/archers/<archer_id>/approve", methods=["POST"])
+@require_admin
+def approve_archer_inline(archer_id: str):
+    """POST — Aprueba un arquero pendiente desde la lista de arqueros."""
+    from archer.db import get_connection as _gc  # noqa: PLC0415
+    conn = _gc()
+    conn.execute("UPDATE archers SET status = 'active' WHERE id = ?", (archer_id,))
+    try:
+        conn.commit()
+    except Exception:
+        pass
+    logger.info("Admin aprobó archer_id=%s", archer_id)
+    redirect_to = request.form.get("redirect_to", "") or url_for("admin.archers")
+    return redirect(redirect_to)
+
+
+@admin_bp.route("/archers/<archer_id>/reject", methods=["POST"])
+@require_admin
+def reject_archer_inline(archer_id: str):
+    """POST — Suspende un arquero pendiente desde la lista de arqueros."""
+    from archer.db import get_connection as _gc  # noqa: PLC0415
+    conn = _gc()
+    conn.execute("UPDATE archers SET status = 'suspended' WHERE id = ?", (archer_id,))
+    try:
+        conn.commit()
+    except Exception:
+        pass
+    logger.info("Admin rechazó archer_id=%s", archer_id)
+    redirect_to = request.form.get("redirect_to", "") or url_for("admin.archers")
+    return redirect(redirect_to)
+
+
+@admin_bp.route("/archers/<archer_id>/status", methods=["POST"])
+@require_admin
+def archer_set_status(archer_id: str):
+    """POST — Cambia el status de un arquero (active / suspended). Desde el perfil."""
+    from archer.db import get_connection as _gc  # noqa: PLC0415
+    new_status = request.form.get("status", "").strip()
+    if new_status not in ("active", "suspended", "pending"):
+        return redirect(url_for("admin.archer_profile", archer_id=archer_id))
+    conn = _gc()
+    conn.execute("UPDATE archers SET status = ? WHERE id = ?", (new_status, archer_id))
+    try:
+        conn.commit()
+    except Exception:
+        pass
+    return redirect(url_for("admin.archer_profile", archer_id=archer_id))
 
 
 @admin_bp.route("/archers/<archer_id>/enroll", methods=["POST"])

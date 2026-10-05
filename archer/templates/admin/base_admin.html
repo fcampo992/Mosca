@@ -7,27 +7,34 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>[x-cloak]{display:none!important}</style>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        [x-cloak]{display:none!important}
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
     {% block head %}{% endblock %}
 </head>
 {% set club = club_settings() %}
 <body class="min-h-screen bg-gray-50 text-gray-900" style="min-width:360px"
       x-data="{ sidebarOpen: false }">
 
-<!-- ── Top bar (color sólido, sin gradiente) ── -->
-<header class="h-14 flex items-center justify-between px-4 fixed top-0 left-0 right-0 z-40 shadow-sm border-b border-white/10"
-        style="background-color: {{ club.color_from }}">
+<!-- ── Top bar — dark neutro, sin depender del color del club ── -->
+<header class="h-14 flex items-center justify-between px-4 fixed top-0 left-0 right-0 z-40
+               bg-gray-900 border-b border-white/[0.06] shadow-sm">
     <div class="flex items-center gap-3">
-        <!-- Hamburger (mobile) -->
         <button @click="sidebarOpen = !sidebarOpen"
-                class="lg:hidden p-2 rounded-lg hover:bg-white/20 active:bg-white/30 transition-colors text-white"
+                class="lg:hidden p-2 rounded-lg hover:bg-white/10 active:bg-white/20 transition-colors text-white"
                 aria-label="Menú">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path x-show="!sidebarOpen" stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
                 <path x-show="sidebarOpen"  stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>
         </button>
-        <a href="/" class="font-bold text-lg tracking-wide text-white">🏹 {{ club.club_name }}</a>
+        <a href="{{ url_for('admin.panel') }}" class="font-bold text-base tracking-tight text-white flex items-center gap-2">
+            <span>🏹</span>
+            <span>{{ club.club_name }}</span>
+            <span class="text-[10px] font-medium text-amber-400/70 ml-1">Admin</span>
+        </a>
     </div>
 </header>
 
@@ -45,17 +52,18 @@
 
 <!-- ── Sidebar ── -->
 <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-       class="fixed top-14 left-0 bottom-0 w-64 bg-white shadow-xl z-30
+       class="fixed top-14 left-0 bottom-0 w-64 z-30
               transform transition-transform duration-200 ease-in-out
-              lg:translate-x-0 lg:shadow-none lg:border-r lg:border-gray-200
-              overflow-y-auto flex flex-col">
+              lg:translate-x-0 lg:shadow-none
+              overflow-y-auto flex flex-col
+              bg-gray-900 border-r border-white/[0.06]">
 
     <nav class="p-4 space-y-1 flex-1">
 
         <!-- Panel -->
         <a href="{{ url_for('admin.panel') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
-                  {% if request.endpoint == 'admin.panel' %}bg-green-50 text-green-800{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                  {% if request.endpoint == 'admin.panel' %}bg-amber-500/10 text-amber-400{% else %}text-slate-400 hover:bg-white/[0.05] hover:text-white{% endif %}">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
             </svg>
@@ -63,10 +71,10 @@
         </a>
 
         <!-- Competencia -->
-        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 pt-4 pb-1">Competencia</p>
+        <p class="text-[10px] font-bold text-slate-600 uppercase tracking-widest px-3 pt-4 pb-1">Competencia</p>
         <a href="{{ url_for('admin.tournaments') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
-                  {% if request.endpoint in ('admin.tournaments', 'admin.tournament_detail') %}bg-green-50 text-green-800{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                  {% if request.endpoint in ('admin.tournaments', 'admin.tournament_detail') %}bg-amber-500/10 text-amber-400{% else %}text-slate-400 hover:bg-white/[0.05] hover:text-white{% endif %}">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
             </svg>
@@ -74,7 +82,7 @@
         </a>
         <a href="{{ url_for('team_admin.index') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
-                  {% if request.endpoint and request.endpoint.startswith('team_admin.') %}bg-green-50 text-green-800{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                  {% if request.endpoint and request.endpoint.startswith('team_admin.') %}bg-amber-500/10 text-amber-400{% else %}text-slate-400 hover:bg-white/[0.05] hover:text-white{% endif %}">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
@@ -82,20 +90,19 @@
         </a>
 
         <!-- Club -->
-        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 pt-4 pb-1">Club</p>
+        <p class="text-[10px] font-bold text-slate-600 uppercase tracking-widest px-3 pt-4 pb-1">Club</p>
         <a href="{{ url_for('admin.archers') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors relative
-                  {% if request.endpoint == 'admin.archers' %}bg-green-50 text-green-800{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                  {% if request.endpoint == 'admin.archers' %}bg-amber-500/10 text-amber-400{% else %}text-slate-400 hover:bg-white/[0.05] hover:text-white{% endif %}">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
             Arqueros
-            {# Badge de pendientes #}
             {% set pending_count = pending_count|default(0) %}
         </a>
         <a href="{{ url_for('admin.club_settings') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
-                  {% if request.endpoint == 'admin.club_settings' %}bg-green-50 text-green-800{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                  {% if request.endpoint == 'admin.club_settings' %}bg-amber-500/10 text-amber-400{% else %}text-slate-400 hover:bg-white/[0.05] hover:text-white{% endif %}">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -104,7 +111,7 @@
         </a>
         <a href="{{ url_for('admin.news') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
-                  {% if request.endpoint == 'admin.news' %}bg-green-50 text-green-800{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                  {% if request.endpoint == 'admin.news' %}bg-amber-500/10 text-amber-400{% else %}text-slate-400 hover:bg-white/[0.05] hover:text-white{% endif %}">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 12h6m-3-4h.01"/>
             </svg>
@@ -112,7 +119,7 @@
         </a>
         <a href="{{ url_for('stats.ranking_view') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
-                  text-gray-700 hover:bg-gray-100">
+                  text-slate-400 hover:bg-white/[0.05] hover:text-white">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
             </svg>
@@ -120,14 +127,14 @@
         </a>
 
         <!-- Próximamente -->
-        <p class="text-[10px] font-bold text-gray-300 uppercase tracking-widest px-3 pt-4 pb-1">Próximamente</p>
-        <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-300 cursor-not-allowed">
+        <p class="text-[10px] font-bold text-slate-700 uppercase tracking-widest px-3 pt-4 pb-1">Próximamente</p>
+        <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-700 cursor-not-allowed">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
             </svg>
             Stock de equipos
         </div>
-        <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-300 cursor-not-allowed">
+        <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-700 cursor-not-allowed">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
             </svg>
@@ -137,11 +144,11 @@
     </nav>
 
     <!-- Cerrar sesión al fondo del sidebar -->
-    <div class="p-4 border-t border-gray-100">
+    <div class="p-4 border-t border-white/[0.06]">
         <form method="POST" action="{{ url_for('admin.logout') }}">
             <button type="submit"
                     class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
-                           text-red-600 hover:bg-red-50 transition-colors">
+                           text-red-400 hover:bg-red-500/10 transition-colors">
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                 </svg>
@@ -152,7 +159,7 @@
 </aside>
 
 <!-- ── Main content ── -->
-<div class="lg:pl-64 pt-14 min-h-screen">
+<div class="lg:pl-64 pt-14 min-h-screen bg-[#0b0f19]">
     <main class="px-4 py-6 max-w-4xl mx-auto">
         {% block content %}{% endblock %}
     </main>

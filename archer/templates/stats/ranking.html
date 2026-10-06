@@ -99,33 +99,29 @@
         <div class="bg-[#111827] border border-white/[0.08] rounded-2xl overflow-hidden">
 
             {# Header de la tabla #}
-            <div class="px-4 py-3 border-b border-white/[0.05]
-                        grid gap-2 text-[10px] font-bold text-slate-600 uppercase tracking-wider"
-                 style="grid-template-columns: 2rem 1fr 4rem 4rem 3.5rem">
-                <span>#</span>
-                <span>Arquero</span>
-                <span class="text-right">Puntos</span>
-                <span class="text-right hidden sm:block">Prom.</span>
-                <span class="text-right hidden sm:block">Torneos</span>
+            <div class="px-4 py-3 border-b border-white/[0.05] flex items-center gap-3
+                        text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                <span class="w-6 shrink-0">#</span>
+                <span class="flex-1">Arquero</span>
+                <span class="w-14 text-right shrink-0">Puntos</span>
             </div>
 
             <div class="divide-y divide-white/[0.04]">
                 {% for entry in ranking %}
-                <div class="px-4 py-3 flex items-center gap-2 hover:bg-white/[0.02] transition-colors
-                            {% if entry.position <= 3 %}bg-white/[0.01]{% endif %}"
-                     style="display:grid; grid-template-columns: 2rem 1fr 4rem 4rem 3.5rem; align-items: center; gap: 0.5rem">
+                <div class="px-4 py-3 flex items-center gap-3 hover:bg-white/[0.02] transition-colors
+                            {% if entry.position <= 3 %}bg-white/[0.01]{% endif %}">
 
                     {# Posición #}
-                    <span class="font-black text-sm
+                    <span class="w-6 shrink-0 font-black text-sm text-center
                         {% if entry.position == 1 %}text-amber-400
                         {% elif entry.position == 2 %}text-slate-400
-                        {% elif entry.position == 3 %}text-amber-700
+                        {% elif entry.position == 3 %}text-amber-600
                         {% else %}text-slate-600 text-xs{% endif %}">
                         {{ entry.position }}
                     </span>
 
-                    {# Arquero #}
-                    <div class="flex items-center gap-2.5 min-w-0">
+                    {# Avatar + nombre + stats secundarias #}
+                    <div class="flex items-center gap-2.5 flex-1 min-w-0">
                         {% if entry.photo_url %}
                         <img src="{{ entry.photo_url }}" alt=""
                              class="w-8 h-8 rounded-xl object-cover border border-white/[0.08] shrink-0" />
@@ -138,28 +134,30 @@
                             {{ entry.name[0] | upper }}
                         </div>
                         {% endif %}
-                        <span class="text-sm font-semibold text-white truncate
-                                     {% if entry.position <= 3 %}font-bold{% endif %}">
-                            {{ entry.name }}
-                        </span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-semibold text-white truncate
+                                      {% if entry.position <= 3 %}font-bold{% endif %}">
+                                {{ entry.name }}
+                            </p>
+                            {# Stats secundarias visibles en mobile debajo del nombre #}
+                            <p class="text-[10px] text-slate-500 mt-0.5">
+                                {% if entry.tournaments_played > 0 %}
+                                    {{ entry.tournaments_played }} torneo{{ 's' if entry.tournaments_played != 1 }}
+                                    <span class="mx-1 text-slate-700">·</span>
+                                    {{ entry.avg_points_per_arrow }} prom.
+                                {% else %}
+                                    Sin torneos
+                                {% endif %}
+                            </p>
+                        </div>
                     </div>
 
                     {# Puntos #}
-                    <span class="text-right font-bold text-sm
+                    <span class="w-14 text-right shrink-0 font-bold text-sm
                                  {% if entry.position == 1 %}text-amber-400
                                  {% elif entry.total_points > 0 %}text-white
                                  {% else %}text-slate-600{% endif %}">
                         {{ entry.total_points }}
-                    </span>
-
-                    {# Promedio (oculto en mobile) #}
-                    <span class="text-right text-xs text-slate-500 hidden sm:block">
-                        {{ entry.avg_points_per_arrow }}
-                    </span>
-
-                    {# Torneos (oculto en mobile) #}
-                    <span class="text-right text-xs text-slate-600 hidden sm:block">
-                        {{ entry.tournaments_played }}
                     </span>
 
                 </div>
@@ -167,11 +165,6 @@
             </div>
 
         </div>
-
-        {# Leyenda de columnas en mobile #}
-        <p class="text-[10px] text-slate-600 text-center mt-3 sm:hidden">
-            Deslizá a la derecha para ver promedio y torneos
-        </p>
     </section>
 
     {% else %}

@@ -157,6 +157,7 @@
     this._arrows        = [];   // tanda actual: [{val,x,y}]
     this._prevPlots     = [];   // pins de tandas anteriores (read-only)
     this._pressing      = false;
+    this._lastCoords    = null; // últimas coordenadas SVG del move (usadas en onEnd)
 
     this._pinsG         = this.svgEl.getElementById
                           ? this.svgEl.querySelector('#pins-g')
@@ -207,6 +208,7 @@
       if (!self._pressing) return;
       // Actualizar coordenadas de lupa y cursor sin cambiar el origin (ya está anclado)
       var c = svgCoords(svg, cx, cy);
+      self._lastCoords = c; // guardar para onEnd
       if (self.cursorEl) {
         self.cursorEl.setAttribute('transform', 'translate(' + c.x + ',' + c.y + ')');
       }
@@ -219,7 +221,12 @@
       self.containerEl.classList.remove('zoomed');
       // Resetear origin al centro para que el unzoom sea suave hacia el centro
       self.containerEl.style.transformOrigin = 'center center';
-      var c = svgCoords(svg, cx, cy);
+
+      // Usar las últimas coordenadas del move si existen (más precisas que el touchend,
+      // que puede diferir levemente en iOS). Si no hubo move, calcular desde touchend.
+      var c = self._lastCoords || svgCoords(svg, cx, cy);
+      self._lastCoords = null;
+
       var r = Math.sqrt(c.x * c.x + c.y * c.y);
       if (r <= 107) {
         var val = scoreAt(c.x, c.y, self.targetType);
@@ -235,7 +242,7 @@
     this._onTouchStart = function(e) { e.preventDefault(); var t=e.touches[0]; onStart(t.clientX,t.clientY); };
     this._onTouchMove  = function(e) { e.preventDefault(); var t=e.touches[0]; onMove(t.clientX,t.clientY);  };
     this._onTouchEnd   = function(e) { e.preventDefault(); var t=e.changedTouches[0]; onEnd(t.clientX,t.clientY); };
-    this._onTouchCancel= function()  { self._pressing=false; self.containerEl.classList.remove('zoomed'); self._hideLoupe(); };
+    this._onTouchCancel= function()  { self._pressing=false; self._lastCoords=null; self.containerEl.classList.remove('zoomed'); self._hideLoupe(); };
 
     svg.addEventListener('touchstart',  this._onTouchStart,  { passive: false });
     svg.addEventListener('touchmove',   this._onTouchMove,   { passive: false });

@@ -92,6 +92,14 @@
 
         <!-- Club -->
         <p class="text-[10px] font-bold text-slate-600 uppercase tracking-widest px-3 pt-4 pb-1">Club</p>
+        <a href="{{ url_for('admin.club_panel') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+                  {% if request.endpoint in ('admin.club_panel','admin.club_banner_new','admin.club_banner_upload','admin.club_news_new','admin.club_news_edit','admin.club_resource_new','admin.club_config_save') %}bg-amber-500/10 text-amber-400{% else %}text-slate-400 hover:bg-white/[0.05] hover:text-white{% endif %}">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 12h6m-3-4h.01"/>
+            </svg>
+            Gestión del Club
+        </a>
         <a href="{{ url_for('admin.archers') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors relative
                   {% if request.endpoint == 'admin.archers' %}bg-amber-500/10 text-amber-400{% else %}text-slate-400 hover:bg-white/[0.05] hover:text-white{% endif %}">

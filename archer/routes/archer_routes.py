@@ -98,7 +98,7 @@ def require_session(view):
                        "archer.training_finish", "archer.training_delete",
                        "archer.profile", "archer.upload_photo",
                        "archer.equipment", "archer.equipment_edit",
-                       "archer.club"}
+                       "archer.club", "archer.club_news_detail"}
             if request.endpoint not in allowed:
                 return redirect(url_for("archer.pending"))
 
@@ -1161,30 +1161,51 @@ def training_delete(session_id: str):
 
 
 # ---------------------------------------------------------------------------
-# Sección Club — ranking + feed de actividad
+# Sección Club — carrusel, noticias, recursos + rankings
 # ---------------------------------------------------------------------------
 
 @archer_bp.route("/club", methods=["GET"])
 @require_session
 def club():
-    """GET — Sección Club: ranking global, rankings activos y feed de actividad."""
+    """GET — Home del club: carrusel, noticias, recursos, rankings."""
     from archer.modules.club_feed import (  # noqa: PLC0415
         get_active_tournaments_ranking,
         get_global_ranking,
-        get_activity_feed,
     )
-    active_rankings = get_active_tournaments_ranking()
-    global_ranking  = get_global_ranking(limit=20)
-    activity_feed   = get_activity_feed(limit=20)
-    archer_id       = session["archer_id"]
+    from archer.modules.club_content import (  # noqa: PLC0415
+        list_banners,
+        list_news,
+        list_resources_grouped,
+    )
+    from archer.modules.club import get_club_settings as _gcs  # noqa: PLC0415
+
+    archer_id = session["archer_id"]
+    club_cfg  = _gcs()
 
     return render_template(
         "archer/club.html",
-        active_rankings=active_rankings,
-        global_ranking=global_ranking,
-        activity_feed=activity_feed,
+        banners=list_banners(active_only=True),
+        news_items=list_news(published_only=True),
+        resources_grouped=list_resources_grouped(active_only=True),
+        active_rankings=get_active_tournaments_ranking(),
+        global_ranking=get_global_ranking(limit=20),
         current_archer_id=archer_id,
+        banner_interval=club_cfg.get("banner_interval", 5),
     )
+
+
+@archer_bp.route("/club/news/<news_id>", methods=["GET"])
+@require_session
+def club_news_detail(news_id: str):
+    """GET — Vista detallada de una noticia publicada."""
+    from archer.modules.club_content import get_news_item  # noqa: PLC0415
+
+    news = get_news_item(news_id)
+    # Solo arqueros autenticados, solo noticias publicadas
+    if not news or news.get("status") != "published":
+        return redirect(url_for("archer.club"))
+
+    return render_template("archer/club_news_detail.html", news=news)
 
 
 # ---------------------------------------------------------------------------

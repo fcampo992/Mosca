@@ -447,4 +447,82 @@ def init_db(conn) -> None:
     except Exception:
         pass
 
+    # ── Club Content: banners, noticias, recursos ──────────────────────────
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS club_banners (
+            id          TEXT PRIMARY KEY,
+            image_url   TEXT NOT NULL,
+            title       TEXT,
+            link_type   TEXT NOT NULL DEFAULT 'none',
+            link_value  TEXT,
+            position    INTEGER NOT NULL DEFAULT 0,
+            is_active   INTEGER NOT NULL DEFAULT 1,
+            created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS club_news (
+            id           TEXT PRIMARY KEY,
+            title        TEXT NOT NULL,
+            excerpt      TEXT,
+            body_html    TEXT,
+            cover_url    TEXT,
+            status       TEXT NOT NULL DEFAULT 'draft',
+            published_at TEXT,
+            created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS club_resource_categories (
+            id       TEXT PRIMARY KEY,
+            name     TEXT NOT NULL,
+            position INTEGER NOT NULL DEFAULT 0
+        )
+        """
+    )
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS club_resources (
+            id          TEXT PRIMARY KEY,
+            category_id TEXT,
+            title       TEXT NOT NULL,
+            description TEXT,
+            file_url    TEXT NOT NULL,
+            file_type   TEXT NOT NULL DEFAULT 'link',
+            is_active   INTEGER NOT NULL DEFAULT 1,
+            position    INTEGER NOT NULL DEFAULT 0,
+            created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (category_id) REFERENCES club_resource_categories(id)
+        )
+        """
+    )
+
+    try:
+        conn.commit()
+    except Exception:
+        pass
+
+    # Migraciones club_settings: intervalo del carrusel de banners
+    for _m in [
+        "ALTER TABLE club_settings ADD COLUMN banner_interval INTEGER NOT NULL DEFAULT 5",
+    ]:
+        try:
+            conn.execute(_m)
+        except Exception:
+            pass
+
+    try:
+        conn.commit()
+    except Exception:
+        pass
+
     logger.info("Esquema de base de datos inicializado correctamente.")

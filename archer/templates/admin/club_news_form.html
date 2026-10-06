@@ -1,0 +1,237 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ 'Editar noticia' if action == 'edit' else 'Nueva noticia' }} — {{ club_settings().club_name }}{% endblock %}
+
+{% block head %}
+{# Quill rich text editor #}
+<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet"/>
+<style>
+    .ql-toolbar.ql-snow {
+        background: rgba(255,255,255,0.04);
+        border-color: rgba(255,255,255,0.10) !important;
+        border-radius: 12px 12px 0 0;
+    }
+    .ql-container.ql-snow {
+        background: rgba(255,255,255,0.03);
+        border-color: rgba(255,255,255,0.10) !important;
+        border-radius: 0 0 12px 12px;
+        min-height: 220px;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 14px;
+        color: #f8fafc;
+    }
+    .ql-snow .ql-stroke  { stroke: #94a3b8; }
+    .ql-snow .ql-fill    { fill:   #94a3b8; }
+    .ql-snow .ql-picker   { color:  #94a3b8; }
+    .ql-snow .ql-picker-options { background: #1e293b; border-color: rgba(255,255,255,0.10); border-radius: 8px; }
+    .ql-editor.ql-blank::before { color: #475569; font-style: normal; }
+    .ql-editor a { color: #f59e0b; }
+    .ql-editor h1, .ql-editor h2, .ql-editor h3 { color: #f8fafc; font-weight: 700; }
+    .ql-snow .ql-active .ql-stroke { stroke: #f59e0b; }
+    .ql-snow .ql-active .ql-fill   { fill:   #f59e0b; }
+    .ql-snow.ql-toolbar button:hover .ql-stroke,
+    .ql-snow .ql-toolbar button:hover .ql-stroke { stroke: #fbbf24; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ── Header ── #}
+<div class="flex items-center gap-3 mb-6">
+    <a href="{{ url_for('admin.club_panel', tab='news') }}"
+       class="p-2 rounded-xl text-slate-400 hover:bg-white/[0.06] hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+    </a>
+    <div>
+        <h1 class="text-2xl font-extrabold text-white">
+            {{ 'Editar noticia' if action == 'edit' else 'Nueva noticia' }}
+        </h1>
+        <p class="text-sm text-slate-400 mt-0.5">
+            {{ news.title if news else 'Creá el contenido para los arqueros del club' }}
+        </p>
+    </div>
+</div>
+
+{% if error %}
+<div class="mb-5 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl px-4 py-3">{{ error }}</div>
+{% endif %}
+
+<form method="POST"
+      action="{{ url_for('admin.club_news_edit', news_id=news.id) if action == 'edit' else url_for('admin.club_news_new') }}"
+      novalidate>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {# ── Columna principal ── #}
+        <div class="lg:col-span-2 space-y-5">
+
+            {# Título #}
+            <div class="bg-[#111827] border border-white/[0.08] rounded-2xl p-5">
+                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                    Título <span class="text-red-400">*</span>
+                </label>
+                <input type="text" name="title" required maxlength="300"
+                       value="{{ form_data.get('title', news.title if news else '') }}"
+                       placeholder="Título de la noticia…"
+                       class="w-full px-4 py-3 rounded-xl text-base font-semibold
+                              bg-white/[0.05] border {% if field == 'title' %}border-red-500/50{% else %}border-white/[0.10]{% endif %}
+                              text-white placeholder:text-slate-500
+                              focus:outline-none focus:border-amber-500/60 focus:bg-white/[0.08] transition-colors"/>
+                {% if field == 'title' %}<p class="text-red-400 text-xs mt-1">{{ error }}</p>{% endif %}
+            </div>
+
+            {# Extracto #}
+            <div class="bg-[#111827] border border-white/[0.08] rounded-2xl p-5">
+                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                    Extracto <span class="text-slate-600 normal-case font-normal">— aparece en la card de la lista</span>
+                </label>
+                <textarea name="excerpt" rows="2" maxlength="400"
+                          placeholder="Resumen corto que el arquero verá antes de abrir la noticia…"
+                          class="w-full px-4 py-3 rounded-xl text-sm
+                                 bg-white/[0.05] border border-white/[0.10] text-white placeholder:text-slate-500
+                                 focus:outline-none focus:border-amber-500/60 focus:bg-white/[0.08] transition-colors resize-none">{{ form_data.get('excerpt', news.excerpt if news else '') }}</textarea>
+            </div>
+
+            {# Cuerpo (Quill) #}
+            <div class="bg-[#111827] border border-white/[0.08] rounded-2xl p-5">
+                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
+                    Contenido
+                </label>
+                <div id="quill-editor">{{ (form_data.get('body_html', news.body_html if news else '') or '') | safe }}</div>
+                <input type="hidden" name="body_html" id="body_html_input"/>
+            </div>
+
+        </div>
+
+        {# ── Sidebar ── #}
+        <div class="space-y-5">
+
+            {# Publicación #}
+            <div class="bg-[#111827] border border-white/[0.08] rounded-2xl p-5">
+                <h2 class="text-xs font-bold text-white uppercase tracking-wider mb-4">Publicación</h2>
+
+                <div class="flex bg-[#0b0f19] border border-white/[0.06] rounded-xl p-1 gap-1 mb-4">
+                    {% set cur_status = form_data.get('status', news.status if news else 'draft') %}
+                    <button type="button" onclick="setStatus('draft')" id="btn-draft"
+                            class="flex-1 py-2 rounded-lg text-xs font-semibold transition-all
+                                   {% if cur_status == 'draft' %}bg-white text-gray-900{% else %}text-slate-400 hover:text-white{% endif %}">
+                        📝 Borrador
+                    </button>
+                    <button type="button" onclick="setStatus('published')" id="btn-published"
+                            class="flex-1 py-2 rounded-lg text-xs font-semibold transition-all
+                                   {% if cur_status == 'published' %}bg-amber-400 text-[#0b0f19]{% else %}text-slate-400 hover:text-white{% endif %}">
+                        ✓ Publicada
+                    </button>
+                </div>
+                <input type="hidden" name="status" id="status_input"
+                       value="{{ form_data.get('status', news.status if news else 'draft') }}"/>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Fecha de publicación</label>
+                    <input type="date" name="published_at"
+                           value="{{ (form_data.get('published_at', news.published_at if news else '') or '')[:10] }}"
+                           class="w-full px-3 py-2.5 rounded-xl text-sm bg-white/[0.05] border border-white/[0.10] text-white
+                                  focus:outline-none focus:border-amber-500/60 transition-colors"/>
+                    <p class="text-[10px] text-slate-600 mt-1">Vacío = hoy al publicar</p>
+                </div>
+            </div>
+
+            {# Imagen de portada #}
+            <div class="bg-[#111827] border border-white/[0.08] rounded-2xl p-5">
+                <h2 class="text-xs font-bold text-white uppercase tracking-wider mb-4">Imagen de portada</h2>
+
+                {% set cur_cover = form_data.get('cover_url', news.cover_url if news else '') %}
+                {% if cur_cover %}
+                <img src="{{ cur_cover }}" alt="Portada"
+                     class="w-full h-32 object-cover rounded-xl border border-white/[0.08] mb-3"/>
+                {% endif %}
+
+                <input type="hidden" name="cover_url" id="cover_url_input" value="{{ cur_cover or '' }}"/>
+
+                {% if action == 'edit' %}
+                {# Subida directa para edición existente #}
+                <form method="POST"
+                      action="{{ url_for('admin.club_news_cover_upload', news_id=news.id) }}"
+                      enctype="multipart/form-data">
+                    <input type="file" name="file" accept="image/*"
+                           onchange="this.form.submit()"
+                           class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3
+                                  file:rounded-lg file:border-0 file:text-xs file:font-semibold
+                                  file:bg-white/[0.08] file:text-slate-300 hover:file:bg-white/[0.12]"/>
+                </form>
+                {% else %}
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">URL de imagen</label>
+                    <input type="url" placeholder="https://…"
+                           oninput="document.getElementById('cover_url_input').value = this.value"
+                           class="w-full px-3 py-2.5 rounded-xl text-sm bg-white/[0.05] border border-white/[0.10] text-white placeholder:text-slate-600
+                                  focus:outline-none focus:border-amber-500/60 transition-colors"/>
+                    <p class="text-[10px] text-slate-600 mt-1">Pegá una URL de imagen. Para subir un archivo, guardá primero la noticia.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            {# Botón guardar #}
+            <button type="submit"
+                    class="w-full py-3.5 rounded-2xl font-bold text-sm text-[#0b0f19]
+                           bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500
+                           hover:from-amber-300 hover:to-orange-300
+                           transition-all hover:-translate-y-0.5 active:translate-y-0
+                           shadow-lg shadow-orange-500/20">
+                {{ 'Guardar cambios →' if action == 'edit' else 'Crear noticia →' }}
+            </button>
+
+            {% if action == 'edit' %}
+            <form method="POST" action="{{ url_for('admin.club_news_delete', news_id=news.id) }}"
+                  onsubmit="return confirm('¿Eliminar esta noticia definitivamente?')">
+                <button type="submit"
+                        class="w-full py-2.5 rounded-xl text-sm font-semibold text-red-400
+                               bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors">
+                    Eliminar noticia
+                </button>
+            </form>
+            {% endif %}
+
+        </div>
+    </div>
+
+</form>
+
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+<script>
+var quill = new Quill('#quill-editor', {
+    theme: 'snow',
+    placeholder: 'Escribí el contenido de la noticia…',
+    modules: {
+        toolbar: [
+            [{ 'header': [1, 2, 3, false] }],
+            ['bold', 'italic', 'underline'],
+            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+            ['link', 'image'],
+            ['blockquote'],
+            ['clean']
+        ]
+    }
+});
+
+// Sincronizar Quill con el input hidden antes de enviar el form
+document.querySelector('form').addEventListener('submit', function() {
+    document.getElementById('body_html_input').value = quill.root.innerHTML;
+});
+
+function setStatus(val) {
+    document.getElementById('status_input').value = val;
+    var btnD = document.getElementById('btn-draft');
+    var btnP = document.getElementById('btn-published');
+    if (val === 'draft') {
+        btnD.className = btnD.className.replace('text-slate-400 hover:text-white', '') + ' bg-white text-gray-900';
+        btnP.className = btnP.className.replace('bg-amber-400 text-[#0b0f19]', '') + ' text-slate-400 hover:text-white';
+    } else {
+        btnP.className = btnP.className.replace('text-slate-400 hover:text-white', '') + ' bg-amber-400 text-[#0b0f19]';
+        btnD.className = btnD.className.replace('bg-white text-gray-900', '') + ' text-slate-400 hover:text-white';
+    }
+}
+</script>
+
+{% endblock %}

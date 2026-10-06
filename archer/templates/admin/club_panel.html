@@ -1,0 +1,500 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Club — {{ club_settings().club_name }}{% endblock %}
+
+{% block content %}
+{% set club = club_settings() %}
+
+{# ── Header ── #}
+<div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+    <div>
+        <h1 class="text-2xl font-extrabold text-white">Gestión del Club</h1>
+        <p class="text-sm text-slate-400 mt-0.5">Banners · Noticias · Recursos · Configuración</p>
+    </div>
+    <a href="{{ url_for('archer.club') }}" target="_blank"
+       class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold
+              text-slate-300 bg-white/[0.05] border border-white/[0.08]
+              hover:bg-white/[0.10] hover:text-white transition-all">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+        </svg>
+        Ver como arquero
+    </a>
+</div>
+
+{# Mensajes flash desde query params #}
+{% if request.args.get('error') %}
+<div class="mb-4 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl px-4 py-3">
+    {{ request.args.get('error') }}
+</div>
+{% endif %}
+{% if request.args.get('success') %}
+<div class="mb-4 bg-green-500/10 border border-green-500/20 text-green-400 text-sm rounded-xl px-4 py-3">
+    ✓ Cambios guardados correctamente.
+</div>
+{% endif %}
+
+{# ── Tabs ── #}
+<div x-data="{ tab: '{{ tab }}' }">
+
+    <div class="flex bg-[#111827] border border-white/[0.08] rounded-xl p-1 gap-1 mb-6 overflow-x-auto">
+        {% for t_id, t_label in [('banners','🖼 Banners'), ('news','📰 Noticias'), ('resources','📁 Recursos'), ('config','⚙️ Config')] %}
+        <button @click="tab = '{{ t_id }}'"
+                :class="tab === '{{ t_id }}' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20' : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'"
+                class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold whitespace-nowrap transition-all">
+            {{ t_label }}
+        </button>
+        {% endfor %}
+    </div>
+
+    {# ══════════════════════════════════════════════════════
+       TAB: BANNERS
+    ══════════════════════════════════════════════════════ #}
+    <div x-show="tab === 'banners'" x-cloak>
+
+        {# Subir nuevo banner #}
+        <div class="bg-[#111827] border border-white/[0.08] rounded-2xl p-5 mb-5">
+            <h2 class="text-sm font-bold text-white mb-4">Subir nuevo banner</h2>
+            <form method="POST" action="{{ url_for('admin.club_banner_upload') }}"
+                  enctype="multipart/form-data" class="space-y-3">
+
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                        Imagen <span class="text-red-400">*</span>
+                    </label>
+                    <input type="file" name="file" accept="image/*" required
+                           class="w-full text-sm text-slate-300 file:mr-3 file:py-2 file:px-4
+                                  file:rounded-xl file:border-0 file:text-xs file:font-bold
+                                  file:bg-amber-500/15 file:text-amber-400 hover:file:bg-amber-500/25
+                                  bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2"/>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Título (opcional)</label>
+                        <input type="text" name="title" placeholder="Texto sobre el banner…"
+                               class="w-full px-3 py-2.5 rounded-xl text-sm font-medium
+                                      bg-white/[0.05] border border-white/[0.08] text-white placeholder:text-slate-600
+                                      focus:outline-none focus:border-amber-500/60 transition-colors"/>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Enlace</label>
+                        <div class="flex gap-2">
+                            <select name="link_type"
+                                    class="px-3 py-2.5 rounded-xl text-sm bg-white/[0.05] border border-white/[0.08] text-white
+                                           focus:outline-none focus:border-amber-500/60"
+                                    x-data x-model="$store.linkType">
+                                <option value="none" class="bg-[#111827]">Sin enlace</option>
+                                <option value="news" class="bg-[#111827]">Noticia interna</option>
+                                <option value="external" class="bg-[#111827]">URL externa</option>
+                            </select>
+                            <input type="text" name="link_value" placeholder="ID o URL…"
+                                   class="flex-1 px-3 py-2.5 rounded-xl text-sm bg-white/[0.05] border border-white/[0.08] text-white placeholder:text-slate-600
+                                          focus:outline-none focus:border-amber-500/60 transition-colors"/>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit"
+                        class="px-5 py-2.5 rounded-xl text-sm font-bold text-[#0b0f19]
+                               bg-gradient-to-r from-amber-400 to-orange-400
+                               hover:from-amber-300 hover:to-orange-300
+                               transition-all hover:-translate-y-0.5 active:translate-y-0">
+                    Subir banner
+                </button>
+            </form>
+        </div>
+
+        {# Lista de banners #}
+        {% if banners %}
+        <div class="space-y-3">
+            {% for b in banners %}
+            <div class="bg-[#111827] border {% if b.is_active %}border-white/[0.08]{% else %}border-white/[0.04] opacity-60{% endif %}
+                        rounded-2xl overflow-hidden flex items-stretch">
+
+                {# Preview imagen #}
+                <div class="w-24 sm:w-32 shrink-0 bg-slate-800 relative">
+                    <img src="{{ b.image_url }}" alt="{{ b.title or 'Banner' }}"
+                         class="w-full h-full object-cover"/>
+                    {% if not b.is_active %}
+                    <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <span class="text-[10px] font-bold text-white bg-slate-700 px-2 py-0.5 rounded-full">Oculto</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {# Info + acciones #}
+                <div class="flex-1 p-4 flex flex-col sm:flex-row sm:items-center gap-3 min-w-0">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-white truncate">{{ b.title or '(Sin título)' }}</p>
+                        <p class="text-xs text-slate-500 mt-0.5">
+                            {% if b.link_type == 'news' %}📰 Noticia: {{ b.link_value }}
+                            {% elif b.link_type == 'external' %}🔗 {{ b.link_value }}
+                            {% else %}Sin enlace{% endif %}
+                        </p>
+                        <p class="text-[10px] text-slate-600 mt-1">Posición {{ b.position + 1 }}</p>
+                    </div>
+
+                    <div class="flex items-center gap-2 shrink-0 flex-wrap">
+                        {# Mover #}
+                        <form method="POST" action="{{ url_for('admin.club_banner_move', banner_id=b.id, direction='up') }}">
+                            <button type="submit" class="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/[0.06] transition-colors" title="Subir">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('admin.club_banner_move', banner_id=b.id, direction='down') }}">
+                            <button type="submit" class="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/[0.06] transition-colors" title="Bajar">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                        </form>
+
+                        {# Toggle visibilidad #}
+                        <form method="POST" action="{{ url_for('admin.club_banner_toggle', banner_id=b.id) }}">
+                            <button type="submit"
+                                    class="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-colors
+                                           {% if b.is_active %}text-green-400 bg-green-500/10 hover:bg-green-500/20{% else %}text-slate-400 bg-white/[0.05] hover:bg-white/[0.08]{% endif %}">
+                                {{ '✓ Visible' if b.is_active else '○ Oculto' }}
+                            </button>
+                        </form>
+
+                        {# Eliminar #}
+                        <form method="POST" action="{{ url_for('admin.club_banner_delete', banner_id=b.id) }}"
+                              onsubmit="return confirm('¿Eliminar este banner?')">
+                            <button type="submit" class="p-1.5 rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-12 bg-[#111827] border border-dashed border-white/[0.08] rounded-2xl">
+            <p class="text-4xl mb-3">🖼</p>
+            <p class="text-slate-400 font-medium">Aún no hay banners</p>
+            <p class="text-slate-600 text-sm mt-1">Subí el primero con el formulario de arriba</p>
+        </div>
+        {% endif %}
+    </div>
+
+    {# ══════════════════════════════════════════════════════
+       TAB: NOTICIAS
+    ══════════════════════════════════════════════════════ #}
+    <div x-show="tab === 'news'" x-cloak>
+
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-sm font-bold text-white">Noticias del club</h2>
+            <a href="{{ url_for('admin.club_news_new') }}"
+               class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-[#0b0f19]
+                      bg-gradient-to-r from-amber-400 to-orange-400
+                      hover:from-amber-300 hover:to-orange-300 transition-all hover:-translate-y-0.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                Nueva noticia
+            </a>
+        </div>
+
+        {% if news_items %}
+        <div class="space-y-3">
+            {% for n in news_items %}
+            <div class="bg-[#111827] border {% if n.status == 'published' %}border-white/[0.08]{% else %}border-white/[0.04] opacity-70{% endif %}
+                        rounded-2xl p-4 flex gap-4 items-start">
+
+                {# Cover thumbnail #}
+                {% if n.cover_url %}
+                <img src="{{ n.cover_url }}" alt=""
+                     class="w-16 h-16 rounded-xl object-cover border border-white/[0.08] shrink-0"/>
+                {% else %}
+                <div class="w-16 h-16 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 flex items-center justify-center text-2xl">📰</div>
+                {% endif %}
+
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-start justify-between gap-2 flex-wrap">
+                        <div class="min-w-0">
+                            <p class="text-sm font-bold text-white truncate">{{ n.title }}</p>
+                            <p class="text-xs text-slate-500 mt-0.5 truncate">{{ n.excerpt or '(Sin extracto)' }}</p>
+                            <p class="text-[10px] text-slate-600 mt-1">
+                                {% if n.published_at %}
+                                    {{ n.published_at[:10] }}
+                                {% else %}
+                                    Sin fecha
+                                {% endif %}
+                                <span class="mx-1">·</span>
+                                <span class="{% if n.status == 'published' %}text-green-400{% else %}text-amber-500{% endif %} font-semibold">
+                                    {{ 'Publicada' if n.status == 'published' else 'Borrador' }}
+                                </span>
+                            </p>
+                        </div>
+
+                        <div class="flex items-center gap-1.5 shrink-0 flex-wrap">
+                            <a href="{{ url_for('admin.club_news_edit', news_id=n.id) }}"
+                               class="text-[11px] font-semibold text-slate-300 bg-white/[0.05] border border-white/[0.08]
+                                      px-2.5 py-1.5 rounded-lg hover:bg-white/[0.10] transition-colors">
+                                Editar
+                            </a>
+                            <form method="POST" action="{{ url_for('admin.club_news_toggle', news_id=n.id) }}">
+                                <button type="submit"
+                                        class="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-colors
+                                               {% if n.status == 'published' %}text-amber-400 bg-amber-500/10 hover:bg-amber-500/20
+                                               {% else %}text-green-400 bg-green-500/10 hover:bg-green-500/20{% endif %}">
+                                    {{ 'Despublicar' if n.status == 'published' else '✓ Publicar' }}
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('admin.club_news_delete', news_id=n.id) }}"
+                                  onsubmit="return confirm('¿Eliminar «{{ n.title }}»?')">
+                                <button type="submit" class="p-1.5 rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-12 bg-[#111827] border border-dashed border-white/[0.08] rounded-2xl">
+            <p class="text-4xl mb-3">📰</p>
+            <p class="text-slate-400 font-medium">Aún no hay noticias</p>
+            <p class="text-slate-600 text-sm mt-1">Creá la primera con el botón de arriba</p>
+        </div>
+        {% endif %}
+    </div>
+
+    {# ══════════════════════════════════════════════════════
+       TAB: RECURSOS
+    ══════════════════════════════════════════════════════ #}
+    <div x-show="tab === 'resources'" x-cloak>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {# Categorías #}
+            <div class="bg-[#111827] border border-white/[0.08] rounded-2xl p-5">
+                <h2 class="text-sm font-bold text-white mb-4">Categorías</h2>
+                <form method="POST" action="{{ url_for('admin.club_category_new') }}"
+                      class="flex gap-2 mb-4">
+                    <input type="text" name="name" placeholder="Nombre de la categoría…" required
+                           class="flex-1 px-3 py-2.5 rounded-xl text-sm bg-white/[0.05] border border-white/[0.08] text-white placeholder:text-slate-600
+                                  focus:outline-none focus:border-amber-500/60 transition-colors"/>
+                    <button type="submit"
+                            class="px-4 py-2 rounded-xl text-sm font-bold text-[#0b0f19]
+                                   bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 transition-all">
+                        + Agregar
+                    </button>
+                </form>
+
+                {% if categories %}
+                <div class="space-y-2">
+                    {% for c in categories %}
+                    <div class="flex items-center justify-between bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-2.5">
+                        <span class="text-sm text-slate-300 font-medium">{{ c.name }}</span>
+                        <form method="POST" action="{{ url_for('admin.club_category_delete', cat_id=c.id) }}"
+                              onsubmit="return confirm('¿Eliminar «{{ c.name }}»? Los recursos de esta categoría quedarán sin categoría.')">
+                            <button type="submit" class="p-1 rounded-lg text-red-400/50 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-slate-600 text-sm text-center py-4">Sin categorías aún</p>
+                {% endif %}
+            </div>
+
+            {# Agregar recurso #}
+            <div class="bg-[#111827] border border-white/[0.08] rounded-2xl p-5">
+                <h2 class="text-sm font-bold text-white mb-4">Nuevo recurso</h2>
+                <form method="POST" action="{{ url_for('admin.club_resource_new') }}" class="space-y-3">
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Título <span class="text-red-400">*</span></label>
+                        <input type="text" name="title" placeholder="Ej. Reglamento FATARCO 2025" required
+                               class="w-full px-3 py-2.5 rounded-xl text-sm bg-white/[0.05] border border-white/[0.08] text-white placeholder:text-slate-600
+                                      focus:outline-none focus:border-amber-500/60 transition-colors"/>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">URL / Enlace <span class="text-red-400">*</span></label>
+                        <input type="url" name="file_url" placeholder="https://drive.google.com/…" required
+                               class="w-full px-3 py-2.5 rounded-xl text-sm bg-white/[0.05] border border-white/[0.08] text-white placeholder:text-slate-600
+                                      focus:outline-none focus:border-amber-500/60 transition-colors"/>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tipo</label>
+                            <select name="file_type"
+                                    class="w-full px-3 py-2.5 rounded-xl text-sm bg-white/[0.05] border border-white/[0.08] text-white focus:outline-none focus:border-amber-500/60">
+                                <option value="link" class="bg-[#111827]">🔗 Link</option>
+                                <option value="pdf"  class="bg-[#111827]">📄 PDF</option>
+                                <option value="docx" class="bg-[#111827]">📝 Word</option>
+                                <option value="xlsx" class="bg-[#111827]">📊 Excel</option>
+                                <option value="zip"  class="bg-[#111827]">📦 ZIP</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Categoría</label>
+                            <select name="category_id"
+                                    class="w-full px-3 py-2.5 rounded-xl text-sm bg-white/[0.05] border border-white/[0.08] text-white focus:outline-none focus:border-amber-500/60">
+                                <option value="" class="bg-[#111827]">Sin categoría</option>
+                                {% for c in categories %}
+                                <option value="{{ c.id }}" class="bg-[#111827]">{{ c.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Descripción corta</label>
+                        <input type="text" name="description" placeholder="Breve descripción (opcional)…"
+                               class="w-full px-3 py-2.5 rounded-xl text-sm bg-white/[0.05] border border-white/[0.08] text-white placeholder:text-slate-600
+                                      focus:outline-none focus:border-amber-500/60 transition-colors"/>
+                    </div>
+
+                    <button type="submit"
+                            class="w-full py-2.5 rounded-xl text-sm font-bold text-[#0b0f19]
+                                   bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 transition-all hover:-translate-y-0.5">
+                        Agregar recurso
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {# Lista de recursos #}
+        {% if resources %}
+        <div class="mt-5 bg-[#111827] border border-white/[0.08] rounded-2xl overflow-hidden">
+            <div class="px-5 py-3 border-b border-white/[0.05]">
+                <h2 class="text-sm font-bold text-white">Recursos existentes</h2>
+            </div>
+            <div class="divide-y divide-white/[0.04]">
+                {% for r in resources %}
+                <div class="px-5 py-3 flex items-center gap-3 {% if not r.is_active %}opacity-50{% endif %} hover:bg-white/[0.02] transition-colors">
+                    <span class="text-lg shrink-0">
+                        {% if r.file_type == 'pdf' %}📄
+                        {% elif r.file_type == 'docx' %}📝
+                        {% elif r.file_type == 'xlsx' %}📊
+                        {% elif r.file_type == 'zip' %}📦
+                        {% else %}🔗{% endif %}
+                    </span>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-white truncate">{{ r.title }}</p>
+                        <p class="text-xs text-slate-500 truncate">
+                            {{ r.category_name }}
+                            {% if r.description %} · {{ r.description }}{% endif %}
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <form method="POST" action="{{ url_for('admin.club_resource_toggle', res_id=r.id) }}">
+                            <button type="submit"
+                                    class="text-[11px] font-semibold px-2 py-1 rounded-lg transition-colors
+                                           {% if r.is_active %}text-green-400 bg-green-500/10 hover:bg-green-500/20
+                                           {% else %}text-slate-400 bg-white/[0.05] hover:bg-white/[0.08]{% endif %}">
+                                {{ '✓' if r.is_active else '○' }}
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('admin.club_resource_delete', res_id=r.id) }}"
+                              onsubmit="return confirm('¿Eliminar «{{ r.title }}»?')">
+                            <button type="submit" class="p-1 rounded-lg text-red-400/50 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {# ══════════════════════════════════════════════════════
+       TAB: CONFIG
+    ══════════════════════════════════════════════════════ #}
+    <div x-show="tab === 'config'" x-cloak>
+
+        <form method="POST" action="{{ url_for('admin.club_config_save') }}" class="space-y-6">
+
+            {# Carrusel #}
+            <div class="bg-[#111827] border border-white/[0.08] rounded-2xl p-5">
+                <h2 class="text-sm font-bold text-white mb-4">Carrusel de banners</h2>
+                <div class="max-w-xs">
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                        Intervalo de cambio automático
+                    </label>
+                    <div class="flex items-center gap-3">
+                        <input type="number" name="banner_interval" min="2" max="30"
+                               value="{{ settings.get('banner_interval', 5) }}"
+                               class="w-24 px-3 py-2.5 rounded-xl text-sm font-mono bg-white/[0.05] border border-white/[0.08] text-white
+                                      focus:outline-none focus:border-amber-500/60 transition-colors"/>
+                        <span class="text-sm text-slate-400">segundos</span>
+                    </div>
+                    <p class="text-xs text-slate-600 mt-1.5">Entre 2 y 30 segundos.</p>
+                </div>
+            </div>
+
+            {# Branding básico #}
+            <div class="bg-[#111827] border border-white/[0.08] rounded-2xl p-5">
+                <h2 class="text-sm font-bold text-white mb-4">Identidad del club</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nombre del club <span class="text-red-400">*</span></label>
+                        <input type="text" name="club_name" value="{{ settings.club_name }}" required maxlength="100"
+                               class="w-full px-3 py-2.5 rounded-xl text-sm bg-white/[0.05] border border-white/[0.08] text-white
+                                      focus:outline-none focus:border-amber-500/60 transition-colors"/>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Título hero</label>
+                        <input type="text" name="hero_title" value="{{ settings.hero_title }}" maxlength="200"
+                               class="w-full px-3 py-2.5 rounded-xl text-sm bg-white/[0.05] border border-white/[0.08] text-white
+                                      focus:outline-none focus:border-amber-500/60 transition-colors"/>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Subtítulo hero</label>
+                        <input type="text" name="hero_subtitle" value="{{ settings.hero_subtitle }}" maxlength="300"
+                               class="w-full px-3 py-2.5 rounded-xl text-sm bg-white/[0.05] border border-white/[0.08] text-white
+                                      focus:outline-none focus:border-amber-500/60 transition-colors"/>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Color inicio</label>
+                            <div class="flex gap-2 items-center">
+                                <input type="color" name="color_from" value="{{ settings.color_from }}"
+                                       class="w-10 h-10 rounded-lg border border-white/[0.10] cursor-pointer p-0.5 bg-transparent shrink-0"/>
+                                <span class="text-xs text-slate-500 font-mono">{{ settings.color_from }}</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Color fin</label>
+                            <div class="flex gap-2 items-center">
+                                <input type="color" name="color_to" value="{{ settings.color_to }}"
+                                       class="w-10 h-10 rounded-lg border border-white/[0.10] cursor-pointer p-0.5 bg-transparent shrink-0"/>
+                                <span class="text-xs text-slate-500 font-mono">{{ settings.color_to }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit"
+                    class="w-full sm:w-auto px-8 py-3 rounded-2xl font-bold text-sm text-[#0b0f19]
+                           bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500
+                           hover:from-amber-300 hover:to-orange-300
+                           transition-all hover:-translate-y-0.5 active:translate-y-0
+                           shadow-lg shadow-orange-500/20">
+                Guardar configuración →
+            </button>
+        </form>
+    </div>
+
+</div>{# /x-data tabs #}
+
+{% endblock %}

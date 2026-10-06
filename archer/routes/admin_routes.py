@@ -858,3 +858,311 @@ def edit_archer(archer_id: str):
         error=error,
         field=field,
     )
+
+
+# ---------------------------------------------------------------------------
+# Panel de Club — /admin/club/panel  (banners, noticias, recursos, config)
+# La ruta legacy /admin/club sigue funcionando para branding básico.
+# ---------------------------------------------------------------------------
+
+from archer.modules.club_content import (  # noqa: E402
+    create_banner, delete_banner, list_banners, move_banner, toggle_banner,
+    create_news_item, delete_news_item, get_news_item,
+    list_news as list_club_news, toggle_news_status, update_news_item,
+    create_resource, create_resource_category, delete_resource,
+    delete_resource_category, list_resource_categories, list_resources,
+    toggle_resource,
+)
+
+
+@admin_bp.route("/club/panel", methods=["GET"])
+@require_admin
+def club_panel():
+    """GET — Panel de gestión del club: Banners, Noticias, Recursos, Config."""
+    tab = request.args.get("tab", "banners")
+    return render_template(
+        "admin/club_panel.html",
+        tab=tab,
+        banners=list_banners(),
+        news_items=list_club_news(),
+        resources=list_resources(),
+        categories=list_resource_categories(),
+        settings=get_club_settings(),
+    )
+
+
+# ── Banners ──────────────────────────────────────────────────────────────────
+
+@admin_bp.route("/club/banners/new", methods=["POST"])
+@require_admin
+def club_banner_new():
+    """POST — Sube un nuevo banner (imagen ya subida a Cloudinary)."""
+    image_url  = request.form.get("image_url",  "").strip()
+    title      = request.form.get("title",      "").strip()
+    link_type  = request.form.get("link_type",  "none").strip()
+    link_value = request.form.get("link_value", "").strip()
+
+    result = create_banner(image_url, title=title, link_type=link_type, link_value=link_value)
+    if "error" in result:
+        # Volver al panel con error en tab banners
+        return redirect(url_for("admin.club_panel", tab="banners", error=result["error"]))
+    return redirect(url_for("admin.club_panel", tab="banners"))
+
+
+@admin_bp.route("/club/banners/<banner_id>/delete", methods=["POST"])
+@require_admin
+def club_banner_delete(banner_id: str):
+    """POST — Elimina un banner."""
+    delete_banner(banner_id)
+    return redirect(url_for("admin.club_panel", tab="banners"))
+
+
+@admin_bp.route("/club/banners/<banner_id>/toggle", methods=["POST"])
+@require_admin
+def club_banner_toggle(banner_id: str):
+    """POST — Activa/desactiva un banner."""
+    toggle_banner(banner_id)
+    return redirect(url_for("admin.club_panel", tab="banners"))
+
+
+@admin_bp.route("/club/banners/<banner_id>/move/<direction>", methods=["POST"])
+@require_admin
+def club_banner_move(banner_id: str, direction: str):
+    """POST — Mueve un banner arriba o abajo en el orden."""
+    move_banner(banner_id, direction)
+    return redirect(url_for("admin.club_panel", tab="banners"))
+
+
+@admin_bp.route("/club/banners/upload", methods=["POST"])
+@require_admin
+def club_banner_upload():
+    """POST — Sube imagen a Cloudinary y redirige al panel con la URL resultante."""
+    import os as _os  # noqa: PLC0415
+    import cloudinary.uploader as _cu  # noqa: PLC0415
+
+    file = request.files.get("file")
+    if not file or not file.filename:
+        return redirect(url_for("admin.club_panel", tab="banners", error="No se recibió ningún archivo."))
+
+    try:
+        result = _cu.upload(file, folder="club_banners", resource_type="image")
+        image_url = result.get("secure_url", "")
+    except Exception as exc:
+        logger.error("club_banner_upload: %s", exc)
+        return redirect(url_for("admin.club_panel", tab="banners", error="Error al subir la imagen."))
+
+    title      = request.form.get("title",      "").strip()
+    link_type  = request.form.get("link_type",  "none").strip()
+    link_value = request.form.get("link_value", "").strip()
+    create_banner(image_url, title=title, link_type=link_type, link_value=link_value)
+    return redirect(url_for("admin.club_panel", tab="banners"))
+
+
+# ── Noticias ─────────────────────────────────────────────────────────────────
+
+@admin_bp.route("/club/news/new", methods=["GET", "POST"])
+@require_admin
+def club_news_new():
+    """GET — Formulario de creación. POST — Persiste la noticia."""
+    if request.method == "POST":
+        title       = request.form.get("title",       "").strip()
+        excerpt     = request.form.get("excerpt",     "").strip()
+        body_html   = request.form.get("body_html",   "").strip()
+        cover_url   = request.form.get("cover_url",   "").strip()
+        status      = request.form.get("status",      "draft").strip()
+        published_at= request.form.get("published_at","").strip()
+
+        result = create_news_item(
+            title=title, excerpt=excerpt, body_html=body_html,
+            cover_url=cover_url, status=status, published_at=published_at,
+        )
+        if "error" in result:
+            return render_template(
+                "admin/club_news_form.html",
+                action="new", news=None,
+                error=result["error"], field=result.get("field"),
+                form_data=request.form,
+            ), 400
+        return redirect(url_for("admin.club_panel", tab="news"))
+
+    return render_template("admin/club_news_form.html", action="new", news=None,
+                           error=None, field=None, form_data={})
+
+
+@admin_bp.route("/club/news/<news_id>/edit", methods=["GET", "POST"])
+@require_admin
+def club_news_edit(news_id: str):
+    """GET — Formulario de edición. POST — Persiste cambios."""
+    news = get_news_item(news_id)
+    if not news:
+        return redirect(url_for("admin.club_panel", tab="news"))
+
+    if request.method == "POST":
+        title       = request.form.get("title",       "").strip()
+        excerpt     = request.form.get("excerpt",     "").strip()
+        body_html   = request.form.get("body_html",   "").strip()
+        cover_url   = request.form.get("cover_url",   "").strip()
+        status      = request.form.get("status",      "draft").strip()
+        published_at= request.form.get("published_at","").strip()
+
+        result = update_news_item(
+            news_id=news_id, title=title, excerpt=excerpt, body_html=body_html,
+            cover_url=cover_url, status=status, published_at=published_at,
+        )
+        if "error" in result:
+            return render_template(
+                "admin/club_news_form.html",
+                action="edit", news=news,
+                error=result["error"], field=result.get("field"),
+                form_data=request.form,
+            ), 400
+        return redirect(url_for("admin.club_panel", tab="news"))
+
+    return render_template("admin/club_news_form.html", action="edit", news=news,
+                           error=None, field=None, form_data=news)
+
+
+@admin_bp.route("/club/news/<news_id>/delete", methods=["POST"])
+@require_admin
+def club_news_delete(news_id: str):
+    """POST — Elimina una noticia."""
+    delete_news_item(news_id)
+    return redirect(url_for("admin.club_panel", tab="news"))
+
+
+@admin_bp.route("/club/news/<news_id>/toggle", methods=["POST"])
+@require_admin
+def club_news_toggle(news_id: str):
+    """POST — Publica o vuelve a borrador una noticia."""
+    toggle_news_status(news_id)
+    return redirect(url_for("admin.club_panel", tab="news"))
+
+
+@admin_bp.route("/club/news/<news_id>/cover", methods=["POST"])
+@require_admin
+def club_news_cover_upload(news_id: str):
+    """POST — Sube imagen de portada a Cloudinary y actualiza la noticia."""
+    import os as _os  # noqa: PLC0415
+    import cloudinary.uploader as _cu  # noqa: PLC0415
+
+    file = request.files.get("file")
+    if not file or not file.filename:
+        return redirect(url_for("admin.club_news_edit", news_id=news_id))
+
+    try:
+        result = _cu.upload(file, folder="club_news_covers", resource_type="image")
+        cover_url = result.get("secure_url", "")
+    except Exception as exc:
+        logger.error("club_news_cover_upload: %s", exc)
+        return redirect(url_for("admin.club_news_edit", news_id=news_id))
+
+    news = get_news_item(news_id)
+    if news:
+        update_news_item(
+            news_id=news_id,
+            title=news["title"],
+            excerpt=news.get("excerpt", ""),
+            body_html=news.get("body_html", ""),
+            cover_url=cover_url,
+            status=news.get("status", "draft"),
+            published_at=news.get("published_at", ""),
+        )
+    return redirect(url_for("admin.club_news_edit", news_id=news_id))
+
+
+# ── Categorías de recursos ────────────────────────────────────────────────────
+
+@admin_bp.route("/club/categories/new", methods=["POST"])
+@require_admin
+def club_category_new():
+    """POST — Crea una categoría de recursos."""
+    name = request.form.get("name", "").strip()
+    create_resource_category(name)
+    return redirect(url_for("admin.club_panel", tab="resources"))
+
+
+@admin_bp.route("/club/categories/<cat_id>/delete", methods=["POST"])
+@require_admin
+def club_category_delete(cat_id: str):
+    """POST — Elimina una categoría (desvincula sus recursos)."""
+    delete_resource_category(cat_id)
+    return redirect(url_for("admin.club_panel", tab="resources"))
+
+
+# ── Recursos ─────────────────────────────────────────────────────────────────
+
+@admin_bp.route("/club/resources/new", methods=["POST"])
+@require_admin
+def club_resource_new():
+    """POST — Crea un recurso (URL externa o link de Drive/Cloudinary)."""
+    title       = request.form.get("title",       "").strip()
+    file_url    = request.form.get("file_url",    "").strip()
+    description = request.form.get("description", "").strip()
+    category_id = request.form.get("category_id", "").strip()
+    file_type   = request.form.get("file_type",   "link").strip()
+
+    result = create_resource(
+        title=title, file_url=file_url, description=description,
+        category_id=category_id, file_type=file_type,
+    )
+    if "error" in result:
+        return redirect(url_for("admin.club_panel", tab="resources", error=result["error"]))
+    return redirect(url_for("admin.club_panel", tab="resources"))
+
+
+@admin_bp.route("/club/resources/<res_id>/delete", methods=["POST"])
+@require_admin
+def club_resource_delete(res_id: str):
+    """POST — Elimina un recurso."""
+    delete_resource(res_id)
+    return redirect(url_for("admin.club_panel", tab="resources"))
+
+
+@admin_bp.route("/club/resources/<res_id>/toggle", methods=["POST"])
+@require_admin
+def club_resource_toggle(res_id: str):
+    """POST — Activa/oculta un recurso."""
+    toggle_resource(res_id)
+    return redirect(url_for("admin.club_panel", tab="resources"))
+
+
+# ── Config del carrusel (banner_interval) ────────────────────────────────────
+
+@admin_bp.route("/club/config", methods=["POST"])
+@require_admin
+def club_config_save():
+    """POST — Guarda configuración del carrusel (intervalo) y branding básico."""
+    from archer.db import get_connection as _gc  # noqa: PLC0415
+    interval = request.form.get("banner_interval", "5").strip()
+    try:
+        interval = max(2, min(30, int(interval)))
+    except ValueError:
+        interval = 5
+
+    conn = _gc()
+    conn.execute(
+        "UPDATE club_settings SET banner_interval = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 'default'",
+        (interval,),
+    )
+    try:
+        conn.commit()
+    except Exception:
+        pass
+
+    # También guardar branding si viene en el mismo POST
+    club_name     = request.form.get("club_name",     "").strip()
+    hero_title    = request.form.get("hero_title",    "").strip()
+    hero_subtitle = request.form.get("hero_subtitle", "").strip()
+    color_from    = request.form.get("color_from",    "").strip()
+    color_to      = request.form.get("color_to",      "").strip()
+
+    if club_name and hero_title and color_from and color_to:
+        settings = get_club_settings()
+        save_club_settings(
+            club_name, hero_title, hero_subtitle,
+            ticker_text=settings.get("ticker_text", ""),
+            color_from=color_from, color_to=color_to,
+            ticker_enabled=int(settings.get("ticker_enabled", 1)),
+        )
+
+    return redirect(url_for("admin.club_panel", tab="config", success="1"))

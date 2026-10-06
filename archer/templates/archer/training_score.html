@@ -17,16 +17,10 @@
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none; }
     </style>
 </head>
-<body class="min-h-screen bg-[#0b0f19] text-white" style="min-width:360px">
+<body class="min-h-screen bg-[#0b0f19] text-white pb-4" style="min-width:360px">
 
 {% set is_summary = summary_mode is defined and summary_mode %}
 
-{# ── Paleta de botones según tipo de diana ── #}
-{#
-   target_cfg viene del route: { "buttons": [...], "points": {...}, "label": "..." }
-   wa10:    X 10 9 8 7 6 5 4 3 2 1 M  (12 botones → grid 4 cols, 3 filas)
-   wa6field: X 6 5 4 3 2 1 M          (8 botones  → grid 4 cols, 2 filas)
-#}
 {% set btn_styles = {
     'X':  'bg-yellow-400 text-gray-900 hover:bg-yellow-500 active:bg-yellow-600',
     '10': 'bg-yellow-300 text-gray-900 hover:bg-yellow-400 active:bg-yellow-500',
@@ -35,32 +29,33 @@
     '7':  'bg-red-300 text-gray-900 hover:bg-red-400 active:bg-red-500',
     '6':  'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700',
     '5':  'bg-blue-400 text-white hover:bg-blue-500 active:bg-blue-600',
-    '4':  'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400',
-    '3':  'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400',
-    '2':  'bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500',
-    '1':  'bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500',
-    'M':  'bg-gray-800 text-gray-400 border border-gray-600 hover:bg-gray-700 active:bg-gray-600',
+    '4':  'bg-slate-600 text-white hover:bg-slate-500 active:bg-slate-400',
+    '3':  'bg-slate-600 text-white hover:bg-slate-500 active:bg-slate-400',
+    '2':  'bg-slate-700 text-slate-300 hover:bg-slate-600 active:bg-slate-500',
+    '1':  'bg-slate-700 text-slate-300 hover:bg-slate-600 active:bg-slate-500',
+    'M':  'bg-[#111827] text-slate-500 border border-white/[0.10] hover:bg-white/[0.05] active:bg-white/[0.08]',
 } %}
 
 {# ── Header ── #}
-<header class="h-14 flex items-center justify-between px-4 shadow"
-        style="background-color: {{ club.color_from }}">
+<header class="h-14 flex items-center justify-between px-4
+               bg-[#0b0f19] border-b border-white/[0.06] shadow-sm">
     <a href="{{ url_for('archer.training') }}"
-       class="p-2 rounded-xl hover:bg-white/20 transition-colors">
+       class="p-2 rounded-xl text-slate-400 hover:bg-white/[0.06] hover:text-white transition-colors">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
         </svg>
     </a>
     <div class="text-center">
-        <p class="font-bold text-sm leading-tight">{{ sess.distance }}</p>
-        <p class="text-[10px] opacity-60">{{ sess.session_date }}
+        <p class="font-bold text-sm leading-tight text-white">{{ sess.distance }}</p>
+        <p class="text-[10px] text-slate-500">{{ sess.session_date }}
             {% if target_cfg is defined %}· {{ target_cfg.label }}{% endif %}
         </p>
     </div>
     {% if not is_summary %}
     <form method="POST" action="{{ url_for('archer.training_finish', session_id=sess.id) }}">
         <button type="submit"
-                class="text-xs font-bold bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 py-1.5 rounded-xl transition-colors">
+                class="text-xs font-bold bg-red-500/90 hover:bg-red-600 active:bg-red-700
+                       text-white px-3 py-1.5 rounded-xl transition-colors">
             Terminar
         </button>
     </form>
@@ -70,50 +65,50 @@
 </header>
 
 {% if is_summary %}
-{# ════════════════════════════════════
-   VISTA RESUMEN (sesión finalizada)
-   ════════════════════════════════════ #}
+{# ════ VISTA RESUMEN ════ #}
 <div class="max-w-lg mx-auto px-4 py-6">
 
     <div class="text-center mb-6">
         <div class="text-5xl mb-2">🏆</div>
-        <h1 class="text-2xl font-extrabold">Sesión finalizada</h1>
-        <p class="text-gray-400 text-sm mt-1">{{ sess.distance }} · {{ ends_done }} tandas</p>
+        <h1 class="text-2xl font-extrabold text-white">Sesión finalizada</h1>
+        <p class="text-slate-400 text-sm mt-1">{{ sess.distance }} · {{ ends_done }} tandas</p>
     </div>
 
+    {# KPIs #}
     <div class="grid grid-cols-2 gap-3 mb-6">
-        <div class="bg-gray-800 rounded-2xl p-4 text-center">
-            <p class="text-3xl font-black text-green-400">{{ stats.total_points }}</p>
-            <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-wide">Total puntos</p>
+        <div class="bg-[#111827] border border-white/[0.08] rounded-2xl p-4 text-center">
+            <p class="text-3xl font-black text-amber-400">{{ stats.total_points }}</p>
+            <p class="text-[10px] text-slate-500 mt-1 uppercase tracking-wide font-semibold">Total puntos</p>
         </div>
-        <div class="bg-gray-800 rounded-2xl p-4 text-center">
+        <div class="bg-[#111827] border border-white/[0.08] rounded-2xl p-4 text-center">
             <p class="text-3xl font-black text-yellow-400">{{ stats.avg_per_arrow }}</p>
-            <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-wide">Prom/flecha</p>
+            <p class="text-[10px] text-slate-500 mt-1 uppercase tracking-wide font-semibold">Prom/flecha</p>
         </div>
-        <div class="bg-gray-800 rounded-2xl p-4 text-center">
+        <div class="bg-[#111827] border border-white/[0.08] rounded-2xl p-4 text-center">
             <p class="text-3xl font-black text-blue-400">{{ stats.total_arrows }}</p>
-            <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-wide">Flechas</p>
+            <p class="text-[10px] text-slate-500 mt-1 uppercase tracking-wide font-semibold">Flechas</p>
         </div>
-        <div class="bg-gray-800 rounded-2xl p-4 text-center">
+        <div class="bg-[#111827] border border-white/[0.08] rounded-2xl p-4 text-center">
             <p class="text-3xl font-black text-indigo-400">{{ stats.best_end }}</p>
-            <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-wide">Mejor tanda</p>
+            <p class="text-[10px] text-slate-500 mt-1 uppercase tracking-wide font-semibold">Mejor tanda</p>
         </div>
     </div>
 
+    {# Tabla de tandas #}
     {% if ends %}
-    <div class="bg-gray-800 rounded-2xl overflow-hidden mb-6">
+    <div class="bg-[#111827] border border-white/[0.08] rounded-2xl overflow-hidden mb-6">
         <table class="w-full text-sm">
-            <thead class="border-b border-gray-700">
+            <thead class="border-b border-white/[0.06]">
                 <tr>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Tanda</th>
-                    <th class="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase">Flechas</th>
-                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Pts</th>
+                    <th class="px-4 py-3 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Tanda</th>
+                    <th class="px-4 py-3 text-center text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Flechas</th>
+                    <th class="px-4 py-3 text-right text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Pts</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-700">
+            <tbody class="divide-y divide-white/[0.04]">
                 {% for end in ends %}
-                <tr>
-                    <td class="px-4 py-3 font-semibold">{{ end.end_number }}</td>
+                <tr class="hover:bg-white/[0.02] transition-colors">
+                    <td class="px-4 py-3 font-semibold text-slate-300">{{ end.end_number }}</td>
                     <td class="px-4 py-3 text-center">
                         <div class="flex justify-center gap-1 flex-wrap">
                             {% for s in end.scores %}
@@ -122,18 +117,18 @@
                                 {% elif s.val == '10' %}bg-yellow-300 text-gray-900
                                 {% elif s.val in ['9','8','7'] %}bg-red-500 text-white
                                 {% elif s.val in ['6','5'] %}bg-blue-500 text-white
-                                {% elif s.val in ['4','3'] %}bg-gray-500 text-white
-                                {% else %}bg-gray-700 text-gray-300{% endif %}">
+                                {% elif s.val in ['4','3'] %}bg-slate-600 text-white
+                                {% else %}bg-slate-700 text-slate-300{% endif %}">
                                 {{ s.val }}
                             </span>
                             {% endfor %}
                         </div>
                     </td>
-                    <td class="px-4 py-3 text-right font-bold text-green-400">{{ end.total_points }}</td>
+                    <td class="px-4 py-3 text-right font-bold text-amber-400">{{ end.total_points }}</td>
                 </tr>
                 {% if end.note %}
                 <tr>
-                    <td colspan="3" class="px-4 py-2 text-xs text-gray-400 italic">💬 {{ end.note }}</td>
+                    <td colspan="3" class="px-4 py-2 text-xs text-slate-500 italic">💬 {{ end.note }}</td>
                 </tr>
                 {% endif %}
                 {% endfor %}
@@ -142,11 +137,11 @@
     </div>
     {% endif %}
 
-    {# ── Heatmap de impactos (solo si hay plots guardados) ── #}
+    {# Heatmap #}
     {% if all_plots is defined and all_plots %}
     <script src="{{ url_for('static', filename='js/plotter.js') }}"></script>
-    <div class="bg-gray-800 rounded-2xl p-4 mb-6">
-        <h2 class="text-sm font-semibold text-gray-300 mb-3 text-center">
+    <div class="bg-[#111827] border border-white/[0.08] rounded-2xl p-4 mb-6">
+        <h2 class="text-sm font-semibold text-slate-300 mb-3 text-center">
             Mapa de impactos — {{ all_plots | length }} flechas
         </h2>
         <div class="flex justify-center">
@@ -166,31 +161,29 @@
             }
         })();
         </script>
-        {# Leyenda de zonas #}
         <div class="flex flex-wrap justify-center gap-2 mt-3">
-            <div class="flex items-center gap-1 text-[10px] text-gray-400"><span class="w-3 h-3 rounded-full bg-yellow-400 inline-block"></span>X/10</div>
-            <div class="flex items-center gap-1 text-[10px] text-gray-400"><span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>7-9</div>
-            <div class="flex items-center gap-1 text-[10px] text-gray-400"><span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>5-6</div>
-            <div class="flex items-center gap-1 text-[10px] text-gray-400"><span class="w-3 h-3 rounded-full bg-gray-500 inline-block"></span>1-4</div>
+            <div class="flex items-center gap-1 text-[10px] text-slate-500"><span class="w-3 h-3 rounded-full bg-yellow-400 inline-block"></span>X/10</div>
+            <div class="flex items-center gap-1 text-[10px] text-slate-500"><span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>7-9</div>
+            <div class="flex items-center gap-1 text-[10px] text-slate-500"><span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>5-6</div>
+            <div class="flex items-center gap-1 text-[10px] text-slate-500"><span class="w-3 h-3 rounded-full bg-slate-500 inline-block"></span>1-4</div>
         </div>
     </div>
     {% endif %}
 
     <a href="{{ url_for('archer.training') }}"
-       class="block w-full text-center text-white font-semibold py-3 rounded-2xl text-sm transition-colors hover:opacity-90"
-       style="background-color: #16a34a">
-        Volver a Entrenamientos
+       class="block w-full text-center font-bold py-3.5 rounded-2xl text-sm
+              text-[#0b0f19] bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500
+              hover:from-amber-300 hover:to-orange-300
+              transition-all hover:-translate-y-0.5 active:translate-y-0
+              shadow-lg shadow-orange-500/20">
+        Volver a Entrenamientos →
     </a>
 </div>
-{% else %}
-{# ════════════════════════════════════
-   MODO PUNTUADO — plotter + teclado
-   ════════════════════════════════════ #}
 
-{# Cargar plotter.js #}
+{% else %}
+{# ════ MODO PUNTUADO ════ #}
 <script src="{{ url_for('static', filename='js/plotter.js') }}"></script>
 
-{# Datos de sesión para JS (sin inline JSON) #}
 <div id="session-meta"
      data-target-type="{{ target_type or 'wa10' }}"
      data-max-arrows="{{ sess.arrows_per_end }}"
@@ -202,34 +195,37 @@
 <div class="max-w-sm mx-auto px-3 py-3 flex flex-col gap-3">
 
     {# ── Stats en vivo ── #}
-    <div class="flex items-center justify-between bg-gray-800 rounded-2xl px-4 py-3">
+    <div class="flex items-center justify-between bg-[#111827] border border-white/[0.08] rounded-2xl px-4 py-3">
         <div class="text-center">
-            <p class="text-2xl font-black text-green-400">{{ stats.total_points }}</p>
-            <p class="text-[10px] text-gray-400 uppercase tracking-wide">Total</p>
+            <p class="text-2xl font-black text-amber-400">{{ stats.total_points }}</p>
+            <p class="text-[10px] text-slate-500 uppercase tracking-wide font-semibold">Total</p>
         </div>
+        <div class="w-px h-8 bg-white/[0.06]"></div>
         <div class="text-center">
             <p class="text-xl font-black text-white" id="subtotal-display">0</p>
-            <p class="text-[10px] text-gray-400 uppercase tracking-wide">Esta tanda</p>
+            <p class="text-[10px] text-slate-500 uppercase tracking-wide font-semibold">Esta tanda</p>
         </div>
+        <div class="w-px h-8 bg-white/[0.06]"></div>
         <div class="text-center">
             <p class="text-2xl font-black text-yellow-400">{{ stats.avg_per_arrow }}</p>
-            <p class="text-[10px] text-gray-400 uppercase tracking-wide">Prom</p>
+            <p class="text-[10px] text-slate-500 uppercase tracking-wide font-semibold">Prom</p>
         </div>
+        <div class="w-px h-8 bg-white/[0.06]"></div>
         <div class="text-center">
-            <p class="text-sm font-bold text-gray-300">T.{{ current_end }}</p>
+            <p class="text-sm font-bold text-slate-200">T.{{ current_end }}</p>
             {% if sess.total_ends %}
-            <p class="text-[10px] text-gray-500">/ {{ sess.total_ends }}</p>
+            <p class="text-[10px] text-slate-600">/ {{ sess.total_ends }}</p>
             {% else %}
-            <p class="text-[10px] text-gray-500">libre</p>
+            <p class="text-[10px] text-slate-600">libre</p>
             {% endif %}
         </div>
     </div>
 
     {# ── Toggle Plotter / Teclado ── #}
-    <div class="flex bg-gray-800 rounded-xl p-1 gap-1">
+    <div class="flex bg-[#111827] border border-white/[0.08] rounded-xl p-1 gap-1">
         <button id="seg-plot" onclick="setInputMode('plot')"
                 class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg
-                       text-xs font-semibold transition-all text-gray-400">
+                       text-xs font-semibold transition-all text-slate-400">
             🎯 Plotter
         </button>
         <button id="seg-keys" onclick="setInputMode('keys')"
@@ -265,34 +261,19 @@
             <div id="score-pill"></div>
         </div>
         <div id="chips-plot" class="flex flex-wrap gap-1.5 px-1 min-h-[2.5rem]">
-            <span class="text-gray-500 text-xs self-center">Tocá la diana para anotar →</span>
+            <span class="text-slate-500 text-xs self-center">Tocá la diana para anotar →</span>
         </div>
     </div>
 
     {# ── Modo Teclado ── #}
     <div id="mode-keys">
-        {# Diana mini con pins #}
         <div class="flex justify-center mb-2">
             <svg id="mini-svg" viewBox="-110 -110 220 220" width="100" height="100" style="display:block;"></svg>
         </div>
-        {% set btn_styles = {
-            'X':  'bg-yellow-400 text-gray-900 hover:bg-yellow-500 active:bg-yellow-600',
-            '10': 'bg-yellow-300 text-gray-900 hover:bg-yellow-400 active:bg-yellow-500',
-            '9':  'bg-red-500 text-white hover:bg-red-600 active:bg-red-700',
-            '8':  'bg-red-400 text-white hover:bg-red-500 active:bg-red-600',
-            '7':  'bg-red-300 text-gray-900 hover:bg-red-400 active:bg-red-500',
-            '6':  'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700',
-            '5':  'bg-blue-400 text-white hover:bg-blue-500 active:bg-blue-600',
-            '4':  'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400',
-            '3':  'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400',
-            '2':  'bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500',
-            '1':  'bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500',
-            'M':  'bg-gray-800 text-gray-400 border border-gray-600 hover:bg-gray-700 active:bg-gray-600',
-        } %}
         <div class="grid grid-cols-4 gap-2">
             {% set active_buttons = target_cfg.buttons if target_cfg is defined and target_cfg else ['X','10','9','8','7','6','5','4','3','2','1','M'] %}
             {% for val in active_buttons %}
-            {% set cls = btn_styles.get(val, 'bg-gray-700 text-white') %}
+            {% set cls = btn_styles.get(val, 'bg-slate-700 text-white') %}
             <button type="button" onclick="addFromKey('{{ val }}')"
                     class="flex items-center justify-center rounded-2xl font-black text-xl
                            select-none transition-colors {{ cls }}"
@@ -300,7 +281,7 @@
             {% endfor %}
         </div>
         <div id="chips-keys" class="flex flex-wrap gap-1.5 px-1 mt-2 min-h-[2.5rem]">
-            <span class="text-gray-500 text-xs self-center">Tocá los botones →</span>
+            <span class="text-slate-500 text-xs self-center">Tocá los botones →</span>
         </div>
     </div>
 
@@ -308,7 +289,8 @@
     <div class="flex items-center gap-2">
         <button type="button" onclick="deleteLast()"
                 id="btn-delete"
-                class="w-12 h-12 rounded-2xl bg-gray-700 hover:bg-gray-600 active:bg-gray-500
+                class="w-12 h-12 rounded-2xl bg-white/[0.05] border border-white/[0.08]
+                       hover:bg-white/[0.08] active:bg-white/[0.12]
                        transition-colors flex items-center justify-center opacity-30 shrink-0">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round"
@@ -316,7 +298,7 @@
             </svg>
         </button>
         <button type="button" id="btn-note" onclick="toggleNote()"
-                class="w-12 h-12 rounded-2xl bg-gray-700 border border-transparent
+                class="w-12 h-12 rounded-2xl bg-white/[0.05] border border-white/[0.08]
                        transition-colors flex items-center justify-center shrink-0">
             <span class="text-lg">💬</span>
         </button>
@@ -329,9 +311,9 @@
             <input type="hidden" id="end-number"  name="end_number"  value="{{ current_end }}"/>
             <button type="submit" id="btn-confirm"
                     onclick="return prepareSubmit()"
-                    class="w-full text-white font-bold py-3.5 rounded-2xl text-sm
-                           opacity-40 cursor-not-allowed transition-all"
-                    style="background-color: #16a34a">
+                    class="w-full font-bold py-3.5 rounded-2xl text-sm
+                           opacity-40 cursor-not-allowed transition-all
+                           text-[#0b0f19] bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500">
                 Registrar (0/{{ sess.arrows_per_end }})
             </button>
         </form>
@@ -341,19 +323,20 @@
     <div id="note-wrap" style="display:none">
         <textarea id="note-textarea" rows="2" maxlength="200"
                   placeholder="Ej: Viento de costado, probar nuevo punto de ancla…"
-                  class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5
-                         text-sm text-white placeholder-gray-500 resize-none
-                         focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
+                  class="w-full bg-white/[0.05] border border-white/[0.10] rounded-xl px-3 py-2.5
+                         text-sm text-white placeholder:text-slate-500 resize-none
+                         focus:outline-none focus:border-amber-500/60 focus:bg-white/[0.08]
+                         transition-colors"></textarea>
     </div>
 
     {# ── Historial de tandas anteriores ── #}
     {% if ends %}
     <div class="mt-1">
-        <p class="text-[10px] text-gray-500 uppercase tracking-wide font-bold mb-2">Tandas anteriores</p>
+        <p class="text-[10px] text-slate-600 uppercase tracking-wide font-bold mb-2">Tandas anteriores</p>
         <div class="space-y-1.5">
             {% for e in ends | reverse %}
-            <div class="flex items-center gap-2 bg-gray-800 rounded-xl px-3 py-2">
-                <span class="text-xs text-gray-400 font-bold w-6">{{ e.end_number }}</span>
+            <div class="flex items-center gap-2 bg-[#111827] border border-white/[0.06] rounded-xl px-3 py-2">
+                <span class="text-xs text-slate-500 font-bold w-6">{{ e.end_number }}</span>
                 <div class="flex flex-wrap gap-1 flex-1">
                     {% for s in e.scores %}
                     <span class="text-[10px] font-bold px-1.5 py-0.5 rounded
@@ -361,15 +344,16 @@
                         {% elif s.val == '10' %}bg-yellow-300 text-gray-900
                         {% elif s.val in ['9','8','7'] %}bg-red-500 text-white
                         {% elif s.val in ['6','5'] %}bg-blue-500 text-white
-                        {% else %}bg-gray-600 text-white{% endif %}">
+                        {% elif s.val in ['4','3'] %}bg-slate-600 text-white
+                        {% else %}bg-slate-700 text-slate-300{% endif %}">
                         {{ s.val }}
                     </span>
                     {% endfor %}
                 </div>
-                <span class="text-xs font-black text-green-400">{{ e.total_points }}</span>
+                <span class="text-xs font-black text-amber-400">{{ e.total_points }}</span>
             </div>
             {% if e.note %}
-            <p class="text-xs text-gray-500 italic px-3">💬 {{ e.note }}</p>
+            <p class="text-xs text-slate-500 italic px-3">💬 {{ e.note }}</p>
             {% endif %}
             {% endfor %}
         </div>
@@ -399,9 +383,7 @@
         onArrowRemoved: function() { renderUI(); }
     });
 
-    // Cargar diana mini (modo teclado)
-    if (window.DIANA_SVG_INNER || window.TargetPlotter) {
-        // el plotter.js ya inyectó el fondo en the-svg, replicar en mini
+    if (window.TargetPlotter) {
         var miniSvg = document.getElementById('mini-svg');
         if (miniSvg && !miniSvg.dataset.ready) {
             miniSvg.insertAdjacentHTML('afterbegin',
@@ -412,7 +394,6 @@
 
     plotter.loadPreviousPlots(prevPlots);
 
-    // Paleta de colores para chips
     var CHIP_BG = {
         X:'background:#fbbf24;color:#111827',
         '10':'background:#fde68a;color:#111827',
@@ -423,27 +404,22 @@
         M:'background:#0f172a;color:#6b7280;border:1px solid #374151'
     };
 
-    var currentMode = 'plot';
     var noteVisible = false;
 
     window.setInputMode = function(m) {
-        currentMode = m;
         document.getElementById('mode-plot').classList.toggle('hidden', m !== 'plot');
         document.getElementById('mode-keys').classList.toggle('hidden', m !== 'keys');
         ['plot','keys'].forEach(function(id) {
             var el = document.getElementById('seg-' + id);
-            if (id === m) {
-                el.className = 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all bg-white text-gray-900';
-            } else {
-                el.className = 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all text-gray-400';
-            }
+            el.className = id === m
+                ? 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all bg-white text-gray-900'
+                : 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all text-slate-400';
         });
         renderUI();
     };
 
     window.addFromKey = function(val) {
         if (plotter.getArrows().length >= maxArrows) return;
-        // Colocar pin en posición aleatoria del anillo correcto
         var rings = {X:[0,5],'10':[5,10],'9':[10,20],'8':[20,30],'7':[30,40],
                      '6':[40,50],'5':[50,60],'4':[60,70],'3':[70,80],'2':[80,90],'1':[90,100],'M':[100,110]};
         var rng = rings[val] || [50,100];
@@ -455,25 +431,21 @@
         renderUI();
     };
 
-    window.deleteLast = function() {
-        plotter.deleteLast();
-        renderUI();
-    };
+    window.deleteLast = function() { plotter.deleteLast(); renderUI(); };
 
     window.toggleNote = function() {
         noteVisible = !noteVisible;
         document.getElementById('note-wrap').style.display = noteVisible ? 'block' : 'none';
         var btn = document.getElementById('btn-note');
         btn.className = noteVisible
-            ? 'w-12 h-12 rounded-2xl bg-yellow-500/20 border border-yellow-500/50 transition-colors flex items-center justify-center shrink-0'
-            : 'w-12 h-12 rounded-2xl bg-gray-700 border border-transparent transition-colors flex items-center justify-center shrink-0';
+            ? 'w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 transition-colors flex items-center justify-center shrink-0'
+            : 'w-12 h-12 rounded-2xl bg-white/[0.05] border border-white/[0.08] transition-colors flex items-center justify-center shrink-0';
     };
 
     window.prepareSubmit = function() {
         var arrows = plotter.getArrows();
         if (arrows.length === 0) return false;
-        var vals = arrows.map(function(a) { return a.val; });
-        document.getElementById('arrows-json').value = JSON.stringify(vals);
+        document.getElementById('arrows-json').value = JSON.stringify(arrows.map(function(a){ return a.val; }));
         document.getElementById('plots-json').value  = JSON.stringify(arrows);
         document.getElementById('end-note').value    = document.getElementById('note-textarea').value;
         return true;
@@ -481,52 +453,43 @@
 
     function renderUI() {
         var arrows = plotter.getArrows();
-        var n = arrows.length;
+        var n   = arrows.length;
         var pts = plotter.subtotal();
 
-        // subtotal display
         document.getElementById('subtotal-display').textContent = pts;
 
-        // borrar btn
-        document.getElementById('btn-delete').className =
-            'w-12 h-12 rounded-2xl bg-gray-700 hover:bg-gray-600 active:bg-gray-500 transition-colors flex items-center justify-center shrink-0' +
-            (n === 0 ? ' opacity-30' : '');
-
-        // confirmar btn
+        var del = document.getElementById('btn-delete');
         var btn = document.getElementById('btn-confirm');
-        // Solo tocar las clases de estado, nunca sobreescribir className completo
-        // para preservar el style="background-color" inline
-        if (n > 0) {
-            btn.classList.remove('opacity-40','cursor-not-allowed');
-            btn.classList.add('hover:opacity-90','active:opacity-80','ring-2','ring-white/30');
-            btn.textContent = n >= maxArrows ? 'Confirmar tanda ✓' : 'Registrar (' + n + '/' + maxArrows + ')';
-        } else {
-            btn.classList.add('opacity-40','cursor-not-allowed');
-            btn.classList.remove('hover:opacity-90','active:opacity-80','ring-2','ring-white/30');
+
+        if (n === 0) {
+            del.classList.add('opacity-30');
+            btn.className = 'w-full font-bold py-3.5 rounded-2xl text-sm opacity-40 cursor-not-allowed transition-all text-[#0b0f19] bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500';
             btn.textContent = 'Registrar (0/' + maxArrows + ')';
+        } else {
+            del.classList.remove('opacity-30');
+            btn.className = 'w-full font-bold py-3.5 rounded-2xl text-sm transition-all text-[#0b0f19] bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 hover:-translate-y-0.5 active:translate-y-0 shadow-md shadow-amber-500/20';
+            btn.textContent = n >= maxArrows ? 'Confirmar tanda ✓' : 'Registrar (' + n + '/' + maxArrows + ')';
         }
 
-        // chips
         ['chips-plot','chips-keys'].forEach(function(cid) {
             var el = document.getElementById(cid);
             if (!el) return;
             el.innerHTML = '';
             if (arrows.length === 0) {
                 var s = document.createElement('span');
-                s.className = 'text-gray-500 text-xs self-center';
+                s.className = 'text-slate-500 text-xs self-center';
                 s.textContent = cid === 'chips-plot' ? 'Tocá la diana para anotar →' : 'Tocá los botones →';
                 el.appendChild(s);
                 return;
             }
             arrows.forEach(function(a) {
                 var sp = document.createElement('span');
-                sp.style.cssText = (CHIP_BG[a.val]||'') + ';display:inline-flex;align-items:center;justify-content:center;border-radius:12px;font-weight:900;font-size:14px;padding:4px 10px;min-width:2.5rem;animation:chipPop 0.18s ease-out;';
+                sp.style.cssText = (CHIP_BG[a.val]||'') + ';display:inline-flex;align-items:center;justify-content:center;border-radius:12px;font-weight:900;font-size:14px;padding:4px 10px;min-width:2.5rem;';
                 sp.textContent = a.val;
                 el.appendChild(sp);
             });
         });
 
-        // mini-svg pins
         var miniPins = document.getElementById('mini-pins');
         if (miniPins) {
             var mainPins = document.getElementById('pins-g');

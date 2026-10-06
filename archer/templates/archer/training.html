@@ -192,7 +192,9 @@
         </a>
 
         {% else %}
-        <div class="flex items-center gap-4 bg-[#111827] border border-white/[0.06] rounded-2xl p-4">
+        <a href="{{ url_for('archer.training_summary', session_id=s.id) }}"
+           class="flex items-center gap-4 bg-[#111827] border border-white/[0.06] rounded-2xl p-4
+                  hover:border-white/[0.15] hover:bg-[#141d2e] transition-all group">
             <div class="w-11 h-11 rounded-xl shrink-0 flex items-center justify-center overflow-hidden
                         {% if s.target_type == 'wa6field' %}bg-gray-800{% else %}bg-white/5 border border-white/10{% endif %}">
                 {% if s.target_type == 'wa6field' %}
@@ -220,20 +222,24 @@
                 <p class="text-xs text-slate-500 mt-0.5">{{ fecha }} · {{ s.ends_done or 0 }} tandas</p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-                <a href="{{ url_for('archer.training_summary', session_id=s.id) }}"
-                   class="text-xs text-amber-400 font-medium hover:text-amber-300 transition-colors">Ver</a>
+                <svg class="w-4 h-4 text-slate-600 group-hover:text-amber-400 transition-colors"
+                     fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                </svg>
                 <form method="POST"
                       action="{{ url_for('archer.training_delete', session_id=s.id) }}"
-                      onsubmit="return confirm('¿Eliminar esta sesión?')">
+                      onsubmit="return confirm('¿Eliminar esta sesión?')"
+                      onclick="event.stopPropagation()">
                     <button type="submit"
-                            class="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
+                            class="p-1.5 rounded-lg text-red-400/50 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                            onclick="event.stopPropagation()">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                         </svg>
                     </button>
                 </form>
             </div>
-        </div>
+        </a>
         {% endif %}
         {% endfor %}
     </div>

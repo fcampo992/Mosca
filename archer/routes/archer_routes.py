@@ -1182,11 +1182,25 @@ def club():
     archer_id = session["archer_id"]
     club_cfg  = _gcs()
 
+    # Defensive: si las tablas club_* aún no existen en producción, retornar vacío
+    try:
+        banners = list_banners(active_only=True)
+    except Exception:
+        banners = []
+    try:
+        news_items = list_news(published_only=True)
+    except Exception:
+        news_items = []
+    try:
+        resources_grouped = list_resources_grouped(active_only=True)
+    except Exception:
+        resources_grouped = []
+
     return render_template(
         "archer/club.html",
-        banners=list_banners(active_only=True),
-        news_items=list_news(published_only=True),
-        resources_grouped=list_resources_grouped(active_only=True),
+        banners=banners,
+        news_items=news_items,
+        resources_grouped=resources_grouped,
         active_rankings=get_active_tournaments_ranking(),
         global_ranking=get_global_ranking(limit=20),
         current_archer_id=archer_id,

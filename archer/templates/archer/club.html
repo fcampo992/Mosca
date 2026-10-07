@@ -100,9 +100,12 @@
 {% set club = club_settings() %}
 
 {# ── Layout: 1 col mobile / 2 cols desktop ── #}
-<div class="lg:grid lg:grid-cols-5 lg:gap-6 pt-2">
+{# Si hay noticias: 3/5 noticias + 2/5 ranking. Si no: ranking ocupa todo #}
+{% set has_news = news_items and news_items | length > 0 %}
+<div class="{% if has_news %}lg:grid lg:grid-cols-5 lg:gap-6{% endif %} pt-2">
 
-{# Columna izquierda — Noticias #}
+{# Columna izquierda — Noticias (solo si existen) #}
+{% if has_news %}
 <div class="lg:col-span-3">
 
 {% if news_items %}
@@ -158,9 +161,10 @@
 {% endif %}
 
 </div>{# /col-span-3 #}
+{% endif %}{# /has_news #}
 
-{# Columna derecha — Rankings + Recursos #}
-<div class="lg:col-span-2">
+{# Columna derecha — Rankings + Recursos (full width si no hay noticias) #}
+<div class="{% if has_news %}lg:col-span-2{% endif %}">
 
 {% if active_rankings %}
 {% for t in active_rankings %}

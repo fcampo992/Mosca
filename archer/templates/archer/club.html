@@ -65,22 +65,24 @@
     var slides   = Array.from(document.querySelectorAll('.carousel-slide'));
     var dots     = Array.from(document.querySelectorAll('.carousel-dot'));
     var carousel = document.getElementById('carousel');
-    if (!carousel || slides.length === 0) return;
+    if (!carousel || slides.length === 0) {
+        console.warn('[carousel] No slides found or no carousel element. slides:', slides.length);
+        return;
+    }
+    console.log('[carousel] Init — slides:', slides.length, 'dots:', dots.length);
     var interval = parseInt(carousel.dataset.interval || '5') * 1000;
     var current  = 0;
     var timer;
 
     function show(idx) {
-        // Ocultar slide actual
+        console.log('[carousel] show:', idx, '(current:', current, ')');
         slides[current].style.opacity       = '0';
         slides[current].style.pointerEvents = 'none';
         if (dots[current]) {
             dots[current].style.background = 'rgba(255,255,255,0.4)';
             dots[current].style.transform  = 'scale(1)';
         }
-        // Calcular nuevo índice
         current = ((idx % slides.length) + slides.length) % slides.length;
-        // Mostrar nuevo slide
         slides[current].style.opacity       = '1';
         slides[current].style.pointerEvents = 'auto';
         if (dots[current]) {
@@ -99,7 +101,6 @@
     window.carouselStep = function(d) { show(current + d); resetTimer(); };
     window.carouselGo   = function(i) { show(i); resetTimer(); };
 
-    // Swipe táctil
     var startX = 0;
     carousel.addEventListener('touchstart', function(e) { startX = e.touches[0].clientX; }, { passive: true });
     carousel.addEventListener('touchend',   function(e) {
@@ -108,6 +109,7 @@
     }, { passive: true });
 
     resetTimer();
+    console.log('[carousel] Timer started, interval:', interval, 'ms');
 })();
 </script>
 {% endif %}

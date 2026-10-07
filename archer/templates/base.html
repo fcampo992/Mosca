@@ -139,6 +139,7 @@
     {% endblock %}{# /header #}
 
     <!-- ── Contenido principal ── -->
+    {% block pre_content %}{% endblock %}
     <main class="px-4 py-6 max-w-3xl mx-auto {% block main_class %}{% endblock %}
                  {% if archer_logged %}pb-24{% endif %}">
         {% block content %}{% endblock %}

@@ -2,20 +2,15 @@
 {% block title %}Club — {{ club_settings().club_name }}{% endblock %}
 {% block main_class %}max-w-5xl{% endblock %}
 
-{% block content %}
-{% set club = club_settings() %}
-
-{# ══════════════════════════════════════════════════
-   CARRUSEL DE BANNERS
-══════════════════════════════════════════════════ #}
+{# ══ Carrusel full-width — fuera del main para no estar limitado por max-w ══ #}
+{% block pre_content %}
 {% if banners %}
+{% set club = club_settings() %}
 <div id="carousel"
      data-interval="{{ banner_interval | default(5) }}"
-     class="relative overflow-hidden mb-6 bg-[#111827] border border-white/[0.08]
-            -mx-4 sm:rounded-2xl sm:mx-0"
-     style="aspect-ratio:16/7; max-height:320px;">
+     class="relative overflow-hidden bg-[#111827]"
+     style="height:340px;">
 
-    {# Slides #}
     {% for b in banners %}
     <div class="carousel-slide absolute inset-0 transition-opacity duration-700
                 {% if loop.first %}opacity-100{% else %}opacity-0 pointer-events-none{% endif %}"
@@ -28,38 +23,35 @@
         <img src="{{ b.image_url }}" alt="{{ b.title or '' }}"
              class="w-full h-full object-cover"/>
         {% if b.title %}
-        <div class="absolute bottom-0 left-0 right-0 px-4 py-3
+        <div class="absolute bottom-0 left-0 right-0 px-6 py-4
                     bg-gradient-to-t from-black/70 to-transparent">
-            <p class="text-white text-sm font-bold truncate">{{ b.title }}</p>
+            <p class="text-white text-base font-bold">{{ b.title }}</p>
         </div>
         {% endif %}
     </div>
     {% endfor %}
 
-    {# Controles prev/next (solo si > 1 banner) #}
     {% if banners | length > 1 %}
     <button onclick="carouselStep(-1)"
-            class="absolute left-2 top-1/2 -translate-y-1/2 z-10
-                   w-8 h-8 rounded-full bg-black/40 hover:bg-black/60
+            class="absolute left-4 top-1/2 -translate-y-1/2 z-10
+                   w-10 h-10 rounded-full bg-black/40 hover:bg-black/60
                    flex items-center justify-center text-white transition-colors">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
         </svg>
     </button>
     <button onclick="carouselStep(1)"
-            class="absolute right-2 top-1/2 -translate-y-1/2 z-10
-                   w-8 h-8 rounded-full bg-black/40 hover:bg-black/60
+            class="absolute right-4 top-1/2 -translate-y-1/2 z-10
+                   w-10 h-10 rounded-full bg-black/40 hover:bg-black/60
                    flex items-center justify-center text-white transition-colors">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
         </svg>
     </button>
-
-    {# Dots #}
-    <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+    <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10">
         {% for b in banners %}
         <button onclick="carouselGo({{ loop.index0 }})"
-                class="carousel-dot w-1.5 h-1.5 rounded-full transition-all
+                class="carousel-dot w-2 h-2 rounded-full transition-all
                        {% if loop.first %}bg-white scale-125{% else %}bg-white/40{% endif %}">
         </button>
         {% endfor %}
@@ -74,52 +66,45 @@
     var interval = parseInt(document.getElementById('carousel').dataset.interval || '5') * 1000;
     var current  = 0;
     var timer;
-
     function show(idx) {
-        slides[current].classList.replace('opacity-100', 'opacity-0');
+        slides[current].classList.replace('opacity-100','opacity-0');
         slides[current].classList.add('pointer-events-none');
-        dots[current].classList.remove('bg-white', 'scale-125');
+        dots[current].classList.remove('bg-white','scale-125');
         dots[current].classList.add('bg-white/40');
-
         current = (idx + slides.length) % slides.length;
-
-        slides[current].classList.replace('opacity-0', 'opacity-100');
+        slides[current].classList.replace('opacity-0','opacity-100');
         slides[current].classList.remove('pointer-events-none');
-        dots[current].classList.add('bg-white', 'scale-125');
+        dots[current].classList.add('bg-white','scale-125');
         dots[current].classList.remove('bg-white/40');
     }
-
     function resetTimer() {
         clearInterval(timer);
-        if (slides.length > 1) timer = setInterval(function(){ show(current + 1); }, interval);
+        if (slides.length > 1) timer = setInterval(function(){ show(current+1); }, interval);
     }
-
-    window.carouselStep = function(d) { show(current + d); resetTimer(); };
-    window.carouselGo   = function(i) { show(i); resetTimer(); };
-
-    // Swipe táctil
+    window.carouselStep = function(d){ show(current+d); resetTimer(); };
+    window.carouselGo   = function(i){ show(i); resetTimer(); };
     var startX = 0;
     var el = document.getElementById('carousel');
-    el.addEventListener('touchstart', function(e){ startX = e.touches[0].clientX; }, { passive: true });
+    el.addEventListener('touchstart', function(e){ startX=e.touches[0].clientX; }, {passive:true});
     el.addEventListener('touchend',   function(e){
         var diff = startX - e.changedTouches[0].clientX;
-        if (Math.abs(diff) > 40) { show(current + (diff > 0 ? 1 : -1)); resetTimer(); }
-    }, { passive: true });
-
+        if (Math.abs(diff) > 40){ show(current+(diff>0?1:-1)); resetTimer(); }
+    }, {passive:true});
     resetTimer();
 })();
 </script>
 {% endif %}
+{% endblock %}
 
-{# ── Layout desktop: 2 columnas (noticias | rankings + recursos) ── #}
-<div class="lg:grid lg:grid-cols-5 lg:gap-6">
+{% block content %}
+{% set club = club_settings() %}
 
-{# Columna izquierda — Noticias (más ancha) #}
+{# ── Layout: 1 col mobile / 2 cols desktop ── #}
+<div class="lg:grid lg:grid-cols-5 lg:gap-6 pt-2">
+
+{# Columna izquierda — Noticias #}
 <div class="lg:col-span-3">
 
-{# ══════════════════════════════════════════════════
-   NOTICIAS
-══════════════════════════════════════════════════ #}
 {% if news_items %}
 <section class="mb-7">
     <div class="flex items-center justify-between mb-3">
@@ -127,14 +112,13 @@
         <span class="text-[10px] text-slate-500">{{ news_items | length }} noticia{{ 's' if news_items | length != 1 }}</span>
     </div>
 
-    {# Primera noticia destacada — card grande #}
     {% set featured = news_items[0] %}
     <a href="{{ url_for('archer.club_news_detail', news_id=featured.id) }}"
        class="block bg-[#111827] border border-white/[0.08] rounded-2xl overflow-hidden mb-3
               hover:border-amber-500/20 hover:bg-[#141d2e] transition-all group">
         {% if featured.cover_url %}
         <img src="{{ featured.cover_url }}" alt="{{ featured.title }}"
-             class="w-full h-44 object-cover group-hover:scale-[1.02] transition-transform duration-300"/>
+             class="w-full h-48 object-cover group-hover:scale-[1.02] transition-transform duration-300"/>
         {% endif %}
         <div class="p-4">
             <p class="text-xs text-amber-400 font-semibold mb-1 uppercase tracking-wide">
@@ -150,7 +134,6 @@
         </div>
     </a>
 
-    {# Resto en grid 2 cols #}
     {% if news_items | length > 1 %}
     <div class="grid grid-cols-2 gap-3">
         {% for n in news_items[1:5] %}
@@ -174,14 +157,11 @@
 </section>
 {% endif %}
 
-</div>{# /col-span-3 noticias #}
+</div>{# /col-span-3 #}
 
 {# Columna derecha — Rankings + Recursos #}
 <div class="lg:col-span-2">
 
-{# ══════════════════════════════════════════════════
-   TORNEOS ACTIVOS — rankings en vivo
-══════════════════════════════════════════════════ #}
 {% if active_rankings %}
 {% for t in active_rankings %}
 <section class="mb-6">
@@ -191,9 +171,7 @@
             <h2 class="text-sm font-bold text-amber-400 uppercase tracking-widest">EN VIVO</h2>
         </div>
         <a href="{{ url_for('leaderboard.live', tournament_id=t.tournament_id) }}"
-           class="text-xs text-slate-400 hover:text-amber-400 transition-colors">
-            Ver completo →
-        </a>
+           class="text-xs text-slate-400 hover:text-amber-400 transition-colors">Ver completo →</a>
     </div>
     <div class="bg-[#111827] border border-amber-500/20 rounded-2xl overflow-hidden">
         <div class="px-4 py-3 border-b border-white/[0.04] flex items-center justify-between">
@@ -242,9 +220,6 @@
 {% endfor %}
 {% endif %}
 
-{# ══════════════════════════════════════════════════
-   RECURSOS Y DOCUMENTOS
-══════════════════════════════════════════════════ #}
 {% if resources_grouped %}
 <section class="mb-6">
     <h2 class="text-sm font-bold text-white uppercase tracking-widest mb-3">Recursos</h2>
@@ -261,17 +236,11 @@
                           hover:border-amber-500/20 hover:bg-[#141d2e] transition-all group">
                     <div class="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0
                                 bg-white/[0.04] border border-white/[0.06] group-hover:bg-amber-500/10 transition-colors">
-                        {% if r.file_type == 'pdf' %}📄
-                        {% elif r.file_type == 'docx' %}📝
-                        {% elif r.file_type == 'xlsx' %}📊
-                        {% elif r.file_type == 'zip' %}📦
-                        {% else %}🔗{% endif %}
+                        {% if r.file_type == 'pdf' %}📄{% elif r.file_type == 'docx' %}📝{% elif r.file_type == 'xlsx' %}📊{% elif r.file_type == 'zip' %}📦{% else %}🔗{% endif %}
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-semibold text-white truncate group-hover:text-amber-400 transition-colors">{{ r.title }}</p>
-                        {% if r.description %}
-                        <p class="text-xs text-slate-500 truncate mt-0.5">{{ r.description }}</p>
-                        {% endif %}
+                        {% if r.description %}<p class="text-xs text-slate-500 truncate mt-0.5">{{ r.description }}</p>{% endif %}
                     </div>
                     <svg class="w-4 h-4 text-slate-600 group-hover:text-amber-400 shrink-0 transition-colors"
                          fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -286,9 +255,6 @@
 </section>
 {% endif %}
 
-{# ══════════════════════════════════════════════════
-   RANKING GLOBAL
-══════════════════════════════════════════════════ #}
 <section class="mb-6">
     <div class="flex items-center justify-between mb-3">
         <h2 class="text-sm font-bold text-white uppercase tracking-widest">Ranking del Club</h2>
@@ -331,10 +297,9 @@
     </div>
 </section>
 
-</div>{# /col-span-2 columna derecha #}
-</div>{# /grid 2 columnas desktop #}
+</div>{# /col-span-2 #}
+</div>{# /grid #}
 
-{# Empty state si no hay ningún contenido aún #}
 {% if not banners and not news_items and not active_rankings and not resources_grouped %}
 <div class="text-center py-16">
     <p class="text-5xl mb-4">🏹</p>

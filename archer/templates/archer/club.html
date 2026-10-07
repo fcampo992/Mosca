@@ -2,29 +2,27 @@
 {% block title %}Club — {{ club_settings().club_name }}{% endblock %}
 {% block main_class %}max-w-5xl{% endblock %}
 
-{# ══ Carrusel full-width — fuera del main para no estar limitado por max-w ══ #}
+{# ══ Carrusel full-width ══ #}
 {% block pre_content %}
 {% if banners %}
-{% set club = club_settings() %}
 <div id="carousel"
      data-interval="{{ banner_interval | default(5) }}"
      class="relative overflow-hidden bg-[#111827]"
      style="height:340px;">
 
     {% for b in banners %}
-    <div class="carousel-slide absolute inset-0 transition-opacity duration-700
-                {% if loop.first %}opacity-100{% else %}opacity-0 pointer-events-none{% endif %}"
-         data-index="{{ loop.index0 }}"
+    <div class="carousel-slide absolute inset-0"
+         style="opacity:{% if loop.first %}1{% else %}0{% endif %};pointer-events:{% if loop.first %}auto{% else %}none{% endif %};transition:opacity 0.7s ease;"
          {% if b.link_type == 'external' and b.link_value %}
-         onclick="window.open('{{ b.link_value }}','_blank')" style="cursor:pointer"
+         onclick="window.open('{{ b.link_value }}','_blank')" role="button" tabindex="0"
          {% elif b.link_type == 'news' and b.link_value %}
-         onclick="window.location.href='{{ url_for('archer.club_news_detail', news_id=b.link_value) }}'" style="cursor:pointer"
+         onclick="location.href='{{ url_for('archer.club_news_detail', news_id=b.link_value) }}'" role="button" tabindex="0"
          {% endif %}>
         <img src="{{ b.image_url }}" alt="{{ b.title or '' }}"
-             class="w-full h-full object-cover"/>
+             class="w-full h-full object-cover" draggable="false"/>
         {% if b.title %}
-        <div class="absolute bottom-0 left-0 right-0 px-6 py-4
-                    bg-gradient-to-t from-black/70 to-transparent">
+        <div class="absolute bottom-0 left-0 right-0 px-6 py-4"
+             style="background:linear-gradient(to top,rgba(0,0,0,0.7),transparent)">
             <p class="text-white text-base font-bold">{{ b.title }}</p>
         </div>
         {% endif %}
@@ -32,27 +30,30 @@
     {% endfor %}
 
     {% if banners | length > 1 %}
+    {# Botones prev / next #}
     <button onclick="carouselStep(-1)"
-            class="absolute left-4 top-1/2 -translate-y-1/2 z-10
-                   w-10 h-10 rounded-full bg-black/40 hover:bg-black/60
-                   flex items-center justify-center text-white transition-colors">
+            class="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full
+                   flex items-center justify-center text-white transition-colors"
+            style="background:rgba(0,0,0,0.45)">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
         </svg>
     </button>
     <button onclick="carouselStep(1)"
-            class="absolute right-4 top-1/2 -translate-y-1/2 z-10
-                   w-10 h-10 rounded-full bg-black/40 hover:bg-black/60
-                   flex items-center justify-center text-white transition-colors">
+            class="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full
+                   flex items-center justify-center text-white transition-colors"
+            style="background:rgba(0,0,0,0.45)">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
         </svg>
     </button>
+
+    {# Dots #}
     <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10">
         {% for b in banners %}
         <button onclick="carouselGo({{ loop.index0 }})"
-                class="carousel-dot w-2 h-2 rounded-full transition-all
-                       {% if loop.first %}bg-white scale-125{% else %}bg-white/40{% endif %}">
+                class="carousel-dot w-2 h-2 rounded-full"
+                style="transition:all 0.2s;background:{% if loop.first %}rgba(255,255,255,1){% else %}rgba(255,255,255,0.4){% endif %};transform:{% if loop.first %}scale(1.25){% else %}scale(1){% endif %}">
         </button>
         {% endfor %}
     </div>
@@ -61,35 +62,51 @@
 
 <script>
 (function() {
-    var slides   = document.querySelectorAll('.carousel-slide');
-    var dots     = document.querySelectorAll('.carousel-dot');
-    var interval = parseInt(document.getElementById('carousel').dataset.interval || '5') * 1000;
+    var slides   = Array.from(document.querySelectorAll('.carousel-slide'));
+    var dots     = Array.from(document.querySelectorAll('.carousel-dot'));
+    var carousel = document.getElementById('carousel');
+    if (!carousel || slides.length === 0) return;
+    var interval = parseInt(carousel.dataset.interval || '5') * 1000;
     var current  = 0;
     var timer;
+
     function show(idx) {
-        slides[current].classList.replace('opacity-100','opacity-0');
-        slides[current].classList.add('pointer-events-none');
-        dots[current].classList.remove('bg-white','scale-125');
-        dots[current].classList.add('bg-white/40');
-        current = (idx + slides.length) % slides.length;
-        slides[current].classList.replace('opacity-0','opacity-100');
-        slides[current].classList.remove('pointer-events-none');
-        dots[current].classList.add('bg-white','scale-125');
-        dots[current].classList.remove('bg-white/40');
+        // Ocultar slide actual
+        slides[current].style.opacity       = '0';
+        slides[current].style.pointerEvents = 'none';
+        if (dots[current]) {
+            dots[current].style.background = 'rgba(255,255,255,0.4)';
+            dots[current].style.transform  = 'scale(1)';
+        }
+        // Calcular nuevo índice
+        current = ((idx % slides.length) + slides.length) % slides.length;
+        // Mostrar nuevo slide
+        slides[current].style.opacity       = '1';
+        slides[current].style.pointerEvents = 'auto';
+        if (dots[current]) {
+            dots[current].style.background = 'rgba(255,255,255,1)';
+            dots[current].style.transform  = 'scale(1.25)';
+        }
     }
+
     function resetTimer() {
         clearInterval(timer);
-        if (slides.length > 1) timer = setInterval(function(){ show(current+1); }, interval);
+        if (slides.length > 1) {
+            timer = setInterval(function() { show(current + 1); }, interval);
+        }
     }
-    window.carouselStep = function(d){ show(current+d); resetTimer(); };
-    window.carouselGo   = function(i){ show(i); resetTimer(); };
+
+    window.carouselStep = function(d) { show(current + d); resetTimer(); };
+    window.carouselGo   = function(i) { show(i); resetTimer(); };
+
+    // Swipe táctil
     var startX = 0;
-    var el = document.getElementById('carousel');
-    el.addEventListener('touchstart', function(e){ startX=e.touches[0].clientX; }, {passive:true});
-    el.addEventListener('touchend',   function(e){
+    carousel.addEventListener('touchstart', function(e) { startX = e.touches[0].clientX; }, { passive: true });
+    carousel.addEventListener('touchend',   function(e) {
         var diff = startX - e.changedTouches[0].clientX;
-        if (Math.abs(diff) > 40){ show(current+(diff>0?1:-1)); resetTimer(); }
-    }, {passive:true});
+        if (Math.abs(diff) > 40) { show(current + (diff > 0 ? 1 : -1)); resetTimer(); }
+    }, { passive: true });
+
     resetTimer();
 })();
 </script>
@@ -100,7 +117,6 @@
 {% set club = club_settings() %}
 
 {# ── Layout: 1 col mobile / 2 cols desktop ── #}
-{# Si hay noticias: 3/5 noticias + 2/5 ranking. Si no: ranking ocupa todo #}
 {% set has_news = news_items and news_items | length > 0 %}
 <div class="{% if has_news %}lg:grid lg:grid-cols-5 lg:gap-6{% endif %} pt-2">
 
@@ -108,7 +124,6 @@
 {% if has_news %}
 <div class="lg:col-span-3">
 
-{% if news_items %}
 <section class="mb-7">
     <div class="flex items-center justify-between mb-3">
         <h2 class="text-sm font-bold text-white uppercase tracking-widest">Novedades</h2>
@@ -158,7 +173,6 @@
     </div>
     {% endif %}
 </section>
-{% endif %}
 
 </div>{# /col-span-3 #}
 {% endif %}{# /has_news #}
@@ -166,6 +180,7 @@
 {# Columna derecha — Rankings + Recursos (full width si no hay noticias) #}
 <div class="{% if has_news %}lg:col-span-2{% endif %}">
 
+{# Torneos activos — en vivo #}
 {% if active_rankings %}
 {% for t in active_rankings %}
 <section class="mb-6">
@@ -224,6 +239,7 @@
 {% endfor %}
 {% endif %}
 
+{# Recursos #}
 {% if resources_grouped %}
 <section class="mb-6">
     <h2 class="text-sm font-bold text-white uppercase tracking-widest mb-3">Recursos</h2>
@@ -259,6 +275,7 @@
 </section>
 {% endif %}
 
+{# Ranking global #}
 <section class="mb-6">
     <div class="flex items-center justify-between mb-3">
         <h2 class="text-sm font-bold text-white uppercase tracking-widest">Ranking del Club</h2>
@@ -301,7 +318,7 @@
     </div>
 </section>
 
-</div>{# /col-span-2 #}
+</div>{# /columna derecha #}
 </div>{# /grid #}
 
 {% if not banners and not news_items and not active_rankings and not resources_grouped %}

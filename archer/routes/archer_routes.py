@@ -1168,44 +1168,64 @@ def training_delete(session_id: str):
 @require_session
 def club():
     """GET — Home del club: carrusel, noticias, recursos, rankings."""
-    from archer.modules.club_feed import (  # noqa: PLC0415
-        get_active_tournaments_ranking,
-        get_global_ranking,
-    )
-    from archer.modules.club_content import (  # noqa: PLC0415
-        list_banners,
-        list_news,
-        list_resources_grouped,
-    )
-    from archer.modules.club import get_club_settings as _gcs  # noqa: PLC0415
+    import logging as _log  # noqa: PLC0415
+    import traceback as _tb  # noqa: PLC0415
+    _logger = _log.getLogger(__name__)
 
-    archer_id = session["archer_id"]
-    club_cfg  = _gcs()
+    try:
+        from archer.modules.club_feed import (  # noqa: PLC0415
+            get_active_tournaments_ranking,
+            get_global_ranking,
+        )
+        from archer.modules.club_content import (  # noqa: PLC0415
+            list_banners,
+            list_news,
+            list_resources_grouped,
+        )
+        from archer.modules.club import get_club_settings as _gcs  # noqa: PLC0415
 
-    # Defensive: si las tablas club_* aún no existen en producción, retornar vacío
-    try:
-        banners = list_banners(active_only=True)
-    except Exception:
-        banners = []
-    try:
-        news_items = list_news(published_only=True)
-    except Exception:
-        news_items = []
-    try:
-        resources_grouped = list_resources_grouped(active_only=True)
-    except Exception:
-        resources_grouped = []
+        archer_id = session["archer_id"]
+        club_cfg  = _gcs()
 
-    return render_template(
-        "archer/club.html",
-        banners=banners,
-        news_items=news_items,
-        resources_grouped=resources_grouped,
-        active_rankings=get_active_tournaments_ranking(),
-        global_ranking=get_global_ranking(limit=20),
-        current_archer_id=archer_id,
-        banner_interval=club_cfg.get("banner_interval", 5),
-    )
+        try:
+            banners = list_banners(active_only=True)
+        except Exception as e:
+            _logger.error("club: list_banners failed: %s", e)
+            banners = []
+        try:
+            news_items = list_news(published_only=True)
+        except Exception as e:
+            _logger.error("club: list_news failed: %s", e)
+            news_items = []
+        try:
+            resources_grouped = list_resources_grouped(active_only=True)
+        except Exception as e:
+            _logger.error("club: list_resources_grouped failed: %s", e)
+            resources_grouped = []
+        try:
+            active_rankings = get_active_tournaments_ranking()
+        except Exception as e:
+            _logger.error("club: get_active_tournaments_ranking failed: %s", e)
+            active_rankings = []
+        try:
+            global_ranking = get_global_ranking(limit=20)
+        except Exception as e:
+            _logger.error("club: get_global_ranking failed: %s", e)
+            global_ranking = []
+
+        return render_template(
+            "archer/club.html",
+            banners=banners,
+            news_items=news_items,
+            resources_grouped=resources_grouped,
+            active_rankings=active_rankings,
+            global_ranking=global_ranking,
+            current_archer_id=archer_id,
+            banner_interval=club_cfg.get("banner_interval", 5),
+        )
+    except Exception as exc:
+        _logger.error("club: unhandled error: %s\n%s", exc, _tb.format_exc())
+        raise
 
 
 @archer_bp.route("/club/news/<news_id>", methods=["GET"])

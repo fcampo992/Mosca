@@ -70,6 +70,7 @@ def create_app(config_object: object = Config) -> Flask:
         except Exception as exc:
             import traceback
             logger.error("Error inicializando DB: %s\n%s", exc, traceback.format_exc())
+            # NO marcar como inicializado si falló — reintentar en el próximo request
 
     # ── Context processors ────────────────────────────────────────────────────
     @app.context_processor

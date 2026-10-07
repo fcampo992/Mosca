@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Club — {{ club_settings().club_name }}{% endblock %}
-
 {% block main_class %}max-w-5xl{% endblock %}
+
+{% block content %}
+{% set club = club_settings() %}
 
 {# ══════════════════════════════════════════════════
    CARRUSEL DE BANNERS

@@ -1,8 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Club — {{ club_settings().club_name }}{% endblock %}
 
-{% block content %}
-{% set club = club_settings() %}
+{% block main_class %}max-w-5xl{% endblock %}
 
 {# ══════════════════════════════════════════════════
    CARRUSEL DE BANNERS
@@ -10,8 +9,9 @@
 {% if banners %}
 <div id="carousel"
      data-interval="{{ banner_interval | default(5) }}"
-     class="relative overflow-hidden rounded-2xl mb-6 bg-[#111827] border border-white/[0.08]"
-     style="aspect-ratio:16/7; max-height:220px;">
+     class="relative overflow-hidden mb-6 bg-[#111827] border border-white/[0.08]
+            -mx-4 sm:rounded-2xl sm:mx-0"
+     style="aspect-ratio:16/7; max-height:320px;">
 
     {# Slides #}
     {% for b in banners %}
@@ -109,6 +109,12 @@
 </script>
 {% endif %}
 
+{# ── Layout desktop: 2 columnas (noticias | rankings + recursos) ── #}
+<div class="lg:grid lg:grid-cols-5 lg:gap-6">
+
+{# Columna izquierda — Noticias (más ancha) #}
+<div class="lg:col-span-3">
+
 {# ══════════════════════════════════════════════════
    NOTICIAS
 ══════════════════════════════════════════════════ #}
@@ -165,6 +171,11 @@
     {% endif %}
 </section>
 {% endif %}
+
+</div>{# /col-span-3 noticias #}
+
+{# Columna derecha — Rankings + Recursos #}
+<div class="lg:col-span-2">
 
 {# ══════════════════════════════════════════════════
    TORNEOS ACTIVOS — rankings en vivo
@@ -317,6 +328,9 @@
         {% endif %}
     </div>
 </section>
+
+</div>{# /col-span-2 columna derecha #}
+</div>{# /grid 2 columnas desktop #}
 
 {# Empty state si no hay ningún contenido aún #}
 {% if not banners and not news_items and not active_rankings and not resources_grouped %}
